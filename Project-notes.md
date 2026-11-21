@@ -79,3 +79,13 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 - No real frame-rate figure from a Quest.
 - Replay comfort, the guide board, the stage stick and handedness are unverified in a headset.
 - Tripo and ChatGPT must be signed in on the developer's home computer before any new asset can be made.
+
+## Concept images (with ChatGPT)
+Standing rule from the developer: every proposal comes as 4 to 8 clearly different variants, labelled A, B, C and so on. The developer picks one or mixes parts of several, and ChatGPT then makes one combined final version. The palette from the style sheet is locked.
+
+| Image | File in `assets/concepts/` | State |
+|---|---|---|
+| 1. Theme and style sheet | `style-sheet-v1.jpg` | Approved as the starting point; palette locked. The curved bow in it is illustrative only |
+| 2. Title menu, variants A to D | `title-menu-a.jpg` to `title-menu-d.jpg` | Waiting for the developer's choice |
+| 3. Interface kit | — | After the title menu is chosen |
+| 4. View down from the watchtower | — | Proposed by ChatGPT |

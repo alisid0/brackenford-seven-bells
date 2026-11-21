@@ -41,11 +41,13 @@ Rules for Endless:
 | Hits a live target, draw 60% or more | Returned | Scores; streak rises |
 | Hits a live target, draw under 60% | Lost | No score; streak resets |
 | Misses everything | Lost | Streak resets |
-| Hits a target already scored, or scenery | Lost, as a miss | Streak resets |
+| Hits scenery | Lost, as a miss | Streak resets |
+| Would have hit a target that another arrow cleared while this one was in flight | **Void:** returned | No score; streak unchanged |
 | Arrives after its target left, having been loosed while the target was showing and passing within the target's size of where it was | **Void:** returned | No score; streak unchanged |
 | Fifth hit in a row | One extra, up to the cap of 12 | — |
 
-- A target can be scored once. Two arrows in the air at one target: the first to arrive scores, the second is a miss.
+- A target can be scored once. Two arrows in the air at one target: the first to arrive scores, the second is void.
+- A shot that would have missed anyway always costs its arrow. The void rule was confirmed by ChatGPT on 21 November 2026.
 - At most three arrows in flight, so at most three are reserved.
 - **End of run:** when the count is zero **and** no arrow is in flight. If the last arrow is in the air, the run waits for it; if it hits, it comes back and the run continues.
 - **Display:** the count shows arrows in hand, with one small hollow marker for each arrow in flight. A marker fills and rejoins the count on a hit, and fades on a miss.
@@ -91,8 +93,8 @@ Automated:
 - A long frame gap ends the run.
 - Endless: a hit returns the arrow, a miss costs one, the bonus and its cap work.
 - Endless: a target that leaves unhit costs nothing.
-- Endless: an under-drawn hit, a hit on a scored target and a second arrow at one target each cost an arrow and do not score.
-- Endless: a well-aimed arrow that arrives after its target left is void: returned, no score, streak unchanged.
+- Endless: an under-drawn hit costs an arrow and does not score.
+- Endless: a well-aimed arrow that arrives after its target left, or after another arrow cleared it, is void: returned, no score, streak unchanged. The same arrow aimed wide still costs one.
 - Endless: with the last arrow in flight the run does not end; it continues if that arrow hits and ends if it misses.
 - Endless: the count shown plus the arrows in flight always equals the arrows owned.
 - Endless: the 15-minute limit ends a run. A scripted archer at 50%, 70% and 90% accuracy records its run length, as tuning data.

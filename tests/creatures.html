@@ -117,6 +117,9 @@ const wait=setInterval(async()=>{
   // the timed bound: ten equal steps through one cycle, with the planted spots marked on the ground
   const bound=MOVES.hareBound(hare.bones),wide={half:.8,at:[0,.6,-.1]};
   await hare.sheet("d1-hare-bound-timed",Array.from({length:10},(_,i)=>{const p=bound.pose(i/10),d=p._down;return{label:"t "+(i/10).toFixed(1)+(d[2]?" hind down":d[0]?" fore down":" in air"),pose:p};}),[{...side,...wide},{name:"front quarter",from:[.8,.25,-1],...wide}]);
+  // the run the game uses for a bolting hare: the same cycle with a long stride and short contacts
+  const fast=MOVES.hareBound(hare.bones,MOVES.HARE.run);
+  await hare.sheet("d1-hare-run-timed",Array.from({length:10},(_,i)=>{const p=fast.pose(i/10),d=p._down;return{label:"t "+(i/10).toFixed(1)+(d[2]?" hind down":d[0]?" fore down":" in air"),pose:p};}),[{...side,...wide,at:[0,.65,-.1]},{name:"front quarter",from:[.8,.25,-1],...wide,at:[0,.65,-.1]}]);
   report.push({hare:hare.info,missing:[...hare.missing],bound:{stride:bound.stride,period:bound.period}});
   if(play)hare.show(bound,play);
  }

@@ -35,7 +35,7 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 10. A replay plays for a bullseye or the last arrow of a stage; on long lanes, only the closest arrow, even a miss.
 11. Two draw modes: two-handed and single-handed. Left- and right-handed bows with a different grip for each.
 12. The bow is a straight bow with a normal mechanism.
-13. Endless Survival arrow rule: a hit returns its arrow, a miss costs it. (The first proposal, ten arrows plus one per five hits, ended every run after about twelve shots.) **ChatGPT has not yet confirmed this change.**
+13. Endless Survival arrow rule, confirmed by ChatGPT: start with 10; a qualifying hit returns its arrow, a miss costs it; every fifth hit in a row adds one, to a cap of 12; a 15-minute limit. Only a missed shot costs an arrow; a target that leaves unhit costs nothing until run lengths have been measured. The numbers are starting values. Full arrow accounting is in `Arcade-plan.md`.
 14. Score Attack runs on a fixed timetable so every player meets the same targets at the same moments, at any frame rate.
 
 ### Art and assets
@@ -44,7 +44,13 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 17. All creature animation is written in code. No recorded clips.
 18. Cosmetic randomness is free; anything that affects aiming is seeded and independent of frame rate.
 19. Graphics budgets are provisional until measured on the headset.
-20. A style sheet is made with ChatGPT Images before the next Tripo creature.
+20. A style sheet is made with ChatGPT Images before the next Tripo creature. Its three example assets are the standing shade hare, the Thornwood bow and the market stall.
+21. Shade family: hare, crow, fox (weaves), boar (side shots), stag (first to fight back), and the Hollow Stag boss, which must look distinct from the stag. The water shade is deferred.
+22. Arrows: Standard, Bodkin, Swift, Bell and Tracer. Ember is deferred. Arcade uses one fixed bow and the standard arrow in its first ruleset.
+23. Bows: recurve and longbow are built in code from the present bow; the Thornwood and Bellwarden's bows go through Tripo. All share the same grip, rest and string points.
+24. Mixed reality starts with "the window": one stationary lane seen through a wall, after release.
+25. Arcade is not part of the launch and has no Day 5 decision. Day 5 decides the desktop and Quest release only.
+26. Which Quest failures allow an "experimental" VR label, and which mean the Enter VR button is withheld, are defined in `Release-checklist.md`.
 
 ## Standing rules
 - The public site is not changed, and nothing is merged to `main`, without the developer's explicit approval.
@@ -61,9 +67,11 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 ## Open questions
 - Is the name "Bow & Shadow" free to use?
 - Is the first hare, generated before the Tripo subscription began, marked private and commercial in the Tripo account?
-- Which woodland creature is the first shade that fights back? (Proposed: a stag that hurls thorns.)
-- Which mixed-reality idea is prototyped first? (Proposed: a wall that opens onto the range.)
-- ChatGPT's answers to the six questions at the end of `Asset-and-XR-list.md`.
+- Which Quest model and which input methods will the release page claim? Answer: only those tested in the Day 1 playtest, once it is done.
+- Which Tripo rig preset suits a bird? To be tested on the crow.
+
+## Answered
+- Can an arrow score after its target's window closes? Checked in the code: a hit is decided when the arrow arrives. A shade stops being hittable the instant it hides or leaves; a pop-up stays hittable for about a twentieth of a second while it folds. So a well-aimed arrow that arrives late passes through and counts as a miss. Arcade treats that case as void (arrow returned, no score); see `Arcade-plan.md`.
 
 ## Known gaps
 - No real frame-rate figure from a Quest.

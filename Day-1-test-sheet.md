@@ -4,7 +4,7 @@ Test the release build on the test site: https://archery-range-test.vercel.app/?
 Allow about 45 minutes on the computer and 60–90 minutes on the Quest. Don't fix anything; just write down what happens.
 
 ## Before you start
-- Which headset: Quest 2, 3 or 3S?
+- Write down: the headset model (Quest 2, 3 or 3S), the Quest Browser version (its menu, then About), and the commit shown at the top of this sheet.
 - On the title card choose "Start over" once, so both tests begin from nothing.
 
 ## Part 1 — computer (Chrome or Edge)
@@ -21,11 +21,14 @@ New in this build: instructions appear on a low board in front of you during the
 2. Stage 1, two-handed: free hand to the string, hold trigger, pull back, let go.
 3. Can you read the scoreboard to the right, and the plaque on the bow?
 4. Finish stage 1. Did a replay play? Were you returned to the line? Did the BACK, AGAIN and NEXT signs appear, and did shooting one work?
+4a. On the next replay, press a trigger while it plays. Did it skip straight back to the line?
 5. Flick the left stick right. Did it go to the next stage?
 6. Click the right stick. Did it switch to single-handed draw? Hold a trigger and let go.
 7. Squeeze the grip on your other hand at the bow. Did the bow change hands?
 8. Play the stages in order as far as you can get.
 9. On The warren (four shades) and Blighted meadow (the last stage): does it stutter when you turn your head? Read the frames-per-second figure on the scoreboard.
+9a. Controller lost mid-draw: draw the bow, and while holding the draw, hide the drawing controller behind your back (or lift its battery) for a few seconds. The shot should cancel, not fire. What happened?
+9b. Hand tracking: put both controllers down so your hands appear. Draw and release with a pinch, then with a fist. Did each work? Did the bow stay in the hand you expect?
 10. Take the headset off for ten seconds and put it back on. Does play resume?
 11. Leave VR and press Enter VR again. Does it work a second time?
 
@@ -35,7 +38,7 @@ For each stage you played, one line:
 `stage number | platform | finished? | stars | too easy / about right / too hard / unfair | anything broken`
 
 And these, each in a sentence:
-1. Headset model.
+1. Headset model, Quest Browser version, and the commit tested.
 2. Anything that did not work at all, with the stage and what you did just before.
 3. The first moment you were confused, on the computer and in VR.
 4. Frame rate: smooth, occasional stutter, or constant stutter, and on which stages. If the Quest's developer overlay is switched on, the frames-per-second figure on The warren and Blighted meadow.

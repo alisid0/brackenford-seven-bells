@@ -69,8 +69,9 @@ We make one asset at a time. Nothing moves on until I approve the step before.
 - Three-quarter view from slightly above. Bows: flat side view.
 - Plain white background. No ground, no shadow, no text, no border.
 - Flat, even lighting. Flat colours from the style sheet. Chunky low-poly shapes, no fine detail, no fur strands, no thin loose parts.
-- Creatures: standing in a neutral pose, all four legs apart and visible, head forward, mouth closed, wings half open and clear of the body, tail clear of the legs. This is what lets the model be rigged.
-- Bows: perfectly straight and symmetrical, wooden body only, no string, no arrow.
+- Four-legged creatures: standing in a neutral pose, all four legs apart and visible, head forward, mouth closed, tail clear of the legs. This is what lets the model be rigged.
+- Birds: standing, both legs visible, wings half open and held clear of the body, each wing showing shoulder, elbow and wrist bends, tail clear, beak closed.
+- Bows: perfectly straight and symmetrical, wooden body only, no string, no arrow. Mark nothing on the image; the grip, rest and string points are fitted afterwards.
 
 **Step 3. Tripo settings.** With each image, give me this card:
 
@@ -81,8 +82,11 @@ We make one asset at a time. Nothing moves on until I approve the step before.
 | Type | Rigged creature or static prop |
 | Tripo mode | Image to 3D |
 | Retopology | Triangles, target count from the budgets below |
-| Rig | Creatures only: auto-rig, type "Other" (four-legged) or "Biped" |
+| Rig, four-legged | Auto-rig, type "Other". Check: four separate legs, spine, neck, head, ears, tail |
+| Rig, bird | Preset not yet known; to be tested on the crow. Check: two legs, and three joints in each wing. A simple flap test is approved before the rig is used |
 | Real-world size | height or length in metres |
+| Pivot and forward axis | where it stands or is held; which way it faces |
+| Attachment points | where a string, grip, hand or perch meets it |
 | Must check | what could go wrong with this shape |
 
 Triangle budgets: small creature 1,500 to 3,000; standard creature 3,000 to 5,000; boss 10,000 to 15,000; bow 2,000 to 3,000; props 300 to 1,500.

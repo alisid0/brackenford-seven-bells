@@ -2,7 +2,7 @@
 
 Status: approved for development behind a switch. **No Arcade code is to be written until the first headset playtest of Trials has been reviewed.** The global leaderboard is deferred until after release. Mixed reality is an experiment only.
 
-Release order of preference: Trials alone is a successful release; Trials plus one tested Arcade mode is better; plus both is ideal; mixed reality is a bonus; global leaderboards follow later.
+Arcade is Update 1, after the Trials release. It is not part of the launch. (Revision 3, after ChatGPT's review of 21 November 2026.)
 
 ## Ruleset version 1
 
@@ -22,11 +22,37 @@ Common to both modes:
 - Version 1 uses ring targets, sliders and pop-ups, whose movement is a pure function of the run clock. Randomly moving shades are left out until their movement is seeded.
 
 ### Endless Survival
-- **Arrow rule changed from the proposal.** "Ten arrows, plus one per five hits" ends every run after about twelve shots, however well it is played: each five hits spend five arrows to earn one. That is neither endless nor a survival game.
-- Proposed instead: **a hit returns its arrow; a miss costs it.** Start with 10. Every fifth hit in a row adds one, to a cap of 12. A target that leaves unhit also costs an arrow. The run ends at zero. Run length is then set by accuracy.
+- **Arrow rule (agreed):** start with 10 arrows. A qualifying hit returns its arrow; a miss costs it. Every fifth hit in a row adds one, to a cap of 12. The run ends when no arrows are left and none can come back. Run length is set by accuracy. (The first proposal, "ten arrows plus one per five hits", ended every run after about twelve shots.)
+- **Only a missed shot costs an arrow.** A target that leaves unhit costs nothing in the first playtest version. Charging for it could take two arrows for one target, and a target can leave while a good shot is already in the air.
 - Waves add distance, movement, wind and shade behaviours up to fixed caps (largest distance, top speed, smallest size, strongest wind), reached at about wave 20.
-- **A guaranteed ending.** Beyond wave 20 the time a target stays shrinks a little each wave, so even a perfect archer eventually loses arrows to targets that leave. On top of that, a hard limit of 15 minutes, stated in the rules; the score at that moment stands. The pressure ending is the one players should meet; the time limit is a safety net for comfort and for testing.
+- **Ending.** A hard limit of 15 minutes, stated in the rules; the score at that moment stands. There is no other forced ending yet. Run lengths are measured in playtesting first; if skilled players routinely reach the limit, a pressure rule (such as a penalty for targets that leave) is added then.
+- The five-hit bonus, the 12-arrow cap and the 15-minute limit are starting values, to be tuned in playtesting.
 - Shade movement inside Endless uses a seeded generator, so a wave can be reproduced in a test.
+
+#### Arrow accounting
+
+How the game behaves today (checked in the code): a hit is decided when the arrow arrives, not when it is loosed. A shade that hides or leaves stops being hittable at that instant. A pop-up stays hittable for about a twentieth of a second after its window closes, until it has folded down. So an arrow that was well aimed, but arrives after its target has gone, passes through and counts as a miss. A full-power shot takes about one second to reach 60 metres.
+
+Rules for Endless:
+
+| Event | Arrows | Score and streak |
+|---|---|---|
+| Arrow loosed | The arrow is **reserved**: taken from the count shown, not yet lost | — |
+| Hits a live target, draw 60% or more | Returned | Scores; streak rises |
+| Hits a live target, draw under 60% | Lost | No score; streak resets |
+| Misses everything | Lost | Streak resets |
+| Hits a target already scored, or scenery | Lost, as a miss | Streak resets |
+| Arrives after its target left, having been loosed while the target was showing and passing within the target's size of where it was | **Void:** returned | No score; streak unchanged |
+| Fifth hit in a row | One extra, up to the cap of 12 | — |
+
+- A target can be scored once. Two arrows in the air at one target: the first to arrive scores, the second is a miss.
+- At most three arrows in flight, so at most three are reserved.
+- **End of run:** when the count is zero **and** no arrow is in flight. If the last arrow is in the air, the run waits for it; if it hits, it comes back and the run continues.
+- **Display:** the count shows arrows in hand, with one small hollow marker for each arrow in flight. A marker fills and rejoins the count on a hit, and fades on a miss.
+
+Score Attack has unlimited arrows, so none of this applies there; hits are decided on arrival, which is the same for every player.
+
+ seeded generator, so a wave can be reproduced in a test.
 
 ## Timing and interruptions
 
@@ -49,7 +75,7 @@ Each step is one commit on `release-prep`, with every existing test suite passin
 2. Run clock, interruption rules, and a seeded generator for Arcade.
 3. Arcade engine: rules object (arrow supply, time limit, timetable or wave source, end condition), run state, statistics.
 4. Score Attack on the timetable.
-5. Endless Survival with the arrow rule and the two endings.
+5. Endless Survival with the arrow accounting and the time limit.
 6. Results screen, statistics, local personal bests, mode choice on the title card and by signs in VR.
 7. Tests (below).
 8. Playtest and tuning.
@@ -63,8 +89,13 @@ Automated:
 - A shot under 60% draw does not score; a target cannot score twice; a fourth arrow cannot be in flight.
 - Each interruption ends the run unrecorded.
 - A long frame gap ends the run.
-- Endless: a hit returns the arrow, a miss costs one, the bonus and its cap work, the run ends at zero.
-- Endless: a scripted perfect archer still loses within the time limit, and the 15-minute limit ends a run.
+- Endless: a hit returns the arrow, a miss costs one, the bonus and its cap work.
+- Endless: a target that leaves unhit costs nothing.
+- Endless: an under-drawn hit, a hit on a scored target and a second arrow at one target each cost an arrow and do not score.
+- Endless: a well-aimed arrow that arrives after its target left is void: returned, no score, streak unchanged.
+- Endless: with the last arrow in flight the run does not end; it continues if that arrow hits and ends if it misses.
+- Endless: the count shown plus the arrows in flight always equals the arrows owned.
+- Endless: the 15-minute limit ends a run. A scripted archer at 50%, 70% and 90% accuracy records its run length, as tuning data.
 - Bests are kept apart by mode, ruleset version and input type, and survive a reload.
 - Statistics add up: shots, hits, accuracy, longest streak.
 - With the Arcade switch off, nothing of Arcade is reachable and the ten existing suites pass unchanged.
@@ -76,5 +107,5 @@ By hand, on desktop and on a Quest:
 - Taking the headset off ends the run cleanly.
 - The player wants another go.
 
-## Go or no-go on Day 5
-Arcade is included only if the Trials checklist has already passed, all of the above hold for the mode in question, and the developer has played it at least three times. A mode that misses stays switched off and follows as an update.
+## Acceptance
+Arcade is released as Update 1 when the Trials release is live and stable, every automated check above passes, both modes have been played at least three times each by the developer on desktop and on a Quest, and the developer approves. A mode that falls short stays switched off and follows later. Day 5 of release week is for the Trials desktop and Quest decision only.

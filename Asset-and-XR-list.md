@@ -1,6 +1,6 @@
 # Bow & Shadow: asset list and VR / mixed-reality element list
 
-For review by ChatGPT. This is a planning list only. Nothing here is made before the Trials release is stable, and nothing is generated in Tripo until the style sheet exists. It replaces the older `assets/Asset-list.txt`, which described gentle spirits.
+Revision 2, incorporating ChatGPT's review of 21 November 2026. This is a planning list only. Nothing here is made before the Trials release is stable, and nothing is generated in Tripo until the style sheet exists. It replaces the older `assets/Asset-list.txt`, which described gentle spirits.
 
 Tripo credits available: about 3,090. Cost used below: about 110 per rigged creature, 90 per static prop (model plus retopology).
 
@@ -9,7 +9,9 @@ Tripo credits available: about 3,090. Cost used below: about 110 per rigged crea
 - **Code**: built from shapes in the game's code or by Blender script. Free, exactly on palette, and best for anything thin, repeated or simple.
 - **Have**: already in the game.
 
-The developer has asked for Tripo to be used as widely as is useful. Where this list still says Code, the reason is given. ChatGPT is asked to challenge any of those choices.
+The routes below are agreed with ChatGPT: Tripo for distinctive creatures and forms, code for anything thin, repeated, simple, or that the hand must hold or pivot precisely.
+
+Every brief for an asset states its **scale** (real size in metres), **pivot** (the point it stands on or is held by), **forward axis**, and any **attachment points** (where a string, grip, hand or perch meets it).
 
 **When** uses the agreed roadmap: U2 visual polish, U3 bows and shop, U4 shades that fight back, U5 boss, Later.
 
@@ -22,13 +24,13 @@ The developer has asked for Tripo to be used as widely as is useful. Where this 
 | # | Asset | Route | When | Notes |
 |---|---|---|---|---|
 | A1 | Training bow | Have | Launch | Straight wooden bow, handed grip |
-| A2 | Hunter's recurve | Tripo | U3 | Faster draw, lighter arrow drop |
-| A3 | Vale longbow | Tripo | U3 | Longest range, slow draw |
-| A4 | Thornwood bow | Tripo | U3 | Grown from shade-thorn; dark wood, ember veins |
+| A2 | Hunter's recurve | Code | U3 | Built from the present bow's geometry. Faster draw, lighter arrow drop |
+| A3 | Vale longbow | Code | U3 | Built from the present bow's geometry. Longest range, slow draw |
+| A4 | Thornwood bow | Tripo | U3 | Grown from shade-thorn; dark wood, flat ember-coloured veins (coloured, not glowing) |
 | A5 | Bellwarden's bow | Tripo | U5 | Ornate reward for the boss; brass and blossom |
 | A6 | Bow string, grip wrap, arrow rest | Code | U3 | Must move with the draw and mirror for left-handed players, so they stay in code and attach to every bow |
 
-Each Tripo bow is the wooden body only, drawn unstrung-looking, side view, perfectly straight and symmetrical so it can be mirrored. Tripo: 4 bows, about 360 credits.
+Every bow shares the same attachment points: grip centre, arrow rest, and the two string nocks. Each Tripo bow is the wooden body only, drawn in side view, straight and symmetrical so it can be mirrored, then fitted to those points. Tripo: 2 bows, about 180 credits.
 
 ### B. Arrows and archery gear
 
@@ -37,13 +39,13 @@ Each Tripo bow is the wooden body only, drawn unstrung-looking, side view, perfe
 | B1 | Standard arrow | Have | Launch | |
 | B2 | Bodkin arrow | Code | U3 | Heavy; less affected by wind |
 | B3 | Swift arrow | Code | U3 | Light; flatter flight |
-| B4 | Ember arrow | Code | U3 | Glowing head; bonus against shades |
+| B4 | Ember arrow | Code | Deferred | Bonus against shades; waits until there is a clear need |
 | B5 | Bell arrow | Code | U4 | Rings on landing; startles or lures shades |
 | B6 | Tracer arrow | Code | U3 | Leaves a visible trail; a practice aid |
 | B7 | Quiver | Tripo | U3 | Worn at the hip or shoulder; where the hand takes an arrow |
-| B8 | Arm guard and glove | Tripo | Later | Seen on the player's hands in VR |
+| B8 | Arm guard and glove | — | Deferred | Only if headset testing shows they help |
 
-Arrows stay in code because an arrow is a thin shaft seen from 20 metres or flying past: Tripo adds triangles and nothing visible. Types are told apart by head shape, fletching colour and trail. Tripo: 2 items, about 180 credits.
+Arrows stay in code because an arrow is a thin shaft seen from 20 metres or flying past: Tripo adds triangles and nothing visible. Types are told apart by head shape, fletching colour and trail. The five kept are Standard, Bodkin, Swift, Bell and Tracer. Arcade uses the standard arrow and one fixed bow in its first ruleset. Tripo: 1 item (the quiver), about 90 credits.
 
 ### C. Arrows landing: one behaviour per surface
 
@@ -64,14 +66,20 @@ Not models, but each needs an effect and a sound.
 | # | Asset | Route | When | The aiming problem it poses |
 |---|---|---|---|---|
 | D1 | Shade hare, standing | Tripo, rigged | U2 | Small; sits, creeps, bolts |
-| D2 | Winged shade (crow or owl) | Tripo, rigged | U2 | Airborne; perches and flushes |
+| D2 | Shade crow | Tripo, rigged | U2 | Airborne; perches, takes off, glides |
 | D3 | Shade fox | Tripo, rigged | U4 | Fast and low; weaves through cover |
 | D4 | Shade boar | Tripo, rigged | U4 | Armoured front; must be hit from the side |
 | D5 | Shade stag | Tripo, rigged | U4 | The first that fights back: hurls thorns from its antlers |
-| D6 | Shade heron or toad | Tripo, rigged | Later | Lives on the water; surfaces briefly |
-| D7 | Boss: the Hollow Stag | Tripo, rigged | U5 | Large; weak points that open and close |
+| D6 | Water shade | Tripo, rigged | Deferred | Waits until a stage needs its brief surfacing window |
+| D7 | Boss: the Hollow Stag | Tripo, rigged | U5 | Large. Must not read as a bigger D5: a different silhouette (hollow ribcage, broken crown of antlers) and weak points that visibly open and close |
+| D8 | Shade perch (post, branch) | Have, to restyle | U2 | Where the crow sits; one reusable piece |
+| D9 | Concealment bush and tall grass | Have, to restyle | U2 | Where shades hide |
 
-Tripo: 7 creatures, about 770 credits, with the boss likely to need a second attempt.
+Tripo: 6 creatures, about 660 credits, with the boss likely to need a second attempt.
+
+Two checks apply to every moving creature:
+- **Hit area:** the invisible shape that scores a hit must agree with the visible body in every pose, at normal shooting distances.
+- **Visibility:** the ember eyes remain the only marker. Eyes and silhouette are tested in tall grass and against shaded scenery at the intended distances. If a shade disappears, lighting, placement or eye contrast is tuned first; outlines stay ruled out.
 
 ### E. Ground and grass
 
@@ -124,12 +132,13 @@ Tripo: 1 item, about 90 credits.
 | H4 | Straw target butt | Code | U2 | |
 | H5 | Lanterns, barrels, crates | Code | U2 | |
 | H6 | Market stall | Tripo | U3 | The shop |
-| H7 | Bow and arrow rack | Tripo | U3 | Where bows are chosen by hand in VR |
-| H8 | Great bell and frame | Tripo | U5 | The Seven Bells of the world's name |
+| H7 | Bow and arrow rack | Code | U3 | Where bows are chosen by hand in VR; scripted so hand positions are exact |
+| H8a | Great bell | Tripo | U5 | The Seven Bells of the world's name |
+| H8b | Bell frame | Code | U5 | Scripted so the bell's pivot is exact |
 | H9 | Ruined arch | Tripo | U2 | Far landmark |
 | H10 | Watchtower, walls | Have | Launch | Hidden in the release; used by the adventure |
 
-Tripo: 4 items, about 360 credits.
+Tripo: 3 items, about 270 credits. The stall and the arch go through Tripo only if their silhouettes survive retopology; otherwise they are scripted.
 
 ### I. Effects and interface
 
@@ -151,14 +160,14 @@ Not made in Tripo, but needed: bow creak and release for each bow, arrow flight,
 
 | Group | Items | Credits (about) |
 |---|---|---|
-| Bows | 4 | 360 |
-| Gear | 2 | 180 |
-| Creatures | 7 | 770 |
+| Bows | 2 | 180 |
+| Gear | 1 | 90 |
+| Creatures | 6 | 660 |
 | Ground, trees, water | 4 | 360 |
-| Range and buildings | 4 | 360 |
-| **Total** | **21** | **2,030** |
+| Range and buildings | 3 | 270 |
+| **Total** | **16** | **1,560** |
 
-That leaves about 1,000 credits for retries, which experience says will be needed.
+That leaves about 1,500 credits for retries, which experience says will be needed. Deferred and not counted: the water shade (110) and the glove and arm guard (90).
 
 ---
 
@@ -211,15 +220,9 @@ Three ways to play in a room, to be chosen after the prototype:
 | **Targets in the room** | Rings and small shades float and perch around the real room | Medium; needs short-range stage design |
 | **Shades in your home** | Shades creep out from behind real furniture | Highest; needs room understanding and occlusion |
 
-Recommended order: the window first, since it reuses every existing stage and keeps real archery distances.
+**Agreed: the window first, after release.** The prototype is one stationary lane at the usual shooting distance. Before anything more is built it must show, on a real Quest: passthrough working, the floor aligned, comfortable aiming, and a clean return to VR. What the Quest Browser allows, and whether placed things stay put, are still unverified.
 
 ---
 
-## Questions for ChatGPT
-
-1. Are any assets missing, or any here not worth making?
-2. Do you agree with which assets go through Tripo and which stay in code? The developer prefers Tripo where it helps.
-3. Is the shade family right (hare, winged, fox, boar, stag, water creature, Hollow Stag boss)?
-4. Which five arrow types are worth keeping? Fewer may be better.
-5. Which mixed-reality idea should the prototype try first?
-6. For the style sheet: which three assets should define the look? Suggested: the standing hare, the Thornwood bow and the market stall.
+## Answered in review
+ChatGPT's answers to the six questions are folded in above: routes agreed with changes to bows, rack and bell; the shade family kept with a crow and the water shade deferred; five arrows kept and Ember deferred; the window as the first mixed-reality prototype; and the standing hare, Thornwood bow and market stall as the three style-sheet assets.

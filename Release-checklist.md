@@ -52,7 +52,22 @@ Test site for these checks: https://archery-range-test.vercel.app (the release b
 - [ ] Page title, description and share preview say what the game is
 
 ## Fallback (decided on Day 5)
-If any Quest "must" is still failing on Day 5, publish the verified desktop game and label VR "experimental, Quest Browser". Say nothing stronger about VR than what was tested on a real headset.
+Day 5 decides the desktop and Quest release only; Arcade is not part of it. Say nothing stronger about VR than what was tested on a real headset, and name on the release page only the headset models and input methods actually tested.
+
+**VR may ship labelled "experimental, Quest Browser"** if the only failures are of this kind:
+- hand tracking unreliable (then hand tracking is not mentioned, and controllers are named as the supported input);
+- single-handed draw, left-handed play, or the stage stick faulty, with a working alternative;
+- the replay uncomfortable (then replays are switched off in VR);
+- signs or scoreboard hard to read but usable;
+- occasional stutter that no tester found uncomfortable.
+
+**The Enter VR button is withheld**, and the game ships as desktop only, if any of these is true:
+- the VR session does not start, or the bow is not in hand;
+- the two-handed controller draw does not work;
+- a stage cannot be finished in VR;
+- frame rate is low enough that a tester feels unwell, or any tester reports nausea in normal play;
+- a lost controller fires an arrow, or the game cannot recover from the headset being taken off;
+- any error banner appears in VR in normal play.
 
 ## Not in this release
 Shop and upgrades, boss, enemies that attack, new creatures, mobile touch, leaderboards, music, the Unity project. All 29 stages stay in the code; stages left out of the release are hidden, not deleted.

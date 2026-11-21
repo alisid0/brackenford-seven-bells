@@ -62,7 +62,7 @@ The first source is the Day 1 playtest (`?fps=1`). A finer profiling page, switc
 
 | Step | Who | Output | Gate before moving on |
 |---|---|---|---|
-| 1. Brief | Claude | One line: what it is, size, budget, poses needed | Developer agrees it is needed |
+| 1. Brief | Claude | What it is, triangle budget, poses needed, scale, pivot, forward axis, attachment points | Developer agrees it is needed |
 | 2. Concept | ChatGPT | One object, neutral standing pose, three-quarter view, white background, in the style sheet's look | Developer approves it beside the other approved concepts |
 | 3. Model | Tripo, image-to-3D | Raw model (about 55 credits) | Looks like the concept from all sides |
 | 4. Retopology | Tripo | Model at its triangle budget (about 35 credits) | Silhouette intact |
@@ -74,6 +74,7 @@ The first source is the Day 1 playtest (`?fps=1`). A finer profiling page, switc
 Lessons already learned and built into this:
 - Raw Tripo models have about two million triangles; always retopologise.
 - Draw creatures standing neutrally. The hare was drawn sitting and so runs sitting.
+- Four-legged creatures and birds need different poses and rigs. Quadrupeds: all four legs apart and visible. Birds: both legs visible, wings half open and clear of the body. Which Tripo rig preset suits a bird is not yet known and is tested on the crow.
 - Tripo's four-legged rigs can be wrong (it merged the hare's forelegs); inspect before building on one.
 - Tripo gives no animation clips.
 - Export needs the paid plan, and the browser sessions for ChatGPT and Tripo must be signed in on the home computer.
@@ -89,16 +90,16 @@ Lessons already learned and built into this:
 | Priority | Asset | Route | Rigged | Why |
 |---|---|---|---|---|
 | 1 | Shade hare, redrawn standing | Tripo | Yes | Fixes the running pose; the main creature |
-| 2 | Winged shade | Tripo | Yes | Replaces the code-made stand-in |
+| 2 | Shade crow | Tripo | Yes | Replaces the code-made stand-in. Wing joints and a simple flap test are approved before the rig is built on |
 | 3 | Range dressing: banner, fence, target stand, blossom tree | Code or Blender script | No | The largest change in first impression |
 | 4 | Market stall | Script first; Tripo if it falls short | No | Needed for the shop |
-| 5 | Three bows | Code, extending the present bow | No | Needed for upgrades; must fit the existing grip and string |
+| 5 | Bows | Recurve and longbow in code from the present bow; Thornwood and Bellwarden's through Tripo | No | All fitted to the same grip, rest and string points |
 | 6 | Boss shade | Tripo | Yes | End of the chapter |
 | 7 | First shade that fights back | Tripo | Yes | Opens the adventure |
 
 Grass, bushes, posts, logs, terrain, sky, water, targets and signs stay code-made.
 
-Estimated Tripo cost: about 110 credits per creature, so roughly 450 for the four creatures, plus about 90 if the stall goes through Tripo; of about 3,000 available. The rest is kept for retries.
+The full list, with every route and the credit estimate (about 1,560 of about 3,090), is in `Asset-and-XR-list.md`, which is the authority where the two documents differ.
 
 ## 5. Animation
 
@@ -156,6 +157,7 @@ This matches the run clock already specified in `Arcade-plan.md`.
 - **Reproducibility:** the same seed gives the same movement, and gives it at 30, 72 and 120 frames a second and with uneven frames: every target is in the same place at the same run-clock time.
 - **Isolation:** changing the cosmetic seed never changes gameplay movement.
 - **Soak:** each creature run for the equivalent of ten minutes at varied frame rates, with random state changes, with none of the above failing.
+- **Hit area:** in every pose, the scoring shape stays within a set distance of the visible body.
 - **Cost:** six creatures animating together stay inside the frame budget on desktop, as an early warning.
 
 ### Visual, generated for review
@@ -165,7 +167,7 @@ This matches the run clock already specified in `Arcade-plan.md`.
 These are made by the test tooling and sent to the developer and ChatGPT with each new creature.
 
 ### In the headset, by the developer
-- Readable at 5, 15 and 30 metres?
+- Readable at 5, 15 and 30 metres, including in tall grass and against shaded scenery, by eyes and silhouette alone?
 - Does the movement tell you what it will do next?
 - Can you tell two creatures apart by how they move?
 - Anything that looks broken, floaty or stiff?

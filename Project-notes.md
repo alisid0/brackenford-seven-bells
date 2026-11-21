@@ -151,3 +151,16 @@ Done after ChatGPT's review, without returning to Tripo:
 | Crow | rest, wings raised, wings wrapped down, fold, glide, head turn | Wings raise cleanly at shoulder and elbow with the feather fans following. No tearing. The fold pose came out lopsided: one wing folds to the body, the other swings back, so the two wing chains do not share the same turning directions and each needs its own |
 
 These are still test poses, not animation. Not yet done: working out each wing bone's true turning direction; real animation cycles; the automated checks in the art plan; anything in the game; any headset check.
+
+## ChatGPT's review of the pose test (21 November 2026)
+ChatGPT opened all twelve pictures in `assets/renders/` (commit `e58bf14`).
+
+| Verdict | What it said |
+|---|---|
+| Approved | Keep both meshes; no reason to regenerate in Tripo. The colours match the style sheet. Both creatures stay recognisable in every pose. Hare rest, head turn and bound read well. Crow rest, head turn and wings-down read well. |
+| Change, hare | Ears first: ears-back visibly pinches and twists at the roots; check ears-prick in the same area. Inspect the worst edges close up, adjust the skull-to-ear weights and check the mirrored bone axes. Creep reads as a reach: lower the chest and keep the planted paw flat. |
+| Change, crow | Fold first: correct each wing chain's own turning axes so both wings fold to the flanks. In flap-up the near wing hides the beak and the bend looks pinched: check shoulder and wrist weights. Glide looks like standing with half-open wings: extend the wings, tuck the feet, pitch the body forward. |
+| Missing | Short moving tests seen from the side and front: a hare ear sweep and creep/bound cycle, a crow flap-to-fold cycle. Look for tearing, paw contact, and wing clearance past body, tail and feet. Reconsider the mesh only if targeted fixes still leave visible tearing. |
+| Question | Do the hare's 9.3 and 20.59 stretch peaks fall on the same small ear-root edges? A close-up of those edges at rest and in both poses would show whether the fix is local. Not yet answered. |
+
+None of this work has started. It waits behind the Trials playtest.

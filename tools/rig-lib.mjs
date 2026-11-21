@@ -24,12 +24,12 @@ function euler([x = 0, y = 0, z = 0]) {
 }
 const mul = (A, B) => { const R = new Array(9); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) R[r * 3 + c] = A[r * 3] * B[c] + A[r * 3 + 1] * B[3 + c] + A[r * 3 + 2] * B[6 + c]; return R; };
 const app = (A, v) => [A[0] * v[0] + A[1] * v[1] + A[2] * v[2], A[3] * v[0] + A[4] * v[1] + A[5] * v[2], A[6] * v[0] + A[7] * v[1] + A[8] * v[2]];
-// positions of every corner with the named bones turned (pose: {boneName:[x,y,z]})
+// positions of every corner with the named bones turned (pose: {boneName:[x,y,z]}; _lift raises the whole creature)
 export function posed(c, pose) {
   const B = c.m.bones, R = [], T = [];
   B.forEach((b, i) => {                                   // parents always come before children in these files
-    const L = euler(pose[b.name] || []);
-    if (b.parent < 0) { R[i] = L; T[i] = b.head.slice(); return; }
+    const L = euler(Array.isArray(pose[b.name]) ? pose[b.name] : []);
+    if (b.parent < 0) { R[i] = L; T[i] = [b.head[0], b.head[1] + (pose._lift || 0), b.head[2]]; return; }
     const p = b.parent, h = B[p].head, o = app(R[p], [b.head[0] - h[0], b.head[1] - h[1], b.head[2] - h[2]]);
     R[i] = mul(R[p], L); T[i] = [T[p][0] + o[0], T[p][1] + o[1], T[p][2] + o[2]];
   });

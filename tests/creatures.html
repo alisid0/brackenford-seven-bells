@@ -2,6 +2,7 @@
 <style>body{margin:8px;font:14px sans-serif;background:#ddd}canvas.sheet{background:#fff;margin:4px 0;width:100%;height:auto;border:1px solid #999;display:block}iframe{display:none}</style>
 <pre id="out">PENDING</pre><div id="views"></div>
 <iframe id="g" src="../Brackenford-Seven-Bells.html?release=0"></iframe>
+<script src="../src/moves.js"></script>
 <script>
 // Movement test for the converted creatures in assets/staging (not yet in the game). Each is built as a skinned mesh
 // the way the game builds one and recoloured to the style sheet. A pose is a list of named bones and how far each is
@@ -10,7 +11,8 @@
 // about the creature's own x, y and z axes as they are in its file.
 //   ?save=1  posts each sheet to the local relay (port 8767) so it lands in assets/renders
 //   ?only=hare or ?only=crow  draws one creature
-const Q=new URLSearchParams(location.search),save=Q.get("save"),only=Q.get("only");
+//   ?play=1  also plays the hare's timed bound at full speed at the top of the page (?play=4 plays it four times slower)
+const Q=new URLSearchParams(location.search),save=Q.get("save"),only=Q.get("only"),play=+Q.get("play")||0;
 const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 // Colours agreed with ChatGPT, sampled from the style sheet: dark plum, lighter plum for the lighter facets, ember eyes.
 const PLUM=[0x4A,0x29,0x43],PLUM_LIGHT=[0x6D,0x33,0x62],EMBER=[0xE0,0x2E,0x32],CELL=380;
@@ -44,10 +46,17 @@ const wait=setInterval(async()=>{
   mesh.add(bones[0]);mesh.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
   const scene=new T.Scene();scene.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);scene.add(sun);scene.add(mesh);
   const ground=new T.Mesh(new T.BoxGeometry(4,.006,4),new T.MeshBasicMaterial({color:0x9a8f80}));ground.position.y=-.003;scene.add(ground);
+  // for timed moves: ground ticks every quarter metre that scroll as the creature travels, and a red bar on the
+  // ground at each spot where a paw is meant to be planted
+  const ticks=new T.Group(),marks=new T.Group();scene.add(ticks,marks);ticks.visible=false;
+  for(let i=-10;i<=10;i++){const k=new T.Mesh(new T.BoxGeometry(4,.05,.012),new T.MeshBasicMaterial({color:0x9a8f80}));k.position.set(0,-.025,i*.25);ticks.add(k);}
+  for(let i=0;i<4;i++){const k=new T.Mesh(new T.BoxGeometry(.5,.012,.05),new T.MeshBasicMaterial({color:0xE02E32}));k.position.y=-.012;marks.add(k);}
   const rootY=bones[0].position.y,missing=new Set(),edge=(arr,i,j)=>Math.hypot(arr[i]-arr[j],arr[i+1]-arr[j+1],arr[i+2]-arr[j+2]);
   // put the creature into a pose and return how far the worst triangle edge has grown compared with rest
   function set(pose){
    for(const o of bones)o.rotation.set(0,0,0);bones[0].position.y=rootY+(pose._lift||0);
+   ticks.visible=pose._travel!==undefined;if(ticks.visible)ticks.position.z=pose._travel%.25;
+   marks.children.forEach((k,i)=>{k.visible=!!pose._marks&&i<pose._marks.length;if(k.visible)k.position.z=-pose._marks[i];});
    for(const [bn,r] of Object.entries(pose)){if(bn[0]==="_")continue;const o=bones.find(x=>x.name===bn);if(!o){missing.add(bn);continue;}o.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
    mesh.updateMatrixWorld(true);mesh.skeleton.update();
    const now=new Float32Array(pos.length),v=new T.Vector3();for(let i=0;i<n;i++){v.fromBufferAttribute(geo.attributes.position,i);mesh.applyBoneTransform(i,v);now.set([v.x,v.y,v.z],i*3);}
@@ -71,7 +80,13 @@ const wait=setInterval(async()=>{
   }
   // evenly spaced steps through a list of named poses
   const cycle=(poses,keys,count)=>Array.from({length:count},(_,i)=>{const t=i/(count-1)*(keys.length-1),k=Math.min(Math.floor(t),keys.length-2),f=t-k;return{label:f<.01?keys[k]:f>.99?keys[k+1]:keys[k]+" > "+keys[k+1],pose:mix(poses[keys[k]],poses[keys[k+1]],f)};});
-  return{sheet,cycle,missing,info:{faces:m.faces,bones:m.bones.length}};
+  // play a timed move in a wide picture at the top of the page, seen from the side
+  function show(move,slow){
+   R.setSize(1200,500,false);gl.style.cssText="width:100%;border:1px solid #999;background:#fff;display:block";document.body.prepend(gl);
+   const cam=new T.OrthographicCamera(-1.5,1.5,1.0,-.25,.01,100);cam.position.set(8,0,-.1);cam.lookAt(0,0,-.1);sun.position.set(8,7,-4);
+   const t0=performance.now();(function frame(){set(move.pose((performance.now()-t0)/1000/move.period/slow));ground.visible=true;R.render(scene,cam);requestAnimationFrame(frame);})();
+  }
+  return{sheet,cycle,show,missing,bones:m.bones,info:{faces:m.faces,bones:m.bones.length}};
  }
 
  if(only!=="crow"){
@@ -99,7 +114,11 @@ const wait=setInterval(async()=>{
   await hare.sheet("d1-hare-cycle-ears",hare.cycle(P,["ears forward","rest","ears back"],7),V);
   await hare.sheet("d1-hare-cycle-creep",hare.cycle(P,["crouch","right paw reaches","crouch","left paw reaches"],7),V);
   await hare.sheet("d1-hare-cycle-bound",hare.cycle(P,["gather","launch","flight","land","gather"],9),[{...side,half:.8,at:[0,.65,0]},{...front,half:.8,at:[0,.65,0]}]);
-  report.push({hare:hare.info,missing:[...hare.missing]});
+  // the timed bound: ten equal steps through one cycle, with the planted spots marked on the ground
+  const bound=MOVES.hareBound(hare.bones),wide={half:.8,at:[0,.6,-.1]};
+  await hare.sheet("d1-hare-bound-timed",Array.from({length:10},(_,i)=>{const p=bound.pose(i/10),d=p._down;return{label:"t "+(i/10).toFixed(1)+(d[2]?" hind down":d[0]?" fore down":" in air"),pose:p};}),[{...side,...wide},{name:"front quarter",from:[.8,.25,-1],...wide}]);
+  report.push({hare:hare.info,missing:[...hare.missing],bound:{stride:bound.stride,period:bound.period}});
+  if(play)hare.show(bound,play);
  }
  if(only!=="hare"){
   // The crow faces -x in its file and its wings lie along z. About x, a negative turn raises the +z wing; the wing's

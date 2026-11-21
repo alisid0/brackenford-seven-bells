@@ -115,3 +115,15 @@ Decided by the developer on 21 November 2026: static props are built in code; cr
 ChatGPT's first review asked for four changes, all made: the stall's upper brace now meets the rafter; the awning cloth hangs straight before its points; the bow's ember veins lie flush in the wood and taper at both ends; the thorns are broader and blunter, and the string notches are visible.
 
 Not yet done: neither prop has been placed in the game or seen in a headset.
+
+## Creatures made in Tripo (21 November 2026)
+Both went through the full pipeline: ChatGPT concept, Tripo image-to-3D (55 credits), retopology to triangles (35), auto-rig "Other" (20), export, then `tools/export-rigged.py`. 220 credits used; 2,870 left. The converted files are in `assets/staging/`, which the game build does not read, so the release build is unchanged. `tests/creatures.html` draws each with its skeleton and saves pictures to `assets/renders/`.
+
+| Creature | Triangles | Bones | What the rig has | What it lacks |
+|---|---|---|---|---|
+| D1 Standing shade hare | 2,648 | 23 | Spine (3), neck and head, both hind legs with 4 bones each, right foreleg with 3, **forelegs separate** (the old hare's were merged) | Left foreleg has 2 bones, so no separate lower joint; only one ear has its own bones; no tail bone |
+| D2 Shade crow | 2,640 | 33 | Each wing: shoulder, elbow, wrist, and three feather fans; neck and head (3); tail (4); one leg with 4 bones and toes | The other leg has a single bone. The model faces sideways in the file and needs a quarter turn when placed |
+
+Answer to the open question "which Tripo rig preset suits a bird": "Other" gave jointed wings on the first try.
+
+Not yet done: neither creature is animated or in the game; the flap test ChatGPT asked for has not been run; neither has been seen in a headset or shown to ChatGPT. The colour snap used in the viewer comes out too pale and needs tuning against the style sheet.

@@ -103,3 +103,15 @@ The developer set the watchtower view aside on 21 November 2026 and asked for as
 | H6 Market stall | `h6-market-stall.jpg` | Static, 3 m wide, 2.6 m tall | Image to 3D; triangles 1,200 to 1,500 | Counter opening clear, awning points intact, plank lines on the back wall |
 
 The creatures came out a brighter purple than the dark plum of the style sheet. That is corrected by the palette snap in the Blender step, not by redrawing.
+
+## Props built in code
+Decided by the developer on 21 November 2026: static props are built in code; creatures go to Tripo. The code is `src/props.js`, which is not part of the game build. `tests/props.html` draws each prop and saves pictures to `assets/renders/`.
+
+| Prop | Triangles | Size | Attachment points | State |
+|---|---|---|---|---|
+| A4 Thornwood bow | 344 | 1.5 m | grip, arrow rest, top nock, bottom nock | Reviewed twice by ChatGPT; approved for use after release. To check when fitted: the game's string sits in both notches |
+| H6 Market stall | 605 | 3.3 m wide, 2.6 m tall, 2.1 m deep | counter, keeper's spot | Reviewed twice by ChatGPT; approved for use after release |
+
+ChatGPT's first review asked for four changes, all made: the stall's upper brace now meets the rafter; the awning cloth hangs straight before its points; the bow's ember veins lie flush in the wood and taper at both ends; the thorns are broader and blunter, and the string notches are visible.
+
+Not yet done: neither prop has been placed in the game or seen in a headset.

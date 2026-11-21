@@ -137,3 +137,17 @@ Verdict: keep both meshes; neither needs regenerating. Work still to do, in its 
 4. **Colours, both:** dark plum body `#4A2943`, lighter plum facets `#6D3362`, ember-red eyes only `#E02E32`, kept flat. These are sampled from the style sheet. The grey cast and orange eyes in the first pictures are the biggest mismatch.
 
 None of this has been done yet.
+
+### Rig patches, recolour and first pose test (21 November 2026)
+Done after ChatGPT's review, without returning to Tripo:
+
+- **Bones added** by `tools/patch-rig.mjs`, which mirrors the side Tripo did rig: the hare gains a paw joint on its second foreleg and three bones for its second ear (27 bones); the crow gains a jointed second leg with toes (38 bones). The patched files are `assets/staging/*-rig-patched.json`.
+- **Recoloured** to ChatGPT's style-sheet values: plum `#4A2943`, lighter plum `#6D3362`, ember eyes `#E02E32`.
+- **Pose test** in `tests/creatures.html`: each creature is skinned the way the game skins one and put into test poses. Pictures are in `assets/renders/`.
+
+| Creature | Poses tried | Result |
+|---|---|---|
+| Hare | rest, head turn, ears prick, ears back, creep, bound | The body, legs and head bend without tearing. The two ears now move separately. The ear poses stretch a few small triangles at the ear roots a great deal (the test measured up to 20 times), which does not show at this size but needs a closer look |
+| Crow | rest, wings raised, wings wrapped down, fold, glide, head turn | Wings raise cleanly at shoulder and elbow with the feather fans following. No tearing. The fold pose came out lopsided: one wing folds to the body, the other swings back, so the two wing chains do not share the same turning directions and each needs its own |
+
+These are still test poses, not animation. Not yet done: working out each wing bone's true turning direction; real animation cycles; the automated checks in the art plan; anything in the game; any headset check.

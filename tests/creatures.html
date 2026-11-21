@@ -1,41 +1,72 @@
 <!doctype html><meta charset="utf-8"><title>creatures</title>
-<style>body{margin:8px;font:14px sans-serif;background:#ddd}canvas{background:#fff;margin:4px;max-width:46%;height:auto;border:1px solid #999}iframe{display:none}</style>
+<style>body{margin:8px;font:14px sans-serif;background:#ddd}canvas{background:#fff;margin:4px;width:23%;height:auto;border:1px solid #999}iframe{display:none}</style>
 <pre id="out">PENDING</pre><div id="views"></div>
 <iframe id="g" src="../Brackenford-Seven-Bells.html?release=0"></iframe>
 <script>
-// Draws each converted creature in assets/staging (not yet in the game) on white, with its skeleton laid over it,
-// so the mesh, the colours and the bones can be checked. ?save=1 posts each picture to the local relay (port 8767).
-const save=new URLSearchParams(location.search).get("save");
+// Pose test for the converted creatures in assets/staging (not yet in the game). Each is built as a skinned mesh the
+// way the game builds one, recoloured to the style sheet, put into a set of test poses by turning named bones, and
+// drawn on white. It also measures how far the mesh stretches in each pose. ?save=1 posts each picture to the local
+// relay (port 8767); ?bones=1 draws the skeleton over the mesh.
+const Q=new URLSearchParams(location.search),save=Q.get("save"),showBones=Q.get("bones");
 const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-// the game's shade colours: dark plum body, ember eyes. Faces that are clearly red stay ember; the rest are plum,
-// keeping each face's own lightness so the facets still read.
-function snap(r,g,b){const red=r>.7&&g<.35&&b<.35;if(red)return[.78,.2,.15];const l=(r*.3+g*.45+b*.25);const k=.55+l*1.1;return[.26*k,.13*k,.30*k];}
+// Colours agreed with ChatGPT, sampled from the style sheet: dark plum, lighter plum for the lighter facets, ember eyes.
+const PLUM=[0x4A,0x29,0x43],PLUM_LIGHT=[0x6D,0x33,0x62],EMBER=[0xE0,0x2E,0x32];
 const wait=setInterval(async()=>{
  const w=document.getElementById("g").contentWindow;if(!w||!w.THREE)return;clearInterval(wait);
  const T=w.THREE,report=[];
- async function creature(file,name,turn){
+ const srgb=c=>new T.Color().setRGB(c[0]/255,c[1]/255,c[2]/255,T.SRGBColorSpace);
+ async function creature(file,name,turn,poses){
   const m=await (await fetch("../assets/staging/"+file)).json();
-  const p=new Int16Array(bytes(m.p).buffer),c=bytes(m.c),pos=new w.Float32Array(p.length),col=new w.Float32Array(p.length);   // made in the game frame, so its three.js recognises them
+  const p=new Int16Array(bytes(m.p).buffer),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),n=p.length/3;
+  const pos=new w.Float32Array(p.length),col=new w.Float32Array(p.length),ix=new w.Uint16Array(n*4),wt=new w.Float32Array(n*4);
   for(let i=0;i<p.length;i++)pos[i]=p[i]/m.unit;
-  for(let f=0;f<m.faces;f++){const k=snap(c[f*3]/255,c[f*3+1]/255,c[f*3+2]/255);for(let v=0;v<3;v++)col.set(k,f*9+v*3);}
-  const geo=new T.BufferGeometry();geo.setAttribute("position",new T.BufferAttribute(pos,3));geo.setAttribute("color",new T.BufferAttribute(col,3));geo.computeVertexNormals();
-  const make=bones=>{const g=new T.Group();g.add(new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,transparent:bones,opacity:bones?.45:1})));
-   if(bones){const pts=[];m.bones.forEach(b=>{if(b.parent>=0)pts.push(...m.bones[b.parent].head,...b.head);});const lg=new T.BufferGeometry();lg.setAttribute("position",new T.Float32BufferAttribute(pts,3));
-    const ln=new T.LineSegments(lg,new T.LineBasicMaterial({color:0x1144ff,depthTest:false}));ln.renderOrder=5;g.add(ln);
-    m.bones.forEach(b=>{const s=new T.Mesh(new T.SphereGeometry(.012,6,5),new T.MeshBasicMaterial({color:0xff7700,depthTest:false}));s.position.set(...b.head);s.renderOrder=6;g.add(s);});}
-   g.rotation.y=turn;return g;};
-  for(const [tag,dir,bones] of[["front",[.8,.35,1],false],["side",[1,.1,0],false],["bones",[.8,.35,1],true],["bones-top",[.05,1,.02],true]]){
-   const cv=document.createElement("canvas");cv.width=cv.height=1000;document.getElementById("views").append(cv);
+  for(let i=0;i<n;i++){let s=0;for(let k=0;k<4;k++)s+=sw[i*4+k];for(let k=0;k<4;k++){ix[i*4+k]=si[i*4+k];wt[i*4+k]=sw[i*4+k]/(s||1);}}
+  // recolour: red faces are eyes; every other face is plum, lighter where the original face was lighter
+  const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90;let lo=1e9,hi=-1e9;
+  for(let f=0;f<m.faces;f++)if(!red(f)){lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
+  const a=srgb(PLUM),b=srgb(PLUM_LIGHT),e=srgb(EMBER);let eyes=0;
+  for(let f=0;f<m.faces;f++){const k=red(f)?(eyes++,e):a.clone().lerp(b,(lum(f)-lo)/(hi-lo||1));for(let v=0;v<3;v++)col.set([k.r,k.g,k.b],f*9+v*3);}
+  const geo=new T.BufferGeometry();geo.setAttribute("position",new T.BufferAttribute(pos,3));geo.setAttribute("color",new T.BufferAttribute(col,3));
+  geo.setAttribute("skinIndex",new T.BufferAttribute(ix,4));geo.setAttribute("skinWeight",new T.BufferAttribute(wt,4));geo.computeVertexNormals();
+  const rest=pos.slice(),edge=(arr,i)=>Math.hypot(arr[i]-arr[i+3],arr[i+1]-arr[i+4],arr[i+2]-arr[i+5]);
+  for(const [pose,turns] of Object.entries(poses)){
+   const bones=m.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;});
+   m.bones.forEach((b,i)=>{const h=b.parent>=0?m.bones[b.parent].head:[0,0,0];bones[i].position.set(b.head[0]-h[0],b.head[1]-h[1],b.head[2]-h[2]);if(b.parent>=0)bones[b.parent].add(bones[i]);});
+   const mesh=new T.SkinnedMesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,transparent:!!showBones,opacity:showBones?.5:1}));
+   const holder=new T.Group();holder.rotation.y=turn;holder.add(mesh);mesh.add(bones[0]);holder.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
+   const missing=[];for(const [bn,r] of Object.entries(turns)){const o=bones.find(x=>x.name===bn);if(!o){missing.push(bn);continue;}o.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
+   holder.updateMatrixWorld(true);mesh.skeleton.update();
+   // how far the skin stretches: the longest any triangle edge has grown compared with the rest pose
+   const now=new Float32Array(pos.length),v=new T.Vector3();for(let i=0;i<n;i++){v.fromBufferAttribute(geo.attributes.position,i);mesh.applyBoneTransform(i,v);now.set([v.x,v.y,v.z],i*3);}
+   let worst=1;for(let f=0;f<m.faces;f++)for(let k=0;k<2;k++){const i=f*9+k*3,r0=edge(rest,i);if(r0>.004)worst=Math.max(worst,edge(now,i)/r0);}
+   const cv=document.createElement("canvas");cv.width=cv.height=900;cv.title=name+" "+pose;document.getElementById("views").append(cv);
    const r=new T.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});r.setClearColor(0xffffff);
-   const s=new T.Scene();s.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);sun.position.set(-3,6,5);s.add(sun);
-   const o=make(bones);s.add(o);const b=new T.Box3().setFromObject(o),mid=b.getCenter(new T.Vector3()),size=b.getSize(new T.Vector3()),span=Math.max(size.x,size.y,size.z);
-   const cam=new T.OrthographicCamera(-span*.62,span*.62,span*.62,-span*.62,.01,100);cam.position.copy(mid).add(new T.Vector3(...dir).normalize().multiplyScalar(span*4));if(tag==="bones-top")cam.up.set(0,0,-1);cam.lookAt(mid);r.render(s,cam);
-   if(save){const blob=await new Promise(f=>cv.toBlob(f,"image/jpeg",.92));try{await fetch("http://127.0.0.1:8767/put/"+name+"-"+tag+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}}
+   const s=new T.Scene();s.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);sun.position.set(-3,6,5);s.add(sun);s.add(holder);
+   if(showBones){const sk=new T.SkeletonHelper(bones[0]);sk.material.depthTest=false;s.add(sk);}
+   const cam=new T.OrthographicCamera(-.95,.95,.95,-.95,.01,100);cam.position.set(2.4,1.6,3.2);cam.lookAt(0,.45,0);r.render(s,cam);
+   report.push({name,pose,stretch:+worst.toFixed(2),missing});
+   if(save){const blob=await new Promise(f=>cv.toBlob(f,"image/jpeg",.92));try{await fetch("http://127.0.0.1:8767/put/"+name+"-"+pose+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}}
   }
-  const used=new Set(bytes(m.si));report.push({name,faces:m.faces,bones:m.bones.length,bonesWithSkin:used.size,size:(()=>{const b=new T.Box3().setFromBufferAttribute(geo.attributes.position),s=b.getSize(new T.Vector3());return[s.x,s.y,s.z].map(v=>+v.toFixed(2));})()});
+  report.push({name,faces:m.faces,bones:m.bones.length,eyeFaces:eyes});
  }
- await creature("shade-hare-standing-rig.json","d1-hare-model",Math.PI);
- await creature("shade-crow-rig.json","d2-crow-model",-Math.PI/2);
+ // The hare faces -z in its file, so bending a leg forward is a turn about x.
+ await creature("shade-hare-standing-rig-patched.json","d1-hare",Math.PI,{
+  rest:{},
+  "head-turn":{Head_0:[0,.55],Head_1:[0,.45]},
+  "ears-prick":{Head_2:[.25,0,.3],Ear2_0:[.25,0,-.3],Head_3:[-.2],Ear2_1:[-.2]},
+  "ears-back":{Head_2:[-.7],Ear2_0:[-.7],Head_3:[-.3],Ear2_1:[-.3]},
+  creep:{Spine_0:[.12],"0_Right_Limb_0":[-.5],"0_Left_Limb_0":[.35],"0_Right_Limb_1":[.5],"0_Left_Limb_1":[-.3],"0_Right_Limb_2":[.45],"0_Left_Limb_2":[.45],"1_Right_Limb_0":[.3],bone_18:[-.3],Head_0:[.2]},
+  bound:{Spine_1:[-.15],"0_Right_Limb_0":[-.8],"0_Left_Limb_0":[-.8],"0_Right_Limb_2":[.5],"0_Left_Limb_2":[.5],"1_Right_Limb_0":[.8],bone_18:[.8],"1_Right_Limb_1":[-.5],bone_19:[-.5],Head_0:[-.15]}
+ });
+ // The crow faces -x in its file and its wings lie along z, so a flap is a turn about x and a fold a turn about y.
+ await creature("shade-crow-rig-patched.json","d2-crow",-Math.PI/2,{
+  rest:{},
+  "wings-down":{Spine_0:[.75],bone_14:[-.75],Spine_1:[.25],bone_15:[-.25]},
+  "flap-up":{Spine_0:[-.6],bone_14:[.6],Spine_1:[-.3],bone_15:[.3]},
+  fold:{Spine_0:[-.35,.9],bone_14:[.35,-.9],Spine_1:[0,-.5],bone_15:[0,.5],bone_7:[0,1.3],bone_16:[0,-1.3]},
+  glide:{Spine_0:[.12,-.25],bone_14:[-.12,.25],bone_22:[0,0,.15],"0_Left_Limb_1":[0,0,.9],Leg2_1:[0,0,.9],"0_Left_Limb_2":[0,0,-.8],Leg2_2:[0,0,-.8]},
+  "head-turn":{Head_0:[.5],Head_1:[.5]}
+ });
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);
 </script>

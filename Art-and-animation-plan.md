@@ -1,10 +1,11 @@
 # Bow & Shadow: look, assets, animation and gameplay plan
 
-For review by the developer and ChatGPT. Nothing here changes the seven-day release: that ships with the art it has. This plan starts the day after.
+Status: approved by the developer and ChatGPT with four refinements, all incorporated below (revision 2). Nothing here changes the seven-day release: that ships with the art it has. No gameplay or asset work from this plan starts until the release is stable.
 
 ## 1. Ground rules
 - **The headset sets the limits.** Everything must hold 72 frames a second on a standalone Quest.
-- **One pipeline, proven once already:** ChatGPT image, Tripo model, Tripo retopology and rig, Blender scripts, game.
+- **One pipeline for creatures and complex props, proven once already:** ChatGPT image, Tripo model, Tripo retopology and rig, Blender scripts, game. Simple props are made in code or by Blender script instead.
+- **Shades are corrupted woodland creatures,** mysterious and thorned, never ordinary goblins. Every future enemy and boss follows from that.
 - **One style.** Flat-shaded low-poly, one flat colour per face, no textures.
 - **Nothing is "done" until it has been seen in a headset.**
 - **Each asset passes a gate before the next step costs anything.**
@@ -27,9 +28,11 @@ Rules that keep it consistent:
 - Nothing but a shade's eyes and the hit effects glows.
 - Silhouette first: every creature must be recognisable as a black shape at 20 metres.
 
-## 3. Graphics limits (per frame, on Quest)
+## 3. Graphics budgets (provisional; per frame, on Quest)
 
-| Budget | Limit |
+These are working guesses, not limits. Measured frame time on the real headset decides the final figures.
+
+| Budget | Provisional figure |
 |---|---|
 | Triangles on screen | about 200,000 |
 | Draw calls | about 120 |
@@ -41,11 +44,21 @@ Rules that keep it consistent:
 
 Triangle budgets per asset: small creature 1,500–3,000; standard creature 3,000–5,000; boss 10,000–15,000; bow 2,000–3,000; props 300–1,500.
 
-These are starting figures. The first headset frame-rate reading replaces them with measured ones.
+What gets measured on the headset, and replaces the table above:
+- Frame time on the busiest stage (target: under 13.9 ms, which is 72 frames a second), average and worst.
+- Cost of procedural animation: frame time with 0, 3 and 6 creatures animating.
+- Cost of transparency: frame time with and without water, eye glow and hit effects in view.
+- Browser overhead: the same scene with nothing moving, as the floor the Quest Browser itself sets.
+
+The first source is the Day 1 playtest (`?fps=1`). A finer profiling page, switching each of these on and off, is built after release if the playtest figures are not enough.
 
 ## 4. Asset creation
 
-### The pipeline, with its gates
+### Which route an asset takes
+- **Tripo route:** distinctive creatures and complex props whose shape is hard to describe in code (shades, boss, possibly the stall).
+- **Code or Blender-script route:** simple low-poly props (banners, fences, target stands, trees, posts). Faster, free, and exactly on palette. A prop moves to the Tripo route only if the scripted version does not look good enough in the headset.
+
+### The Tripo pipeline, with its gates
 
 | Step | Who | Output | Gate before moving on |
 |---|---|---|---|
@@ -73,19 +86,19 @@ Lessons already learned and built into this:
 
 ### What to make, in order
 
-| Priority | Asset | Rigged | Why |
-|---|---|---|---|
-| 1 | Shade hare, redrawn standing | Yes | Fixes the running pose; the main creature |
-| 2 | Winged shade | Yes | Replaces the code-made stand-in |
-| 3 | Range dressing: banner, fence, target stand, blossom tree | No | The largest change in first impression |
-| 4 | Market stall | No | Needed for the shop |
-| 5 | Three bows | No | Needed for upgrades |
-| 6 | Boss shade | Yes | End of the chapter |
-| 7 | First enemy that fights back | Yes | Opens the adventure |
+| Priority | Asset | Route | Rigged | Why |
+|---|---|---|---|---|
+| 1 | Shade hare, redrawn standing | Tripo | Yes | Fixes the running pose; the main creature |
+| 2 | Winged shade | Tripo | Yes | Replaces the code-made stand-in |
+| 3 | Range dressing: banner, fence, target stand, blossom tree | Code or Blender script | No | The largest change in first impression |
+| 4 | Market stall | Script first; Tripo if it falls short | No | Needed for the shop |
+| 5 | Three bows | Code, extending the present bow | No | Needed for upgrades; must fit the existing grip and string |
+| 6 | Boss shade | Tripo | Yes | End of the chapter |
+| 7 | First shade that fights back | Tripo | Yes | Opens the adventure |
 
 Grass, bushes, posts, logs, terrain, sky, water, targets and signs stay code-made.
 
-Estimated Tripo cost: about 110 credits per creature, 90 per prop; roughly 1,000 credits for this whole list, of about 3,000 available.
+Estimated Tripo cost: about 110 credits per creature, so roughly 450 for the four creatures, plus about 90 if the stall goes through Tripo; of about 3,000 available. The rest is kept for retries.
 
 ## 5. Animation
 
@@ -105,7 +118,7 @@ All creature movement is written in code and drives the skeleton directly. No re
 | Shade hare | Sit, creep, bound | Turns its head to you, eyes flare, ears prick |
 | Winged shade | Perch, take off, flap, glide, bank | Head tracks you from the post; wings fold |
 | Boss shade | Loom, stride, rear, roar | Weak points that open and close |
-| Enemy archer (later) | Aim, loose, duck | A visible tell before it shoots |
+| Shade that fights back (later) | Bristle, rear, hurl a thorn, shrink away | A visible tell before it attacks |
 
 ## 6. Randomising animation
 
@@ -125,6 +138,14 @@ Two kinds of randomness, kept apart:
 - **Cosmetic** (twitches, sway, timing of idles): free to vary in every mode.
 - **Movement that affects aiming** (routes, speed, when it moves): drawn from a seeded generator, so a stage or an Arcade run can be reproduced exactly. In Score Attack, every player gets the same movement.
 
+A seed alone is not enough; the movement must also be the same at any frame rate. Rules for competitive modes:
+- Gameplay movement is advanced in fixed steps (for example 1/90 of a second) driven by the run clock, or is a pure function of the run clock. It never depends on how long a frame took.
+- Random numbers for gameplay are drawn per event (a new route, a pause, a feint), never per frame, and from a generator that cosmetic animation cannot touch.
+- What is drawn on screen is smoothed between steps, so it looks fluid at any frame rate without changing where the target truly is.
+- Cosmetic variation uses its own separate generator and may differ on every device.
+
+This matches the run clock already specified in `Arcade-plan.md`.
+
 ## 7. Testing animation
 
 ### Automated, on every build
@@ -132,7 +153,8 @@ Two kinds of randomness, kept apart:
 - **Skin:** in every state, no vertex strays further from the skeleton than its limit (catches tearing and "exploding" meshes).
 - **Feet:** distance covered matches the gait, within a tolerance (catches sliding).
 - **Blending:** no joint jumps more than a set angle in one frame when the state changes.
-- **Reproducibility:** the same seed gives the same movement.
+- **Reproducibility:** the same seed gives the same movement, and gives it at 30, 72 and 120 frames a second and with uneven frames: every target is in the same place at the same run-clock time.
+- **Isolation:** changing the cosmetic seed never changes gameplay movement.
 - **Soak:** each creature run for the equivalent of ten minutes at varied frame rates, with random state changes, with none of the above failing.
 - **Cost:** six creatures animating together stay inside the frame budget on desktop, as an early warning.
 
@@ -151,15 +173,17 @@ These are made by the test tooling and sent to the developer and ChatGPT with ea
 
 ## 8. Gameplay
 
-| Stage | Content | Depends on |
-|---|---|---|
-| Release | Trials: 17 stages, stars, guided start | Headset playtest |
-| Update 1 | Arcade: Score Attack and Endless, local bests | Trials stable |
-| Update 2 | Art pass: standing hare, winged shade, dressed range | Sign-in for ChatGPT and Tripo |
-| Update 3 | Coins that matter: stall, three bows, upgrades | Bows and stall modelled |
-| Update 4 | Shades that fight back, with slow, dodgeable shots; a health rule | Enemy modelled; comfort tested |
-| Update 5 | Boss | Boss modelled |
-| Later | The adventure: hub, missions, further regions; global scores | All of the above |
+| Update | Content | Purpose | Depends on |
+|---|---|---|---|
+| Launch | Trials: 17 stages, stars, guided start | Publish the existing game | Headset playtest |
+| Update 1 | Arcade: Endless and Score Attack, local records | Replayability | Trials stable |
+| Update 2 | Improved hare, winged shade, range dressing | Visual polish | Style sheet; sign-in for ChatGPT and Tripo |
+| Update 3 | Three bows, coins, equipment upgrades | Progression | Bows and stall made |
+| Update 4 | Shades that shoot back, slow and dodgeable; a health rule | Combat depth | Enemy modelled; comfort tested |
+| Update 5 | First boss | Adventure foundation | Boss modelled |
+| Later | Mixed reality, global leaderboards, expanded world | Growth | See below |
+
+Arcade is the first gameplay update. Art work may run alongside it only where it does not delay it. Mixed reality can come earlier if its prototype works on Quest hardware. Global leaderboards follow once score validation and the online service are ready.
 
 How creatures shape play:
 - Each creature poses one aiming problem (small, hidden, fast, airborne, armoured).
@@ -175,16 +199,22 @@ How creatures shape play:
 | Claude | Code, pipeline scripts, animation, tests, builds; reports plainly what was and was not checked |
 
 ## 10. Order of work after release
-1. Style sheet and locked palette.
-2. Animation test tooling (so every later creature is checked the same way).
-3. Standing hare through the full pipeline, replacing the sitting one.
-4. Winged shade.
-5. Range dressing.
-6. Arcade, if not already shipped.
-7. Stall and bows, then the shop.
+Before any of this: finish the Trials playtest, collect Quest performance figures and gameplay feedback, fix blockers, release.
+
+Main line (nothing below may delay the step above it):
+1. Arcade (Update 1), following `Arcade-plan.md`.
+2. Standing hare through the full pipeline, replacing the sitting one.
+3. Winged shade.
+4. Range dressing, in code or Blender script.
+5. Bows and stall, then the shop.
+
+Alongside, only when it costs the main line nothing:
+- Style sheet and locked palette, made with ChatGPT Images. This needs the developer and ChatGPT, not coding time, so it can be done while Arcade is being built. It must exist before the next Tripo creature is generated.
+- Animation test tooling, which shares its seeded, fixed-step movement with Arcade and so is partly built by step 1 anyway.
 
 ## 11. Open decisions
 - Final name, after an availability check.
 - Licence terms for AI-made assets: confirm for Tripo and OpenAI before anything is sold.
 - Whether the home computer's browser stays signed in to ChatGPT and Tripo, or the Claude extension is connected to Chrome, so asset work is not blocked by the developer being away.
-- Whether shades should stay hare-shaped once enemies that fight back arrive.
+
+Decided: shades remain mysterious corrupted woodland creatures (hare, winged, and later forms such as stag, boar or owl), not goblins or human enemies. Which woodland creature the first shade that fights back is based on is still to be chosen.

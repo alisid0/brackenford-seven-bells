@@ -1,6 +1,6 @@
 # Day 1 test sheet
 
-Test the public build as it is: https://brackenford-seven-bells.vercel.app (commit `a1e717d`).
+Test the release build on the test site: https://archery-range-test.vercel.app/?fps=1 (commit `69c6fde`). It plays the 17 release stages, so go by stage name. The frame counter shows on screen, on the scoreboard and on the bow plaque.
 Allow about 45 minutes on the computer and 60–90 minutes on the Quest. Don't fix anything; just write down what happens.
 
 ## Before you start

@@ -8,3 +8,5 @@ BrackenfordSevenBells/obj/
 assets/source/
 # Vercel's local link to the hosting project
 .vercel/
+# the test site is a copy of the built game; only its settings are kept here
+test-site/index.html

@@ -183,3 +183,18 @@ Done at the developer's instruction, outside the game build.
 | Questions | None before starting animation. |
 
 Still true: the steps are straight blends between guessed key poses, not timed animation; nothing is in the game; nothing has been seen in a headset.
+
+## Hare: first timed bound (21 November 2026, commit `fe1a03c`)
+Outside the game build. `src/moves.js` gives the bound as a function of phase only, so it plays the same at any frame rate. The body follows a keyed path; each leg is solved as two bones so its paw stays on one fixed spot while down and swings to the next while up. Cycle 0.46 s, stride 0.9 m (about 2 m/s): hind paws down 0 to 0.30, flight, forepaws down 0.55 to 0.80, gather.
+
+- **Measured** by `node tools/check-moves.mjs` on the skinned mesh, 200 samples: forepaws slide 0.0 mm while down, hind paws 1.0 and 0.7 mm; each paw's lowest point stays within 0.2 mm of rest; no planted leg falls short; the mesh dips 0.2 mm below ground at worst; worst stretch 2.86; all four paws off the ground 44% of the cycle.
+- **Seen** as a sheet (`assets/renders/d1-hare-bound-timed.jpg`) and playing in `tests/creatures.html?only=hare&play=1` (`play=4` for quarter speed).
+
+### ChatGPT's review
+| Verdict | What it said |
+|---|---|
+| Approved | The contact reads as push-off, flight and landing. Keep the contact solver and the timing; the stride and period are believable as a stylised bound. Push-off still looks a little flat-footed. It could not confirm the exact timing for a hare from the rabbit studies it checked. |
+| Change | Tuck the legs in the main flight first (phases 0.4 to 0.5): hind paws up under the pelvis, forelegs folded briefly, then reaching forward for contact. Keep planted spots and timing unchanged for that pass. |
+| Missing | Full-speed judgement is the developer's: a fixed side camera at gameplay distance, to see whether the tuck reads and the loop carries forward. |
+
+Not done: the flight tuck, heel lift at push-off, any offset between left and right legs. Nothing is in the game.

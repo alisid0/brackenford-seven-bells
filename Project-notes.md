@@ -164,3 +164,22 @@ ChatGPT opened all twelve pictures in `assets/renders/` (commit `e58bf14`).
 | Question | Do the hare's 9.3 and 20.59 stretch peaks fall on the same small ear-root edges? A close-up of those edges at rest and in both poses would show whether the fix is local. Not yet answered. |
 
 None of this work has started. It waits behind the Trials playtest.
+
+## Creature fixes and moving tests (21 November 2026, commit `ac3ac2b`)
+Done at the developer's instruction, outside the game build.
+
+- **Hare ears.** The stretch was not at the ear roots. The two ears are not mirror images (the second leans further out and forward), so the mirrored bones sat outside it and only some of its corners followed. `tools/patch-rig.mjs` now lays that ear's bones along its own line and matches its corners to the first ear by position around the ear. Worst stretch in the ear poses fell from 20.59 to 2.48 (the ear Tripo rigged measures 1.24).
+- **Crow fold.** The lopsided fold was the posing, not the rig. Bones in these files have no rest rotation, so every turn is about the creature's own axes and a mirrored pose is exact. Both wings now fold the same way.
+- **Poses redone.** Hare creep with the chest lowered, forelegs folded and paws turned flat. Crow glide with wings opened level, body pitched forward and legs swung back.
+- **Moving tests.** `tests/creatures.html` now draws each cycle as a sheet, a column per step and a row per camera, with the stretch printed on every step and a ground line. `tools/rig-lib.mjs` poses a creature from the command line to measure stretch. The single pose pictures were replaced by: `d1-hare-ears-closeup`, `d1-hare-cycle-ears`, `d1-hare-cycle-creep`, `d1-hare-cycle-bound`, `d2-crow-cycle-flap-fold`, `d2-crow-poses` (all in `assets/renders/`).
+- Worst stretch per sheet: hare ears 2.48, creep 2.51, bound 2.48; crow flap and fold 3.38, poses 3.07.
+
+### ChatGPT's review of the moving tests
+| Verdict | What it said |
+|---|---|
+| Approved | Both rigs are ready for proper animation. Keep both meshes and rigs. Stop work on the hare's ears; there is a slight kink at the deepest ears-back pose, so use the step before it as the limit. The crow's fold is symmetric and the glide reads as flight. |
+| Change | Fix the hare's ground contact first, starting with one timed bound: hind paws planted through the gather and push-off, forepaws given a clear landing before the hind legs gather. Use the same contact check for the tilted hind paws in the creep. |
+| Missing | Timed clips reviewed at playback speed: sliding during the hare's stance, push-off and landing; the crow's clearance past body, tail and feet through flap-to-fold. A tighter fold and foot tuck can follow in that pass. |
+| Questions | None before starting animation. |
+
+Still true: the steps are straight blends between guessed key poses, not timed animation; nothing is in the game; nothing has been seen in a headset.

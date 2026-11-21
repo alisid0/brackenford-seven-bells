@@ -49,10 +49,16 @@ function hareBound(bones,opt={}){
   o.Spine_0=[B.p];o.Spine_1=[B.f-B.p];o.Head_1=[-B.f*.8];o["1_Left_Limb_0"]=[-B.p*.6];
   const air=Math.sin(Math.PI*Math.min(1,Math.max(0,(t-.25)/.35)));o.Head_2=o.Ear2_0=[.15+.3*air];o.Head_3=o.Ear2_1=[.15*air];
   for(const leg of legs){
-   const[t0,t1]=leg.on,down=t>=t0&&t<=t1,at=x=>leg.spot-stride*(x-leg.tm);let T,toe=0;
+   const[t0,t1]=leg.on,down=t>=t0&&t<=t1,at=x=>leg.spot-stride*(x-leg.tm),top=B.top(leg);let T,toe=0;
    if(down)T=[at(t),leg.foot[1]];
-   else{const s=((t-t1+1)%1)/(1-(t1-t0)),e=s*s*(3-2*s),up=Math.sin(Math.PI*s);T=[at(t1)+(at(t0)-at(t1))*e,leg.foot[1]+(leg.front?.10:.13)*up];toe=-.5*up;}
-   const top=B.top(leg),r=reach(top,T,leg.a,leg.b,leg.front?-1:1),parent=leg.front?B.f:B.p;
+   else{
+    // in the air the paw travels from the spot it left to the next one, and on the way is drawn in to a tucked
+    // point close under its own joint: quickly after leaving the ground, held, then let go to reach for the next spot
+    const s=((t-t1+1)%1)/(1-(t1-t0)),e=s*s*(3-2*s),up=Math.sin(Math.PI*s),ss=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);},w=ss(0,.2,s)*(1-ss(.7,1,s))*.92;
+    const path=[at(t1)+(at(t0)-at(t1))*e,leg.foot[1]+.06*up],tuck=add(top,leg.front?[.07,-.2]:[.06,-.21]);
+    T=[path[0]+(tuck[0]-path[0])*w,path[1]+(tuck[1]-path[1])*w];toe=-.7*up;
+   }
+   const r=reach(top,T,leg.a,leg.b,leg.front?-1:1),parent=leg.front?B.f:B.p;
    o[leg.names[0]]=[r.a-parent];o[leg.names[1]]=[r.b-r.a];if(leg.still)o[leg.still]=[0];o[leg.names[2]]=[toe-r.b];
    o._down.push(down);if(down){o._marks.push(T[0]);o._short=Math.max(o._short,r.short);}
   }

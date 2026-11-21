@@ -91,3 +91,15 @@ For the interface, the developer has left the choices to Claude and ChatGPT, to 
 | 3. Interface kit, variants A to D | `set-aside/interface-kit-a.jpg` to `-d.jpg` | Set aside: they looked alike and did not match the menu |
 | 3. Interface, step by step | `kit-step1-controls.jpg` to `kit-step6-comfort.jpg` | All six sheets done; see `Interface-design-rules.md` |
 | 4. View from the watchtower, variants A to D | `watchtower-a.jpg` to `watchtower-d.jpg` | Waiting for the developer. Only A reads as high up; B, C and D look like a ground-level porch |
+
+## Asset concepts (for Tripo)
+The developer set the watchtower view aside on 21 November 2026 and asked for asset concepts first; the game's visual design follows once a few assets exist. One asset at a time, one image each. Nothing has been sent to Tripo yet.
+
+| Asset | File in `assets/concepts/` | Type | Tripo settings (from ChatGPT) | Must check |
+|---|---|---|---|---|
+| D1 Standing shade hare | `d1-shade-hare-standing.jpg` | Rigged quadruped, 0.45 m to the ear tips | Image to 3D; triangles 1,500 to 3,000; auto-rig "Other" | Forelegs have separate bones; ears, tail and thorns not fused |
+| D2 Shade crow | `d2-shade-crow.jpg` | Rigged bird, 0.4 m long, 0.9 m wingspan | Image to 3D; triangles 1,500 to 3,000; rig preset unverified | Shoulder, elbow and wrist joint in each wing; one flap and one fold |
+| A4 Thornwood bow | `a4-thornwood-bow.jpg` | Static, 1.5 m | Image to 3D; triangles 2,000 to 3,000 | Symmetry, straight centreline, tip notches. Claude's view: this shape is a thin straight stave, which Tripo handles poorly and code handles easily, so build it in code from this picture |
+| H6 Market stall | `h6-market-stall.jpg` | Static, 3 m wide, 2.6 m tall | Image to 3D; triangles 1,200 to 1,500 | Counter opening clear, awning points intact, plank lines on the back wall |
+
+The creatures came out a brighter purple than the dark plum of the style sheet. That is corrected by the palette snap in the Blender step, not by redrawing.

@@ -1,22 +1,32 @@
 <!doctype html><meta charset="utf-8"><title>creatures</title>
-<style>body{margin:8px;font:14px sans-serif;background:#ddd}canvas{background:#fff;margin:4px;width:23%;height:auto;border:1px solid #999}iframe{display:none}</style>
+<style>body{margin:8px;font:14px sans-serif;background:#ddd}canvas.sheet{background:#fff;margin:4px 0;width:100%;height:auto;border:1px solid #999;display:block}iframe{display:none}</style>
 <pre id="out">PENDING</pre><div id="views"></div>
 <iframe id="g" src="../Brackenford-Seven-Bells.html?release=0"></iframe>
 <script>
-// Pose test for the converted creatures in assets/staging (not yet in the game). Each is built as a skinned mesh the
-// way the game builds one, recoloured to the style sheet, put into a set of test poses by turning named bones, and
-// drawn on white. It also measures how far the mesh stretches in each pose. ?save=1 posts each picture to the local
-// relay (port 8767); ?bones=1 draws the skeleton over the mesh.
-const Q=new URLSearchParams(location.search),save=Q.get("save"),showBones=Q.get("bones");
+// Movement test for the converted creatures in assets/staging (not yet in the game). Each is built as a skinned mesh
+// the way the game builds one and recoloured to the style sheet. A pose is a list of named bones and how far each is
+// turned; a cycle is a list of poses, and the page draws evenly spaced steps through it as one sheet, a row per
+// camera. It also measures how far the skin stretches at every step. Bones have no rest rotation, so every turn is
+// about the creature's own x, y and z axes as they are in its file.
+//   ?save=1  posts each sheet to the local relay (port 8767) so it lands in assets/renders
+//   ?only=hare or ?only=crow  draws one creature
+const Q=new URLSearchParams(location.search),save=Q.get("save"),only=Q.get("only");
 const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 // Colours agreed with ChatGPT, sampled from the style sheet: dark plum, lighter plum for the lighter facets, ember eyes.
-const PLUM=[0x4A,0x29,0x43],PLUM_LIGHT=[0x6D,0x33,0x62],EMBER=[0xE0,0x2E,0x32];
+const PLUM=[0x4A,0x29,0x43],PLUM_LIGHT=[0x6D,0x33,0x62],EMBER=[0xE0,0x2E,0x32],CELL=380;
+// A pose for one side plus its mirror image for the other. pairs maps each bone to its twin; across is the
+// creature's left-right axis (0 = x, 2 = z). A turn about that axis is the same on both sides; the other two flip.
+const both=(pairs,across,half)=>{const o={...half};for(const [a,b] of pairs){for(const [x,y] of [[a,b],[b,a]])if(half[x]&&!half[y]){const r=half[x];o[y]=[0,1,2].map(k=>(r[k]||0)*(k===across?1:-1));}}return o;};
+const swap=(pairs,across,pose)=>{const tw=new Map();for(const [a,b] of pairs){tw.set(a,b);tw.set(b,a);}const o={};for(const [k,r] of Object.entries(pose)){if(k[0]==="_"){o[k]=r;continue;}o[tw.get(k)||k]=tw.has(k)?[0,1,2].map(i=>(r[i]||0)*(i===across?1:-1)):r;}return o;};
+const mix=(a,b,t)=>{const o={};for(const k of new Set([...Object.keys(a),...Object.keys(b)])){if(k[0]==="_"){o[k]=(a[k]||0)*(1-t)+(b[k]||0)*t;continue;}const p=a[k]||[],q=b[k]||[];o[k]=[0,1,2].map(i=>(p[i]||0)*(1-t)+(q[i]||0)*t);}return o;};
 const wait=setInterval(async()=>{
  const w=document.getElementById("g").contentWindow;if(!w||!w.THREE)return;clearInterval(wait);
  const T=w.THREE,report=[];
  const srgb=c=>new T.Color().setRGB(c[0]/255,c[1]/255,c[2]/255,T.SRGBColorSpace);
- async function creature(file,name,turn,poses){
-  const m=await (await fetch("../assets/staging/"+file)).json();
+ const gl=document.createElement("canvas");gl.width=gl.height=CELL;
+ const R=new T.WebGLRenderer({canvas:gl,antialias:true,preserveDrawingBuffer:true});R.setClearColor(0xffffff);
+ async function build(file){
+  const m=await (await fetch("../assets/staging/"+file+"?"+Date.now())).json();
   const p=new Int16Array(bytes(m.p).buffer),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),n=p.length/3;
   const pos=new w.Float32Array(p.length),col=new w.Float32Array(p.length),ix=new w.Uint16Array(n*4),wt=new w.Float32Array(n*4);
   for(let i=0;i<p.length;i++)pos[i]=p[i]/m.unit;
@@ -24,49 +34,93 @@ const wait=setInterval(async()=>{
   // recolour: red faces are eyes; every other face is plum, lighter where the original face was lighter
   const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90;let lo=1e9,hi=-1e9;
   for(let f=0;f<m.faces;f++)if(!red(f)){lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
-  const a=srgb(PLUM),b=srgb(PLUM_LIGHT),e=srgb(EMBER);let eyes=0;
-  for(let f=0;f<m.faces;f++){const k=red(f)?(eyes++,e):a.clone().lerp(b,(lum(f)-lo)/(hi-lo||1));for(let v=0;v<3;v++)col.set([k.r,k.g,k.b],f*9+v*3);}
+  const a=srgb(PLUM),b=srgb(PLUM_LIGHT),e=srgb(EMBER);
+  for(let f=0;f<m.faces;f++){const k=red(f)?e:a.clone().lerp(b,(lum(f)-lo)/(hi-lo||1));for(let v=0;v<3;v++)col.set([k.r,k.g,k.b],f*9+v*3);}
   const geo=new T.BufferGeometry();geo.setAttribute("position",new T.BufferAttribute(pos,3));geo.setAttribute("color",new T.BufferAttribute(col,3));
   geo.setAttribute("skinIndex",new T.BufferAttribute(ix,4));geo.setAttribute("skinWeight",new T.BufferAttribute(wt,4));geo.computeVertexNormals();
-  const rest=pos.slice(),edge=(arr,i)=>Math.hypot(arr[i]-arr[i+3],arr[i+1]-arr[i+4],arr[i+2]-arr[i+5]);
-  for(const [pose,turns] of Object.entries(poses)){
-   const bones=m.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;});
-   m.bones.forEach((b,i)=>{const h=b.parent>=0?m.bones[b.parent].head:[0,0,0];bones[i].position.set(b.head[0]-h[0],b.head[1]-h[1],b.head[2]-h[2]);if(b.parent>=0)bones[b.parent].add(bones[i]);});
-   const mesh=new T.SkinnedMesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,transparent:!!showBones,opacity:showBones?.5:1}));
-   const holder=new T.Group();holder.rotation.y=turn;holder.add(mesh);mesh.add(bones[0]);holder.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
-   const missing=[];for(const [bn,r] of Object.entries(turns)){const o=bones.find(x=>x.name===bn);if(!o){missing.push(bn);continue;}o.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
-   holder.updateMatrixWorld(true);mesh.skeleton.update();
-   // how far the skin stretches: the longest any triangle edge has grown compared with the rest pose
+  const bones=m.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;});
+  m.bones.forEach((b,i)=>{const h=b.parent>=0?m.bones[b.parent].head:[0,0,0];bones[i].position.set(b.head[0]-h[0],b.head[1]-h[1],b.head[2]-h[2]);if(b.parent>=0)bones[b.parent].add(bones[i]);});
+  const mesh=new T.SkinnedMesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95}));mesh.frustumCulled=false;
+  mesh.add(bones[0]);mesh.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
+  const scene=new T.Scene();scene.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);scene.add(sun);scene.add(mesh);
+  const ground=new T.Mesh(new T.BoxGeometry(4,.006,4),new T.MeshBasicMaterial({color:0x9a8f80}));ground.position.y=-.003;scene.add(ground);
+  const rootY=bones[0].position.y,missing=new Set(),edge=(arr,i,j)=>Math.hypot(arr[i]-arr[j],arr[i+1]-arr[j+1],arr[i+2]-arr[j+2]);
+  // put the creature into a pose and return how far the worst triangle edge has grown compared with rest
+  function set(pose){
+   for(const o of bones)o.rotation.set(0,0,0);bones[0].position.y=rootY+(pose._lift||0);
+   for(const [bn,r] of Object.entries(pose)){if(bn[0]==="_")continue;const o=bones.find(x=>x.name===bn);if(!o){missing.add(bn);continue;}o.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
+   mesh.updateMatrixWorld(true);mesh.skeleton.update();
    const now=new Float32Array(pos.length),v=new T.Vector3();for(let i=0;i<n;i++){v.fromBufferAttribute(geo.attributes.position,i);mesh.applyBoneTransform(i,v);now.set([v.x,v.y,v.z],i*3);}
-   let worst=1;for(let f=0;f<m.faces;f++)for(let k=0;k<2;k++){const i=f*9+k*3,r0=edge(rest,i);if(r0>.004)worst=Math.max(worst,edge(now,i)/r0);}
-   const cv=document.createElement("canvas");cv.width=cv.height=900;cv.title=name+" "+pose;document.getElementById("views").append(cv);
-   const r=new T.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});r.setClearColor(0xffffff);
-   const s=new T.Scene();s.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);sun.position.set(-3,6,5);s.add(sun);s.add(holder);
-   if(showBones){const sk=new T.SkeletonHelper(bones[0]);sk.material.depthTest=false;s.add(sk);}
-   const cam=new T.OrthographicCamera(-.95,.95,.95,-.95,.01,100);cam.position.set(2.4,1.6,3.2);cam.lookAt(0,.45,0);r.render(s,cam);
-   report.push({name,pose,stretch:+worst.toFixed(2),missing});
-   if(save){const blob=await new Promise(f=>cv.toBlob(f,"image/jpeg",.92));try{await fetch("http://127.0.0.1:8767/put/"+name+"-"+pose+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}}
+   let worst=1;for(let f=0;f<m.faces;f++)for(let k=0;k<3;k++){const i=f*9+k*3,j=f*9+((k+1)%3)*3,r0=edge(pos,i,j);if(r0>.004)worst=Math.max(worst,edge(now,i,j)/r0);}
+   return worst;
   }
-  report.push({name,faces:m.faces,bones:m.bones.length,eyeFaces:eyes});
+  function draw(ctx,x,y,view){
+   const h=view.half||.95,at=view.at||[0,.5,0],cam=new T.OrthographicCamera(-h,h,h,-h,.01,100),d=new T.Vector3(...view.from).normalize();
+   cam.position.set(at[0]+d.x*8,at[1]+d.y*8,at[2]+d.z*8);if(Math.abs(d.y)>.95)cam.up.set(...view.up);cam.lookAt(...at);
+   sun.position.copy(cam.position).add(new T.Vector3(0,6,0)).addScaledVector(new T.Vector3().crossVectors(cam.up,d).normalize(),-4);
+   ground.visible=Math.abs(d.y)<.95;R.render(scene,cam);ctx.drawImage(gl,x,y);   // seen from above the ground would fill the picture
+  }
+  // one sheet: a column for each step, a row for each camera
+  async function sheet(name,steps,views){
+   const cv=document.createElement("canvas");cv.className="sheet";cv.width=CELL*steps.length;cv.height=CELL*views.length;document.getElementById("views").append(cv);
+   const ctx=cv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,cv.width,cv.height);ctx.font="bold 17px sans-serif";let worst=1;
+   steps.forEach((s,i)=>{const st=set(s.pose);worst=Math.max(worst,st);views.forEach((v,j)=>{draw(ctx,i*CELL,j*CELL,v);ctx.fillStyle="#333";ctx.fillText(s.label+" · "+v.name,i*CELL+8,j*CELL+22);if(!j)ctx.fillText("stretch "+st.toFixed(2),i*CELL+8,j*CELL+44);});});
+   ctx.strokeStyle="#bbb";for(let i=1;i<steps.length;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,cv.height);ctx.stroke();}
+   report.push({sheet:name,steps:steps.length,worstStretch:+worst.toFixed(2)});
+   if(save){const blob=await new Promise(f=>cv.toBlob(f,"image/jpeg",.9));try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}}
+  }
+  // evenly spaced steps through a list of named poses
+  const cycle=(poses,keys,count)=>Array.from({length:count},(_,i)=>{const t=i/(count-1)*(keys.length-1),k=Math.min(Math.floor(t),keys.length-2),f=t-k;return{label:f<.01?keys[k]:f>.99?keys[k+1]:keys[k]+" > "+keys[k+1],pose:mix(poses[keys[k]],poses[keys[k+1]],f)};});
+  return{sheet,cycle,missing,info:{faces:m.faces,bones:m.bones.length}};
  }
- // The hare faces -z in its file, so bending a leg forward is a turn about x.
- await creature("shade-hare-standing-rig-patched.json","d1-hare",Math.PI,{
-  rest:{},
-  "head-turn":{Head_0:[0,.55],Head_1:[0,.45]},
-  "ears-prick":{Head_2:[.25,0,.3],Ear2_0:[.25,0,-.3],Head_3:[-.2],Ear2_1:[-.2]},
-  "ears-back":{Head_2:[-.7],Ear2_0:[-.7],Head_3:[-.3],Ear2_1:[-.3]},
-  creep:{Spine_0:[.12],"0_Right_Limb_0":[-.5],"0_Left_Limb_0":[.35],"0_Right_Limb_1":[.5],"0_Left_Limb_1":[-.3],"0_Right_Limb_2":[.45],"0_Left_Limb_2":[.45],"1_Right_Limb_0":[.3],bone_18:[-.3],Head_0:[.2]},
-  bound:{Spine_1:[-.15],"0_Right_Limb_0":[-.8],"0_Left_Limb_0":[-.8],"0_Right_Limb_2":[.5],"0_Left_Limb_2":[.5],"1_Right_Limb_0":[.8],bone_18:[.8],"1_Right_Limb_1":[-.5],bone_19:[-.5],Head_0:[-.15]}
- });
- // The crow faces -x in its file and its wings lie along z, so a flap is a turn about x and a fold a turn about y.
- await creature("shade-crow-rig-patched.json","d2-crow",-Math.PI/2,{
-  rest:{},
-  "wings-down":{Spine_0:[.75],bone_14:[-.75],Spine_1:[.25],bone_15:[-.25]},
-  "flap-up":{Spine_0:[-.6],bone_14:[.6],Spine_1:[-.3],bone_15:[.3]},
-  fold:{Spine_0:[-.35,.9],bone_14:[.35,-.9],Spine_1:[0,-.5],bone_15:[0,.5],bone_7:[0,1.3],bone_16:[0,-1.3]},
-  glide:{Spine_0:[.12,-.25],bone_14:[-.12,.25],bone_22:[0,0,.15],"0_Left_Limb_1":[0,0,.9],Leg2_1:[0,0,.9],"0_Left_Limb_2":[0,0,-.8],Leg2_2:[0,0,-.8]},
-  "head-turn":{Head_0:[.5],Head_1:[.5]}
- });
+
+ if(only!=="crow"){
+  // The hare faces -z in its file; x is left-right. About x, a positive turn swings a leg forward and tips an ear back.
+  const pairs=[["0_Right_Limb_0","0_Left_Limb_0"],["0_Right_Limb_1","0_Left_Limb_1"],["0_Right_Limb_2","0_Left_Limb_2"],["1_Right_Limb_0","bone_18"],["1_Right_Limb_1","bone_19"],["1_Right_Limb_2","bone_20"],["1_Right_Limb_3","bone_21"],["Head_2","Ear2_0"],["Head_3","Ear2_1"],["Head_4","Ear2_2"]];
+  const B=h=>both(pairs,0,h);
+  // crouch: the spine tips so the chest drops, the hind legs turn back by the same amount to stay planted, and the
+  // forelegs fold (upper forward, lower back) with the paws turned flat
+  const crouch=B({Spine_0:[-.2],"1_Right_Limb_0":[.2],"1_Left_Limb_0":[.2],Head_1:[.2],Head_2:[.35],"0_Right_Limb_0":[.7],"0_Right_Limb_1":[-1],"0_Right_Limb_2":[.5]});
+  const creepR={...crouch,"0_Right_Limb_0":[1.25],"0_Right_Limb_1":[-.95],"0_Right_Limb_2":[.1],"0_Left_Limb_0":[.4],"0_Left_Limb_1":[-.75],"0_Left_Limb_2":[.55],"1_Right_Limb_0":[-.05],bone_18:[.45]};
+  const P={
+   rest:{},
+   "ears forward":B({Head_2:[-.5],Head_3:[-.25]}),
+   "ears back":B({Head_2:[.7],Head_3:[.35],Head_4:[.2]}),
+   crouch,"right paw reaches":creepR,"left paw reaches":swap(pairs,0,creepR),
+   gather:B({Spine_2:[-.25],Head_1:[.25],"0_Right_Limb_0":[-.45],"0_Right_Limb_1":[.3],"1_Right_Limb_0":[.8],"1_Right_Limb_1":[-.5],Head_2:[.3]}),
+   launch:B({Root:[.3],"0_Right_Limb_0":[.9],"0_Right_Limb_1":[-.2],"1_Right_Limb_0":[-.75],"1_Right_Limb_1":[.3],"1_Right_Limb_2":[.3],Head_2:[.6],Head_3:[.3],_lift:.14}),
+   flight:B({"0_Right_Limb_0":[.55],"0_Right_Limb_1":[-.5],"1_Right_Limb_0":[.6],"1_Right_Limb_1":[-.5],Head_2:[.7],Head_3:[.35],_lift:.26}),
+   land:B({Root:[-.22],Head_1:[.25],"0_Right_Limb_0":[.45],"0_Right_Limb_1":[-.15],"0_Right_Limb_2":[.2],"1_Right_Limb_0":[1],"1_Right_Limb_1":[-.6],Head_2:[.5],_lift:.1})
+  };
+  const hare=await build("shade-hare-standing-rig-patched.json");
+  const side={name:"side",from:[1,0,0]},front={name:"front",from:[0,0,-1]},h=.72,at=[0,.55,0];
+  const V=[{...side,half:h,at},{...front,half:h,at}],head=[0,.83,-.2];
+  await hare.sheet("d1-hare-ears-closeup",["rest","ears forward","ears back"].map(k=>({label:k,pose:P[k]})),[{name:"front",from:[0,.15,-1],half:.26,at:head},{name:"side",from:[1,.1,-.2],half:.26,at:head},{name:"other side",from:[-1,.1,-.2],half:.26,at:head},{name:"behind",from:[.35,.3,1],half:.26,at:head}]);
+  await hare.sheet("d1-hare-cycle-ears",hare.cycle(P,["ears forward","rest","ears back"],7),V);
+  await hare.sheet("d1-hare-cycle-creep",hare.cycle(P,["crouch","right paw reaches","crouch","left paw reaches"],7),V);
+  await hare.sheet("d1-hare-cycle-bound",hare.cycle(P,["gather","launch","flight","land","gather"],9),[{...side,half:.8,at:[0,.65,0]},{...front,half:.8,at:[0,.65,0]}]);
+  report.push({hare:hare.info,missing:[...hare.missing]});
+ }
+ if(only!=="hare"){
+  // The crow faces -x in its file and its wings lie along z. About x, a negative turn raises the +z wing; the wing's
+  // hand (bone_7) hangs down at rest and a negative turn about x opens it out level. About z, a positive turn swings
+  // a leg back and tips the whole bird nose-down.
+  const pairs=[["Spine_0","bone_14"],["Spine_1","bone_15"],["bone_7","bone_16"],["bone_8","bone_17"],["bone_9","bone_18"],["bone_10","bone_19"],["bone_11","bone_20"],["bone_12","bone_21"],["0_Left_Limb_0","bone_32"],["0_Left_Limb_1","Leg2_1"],["0_Left_Limb_2","Leg2_2"],["0_Left_Limb_3","Leg2_3"],["bone_30","Leg2_toe_a"],["bone_31","Leg2_toe_b"]];
+  const B=h=>both(pairs,2,h);
+  const P={
+   rest:{},
+   "wings up":B({Spine_0:[-.7],Spine_1:[-.2],bone_7:[-.6]}),
+   "wings down":B({Spine_0:[.45],Spine_1:[.15],bone_7:[-1.2]}),
+   "wings level":B({Spine_0:[-.05],bone_7:[-1.45]}),
+   glide:B({Spine_0:[-.05],bone_7:[-1.45],Root:[0,0,.45],Head_0:[0,0,-.35],"0_Left_Limb_0":[0,0,1.1],"0_Left_Limb_1":[0,0,.4],bone_22:[0,0,-.15],_lift:.45}),
+   fold:B({Spine_0:[.25,1.2],bone_7:[-1.2]})
+  };
+  const crow=await build("shade-crow-rig-patched.json");
+  const at=[0,.55,0],V=[{name:"side",from:[0,0,1],half:.95,at},{name:"front",from:[-1,0,0],half:.95,at},{name:"above",from:[0,1,0],up:[-1,0,0],half:.95,at:[0,0,0]}];
+  await crow.sheet("d2-crow-cycle-flap-fold",crow.cycle(P,["wings up","wings down","wings up","wings down","fold"],9),V);
+  await crow.sheet("d2-crow-poses",["rest","wings level","glide","fold"].map(k=>({label:k,pose:P[k]})),V.map(v=>({...v,half:1.1,at:v.name==="above"?[0,0,0]:[0,.75,0]})));
+  report.push({crow:crow.info,missing:[...crow.missing]});
+ }
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);
 </script>

@@ -215,3 +215,16 @@ At the developer's instruction. The normal build, the test site and the public s
 - **Pictures** from the game: `assets/renders/newhare-*.jpg`.
 
 Not done, and known: the hit area was not re-tuned for the taller hare; a creeping hare still sinks 0.3 m into tall grass as the first one did, which buries more of this one; the worst running drift (83 mm) was not traced; its sitting pose is simply standing; it has not been seen in a headset or by ChatGPT; frame rate with five skinned hares has not been measured on Quest.
+
+### ChatGPT's review of the standing hare in the game (commit `2fbf29b`)
+It opened the six game screenshots and the run-gait sheet (`assets/renders/d1-hare-run-timed.jpg`).
+
+| Verdict | What it said |
+|---|---|
+| Approved | Keep the plum colour and the size for the next trial. The two nearer hares read as shade hares from the archer's place; the farthest is a purple mark whose ears and body are hard to make out. Check that sightline in motion on Quest before changing size or adding an outline. Keep the run gait: about 2 m per bound at 3.3 bounds a second fits 6.5 m/s, and 69% airborne is a fair starting point. Judge it at full speed before changing it. |
+| Change, first | The hit area. Fit it to the visible hare in the poses it can be hit in, and check it at the archer's real distances: a clean shot into the torso must register, and an arrow through empty space beside it must miss. This is the first blocker to replacing the first hare. |
+| Change, second | Replace the 0.3 m sink with a grounded crouch: lower chest and hips through the pose, keep the paws on the ground, and let the grass do the hiding. Standing idle can stay for this trial. |
+| Missing | A full-speed review on Quest, checking finding and aiming at the near and far ends of 13 to 28 m, especially as a hare leaves cover; if the far hare gets lost, clear some grass from that sightline first. Trace the 83 mm running outlier (which paw, phase and game event) before retuning the gait. |
+| Question | Is a hare meant to be hittable while fully hidden, or only once it emerges? The hit area and the visual cue should follow that rule. **For the developer to decide.** In the game today a hidden or sunk hare can be hit, through a hit area shrunk by a third. |
+
+None of these changes has been started.

@@ -12,14 +12,14 @@ const wait=setInterval(async()=>{
  const T=w.THREE,report=[];
  const tris=o=>{let n=0;o.traverse(m=>{if(m.geometry)n+=(m.geometry.index?m.geometry.index.count:m.geometry.attributes.position.count)/3;});return n;};
  const draws=o=>{let n=0;o.traverse(m=>{if(m.geometry)n++;});return n;};
- async function shot(name,build,W,H,dir,zoom,up){
+ async function shot(name,build,W,H,dir,zoom,up,at){
   const c=document.createElement("canvas");c.width=W;c.height=H;document.getElementById("views").append(c);
   const r=new T.WebGLRenderer({canvas:c,antialias:true,preserveDrawingBuffer:true});r.setClearColor(0xffffff);
   const s=new T.Scene();s.add(new T.HemisphereLight(0xfff1cc,0xb9a58c,1.9));const sun=new T.DirectionalLight(0xffe5bb,2.3);sun.position.set(-3,6,5);s.add(sun);
   const o=build(T);s.add(o);
   const b=new T.Box3().setFromObject(o),mid=b.getCenter(new T.Vector3()),size=b.getSize(new T.Vector3()),span=Math.max(size.x,size.y,size.z);
   const cam=new T.OrthographicCamera(-span*zoom*W/H,span*zoom*W/H,span*zoom,-span*zoom,.01,100);
-  cam.position.copy(mid).add(new T.Vector3(...dir).normalize().multiplyScalar(span*4));if(up)cam.up.set(...up);cam.lookAt(mid);
+  if(at)mid.set(...at);cam.position.copy(mid).add(new T.Vector3(...dir).normalize().multiplyScalar(span*4));if(up)cam.up.set(...up);cam.lookAt(mid);
   r.render(s,cam);
   report.push({name,triangles:tris(o),parts:draws(o),size:[size.x,size.y,size.z].map(v=>+v.toFixed(2)),points:Object.keys(o.userData.points||{})});
   if(save){const blob=await new Promise(f=>c.toBlob(f,"image/jpeg",.93));try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){report.push({name,saveError:String(e)});}}
@@ -28,6 +28,7 @@ const wait=setInterval(async()=>{
  await shot("h6-market-stall-code-side",PROPS.marketStall,1254,1254,[1,.35,.25],.62);
  await shot("a4-thornwood-bow-code",PROPS.thornwoodBow,1024,1536,[1,0,0],.54);
  await shot("a4-thornwood-bow-code-detail",PROPS.thornwoodBow,1024,1536,[1,.15,.8],.54);
+ await shot("a4-thornwood-bow-code-tip",PROPS.thornwoodBow,1254,1254,[1,.1,.55],.07,null,[0,.66,0]);
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);
 </script>

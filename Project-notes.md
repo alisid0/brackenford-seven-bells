@@ -87,6 +87,6 @@ Standing rule from the developer: every proposal comes as 4 to 8 clearly differe
 |---|---|---|
 | 1. Theme and style sheet | `style-sheet-v1.jpg` | Approved as the starting point; palette locked. The curved bow in it is illustrative only |
 | 2. Title menu, variants A to D | `title-menu-a.jpg` to `title-menu-d.jpg` | The developer chose C: the cloth banner tied between two posts |
-| 2. Title menu, final | `title-menu-final.jpg` | Made from C, with the straight bow. Waiting for the developer's approval |
-| 3. Interface kit | — | After the title menu is chosen |
+| 2. Title menu, final | `title-menu-final.jpg` | Approved by the developer |
+| 3. Interface kit, variants A to D | `interface-kit-a.jpg` to `interface-kit-d.jpg` | Waiting for the developer's choice |
 | 4. View down from the watchtower | — | Proposed by ChatGPT |

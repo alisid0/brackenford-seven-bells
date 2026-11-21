@@ -20,9 +20,9 @@ One small sheet at a time, one image each, no variants, each checked against the
 |---|---|---|---|
 | 1 | Controls: Begin, Enter VR, a toggle in both positions, the stage dropdown | `kit-step1-controls.jpg` | Done; matches the menu |
 | 2 | Panels: score panel and results panel | `kit-step2-panels.jpg` | Done; matches the menu |
-| 3 | Icons: star, coin, arrow, shade, wind, timer, streak | — | Next |
-| 4 | Draw-power bar with the perfect-release zone | — | To do |
-| 5 | VR pieces: BACK, AGAIN and NEXT signposts; the bow plaque | — | To do |
-| 6 | The VR Comfort group and on/off switch | — | To do |
+| 3 | Icons: full and empty star, coin, arrow, shade, wind, timer, streak | `kit-step3-icons.jpg` | Done. Ember appears only in the shade's eye; the streak is plum chevrons, not a flame |
+| 4 | Draw-power bar: empty, half, full, with the gold perfect-release band | `kit-step4-drawbar.jpg` | Done |
+| 5 | VR pieces: BACK, AGAIN and NEXT signposts; the bow tag | `kit-step5-vr.jpg` | Done. NEXT alone is red. The lettering came out in a plain sans-serif; in the game it uses the same serif as the menu |
+| 6 | The VR Comfort group: four toggles | `kit-step6-comfort.jpg` | Done |
 
 These are concept pictures. The interface in the game is unchanged; rebuilding it to match is a game change that waits until after the release unless the developer says otherwise.

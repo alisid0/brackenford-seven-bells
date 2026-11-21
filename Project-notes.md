@@ -198,3 +198,8 @@ Outside the game build. `src/moves.js` gives the bound as a function of phase on
 | Missing | Full-speed judgement is the developer's: a fixed side camera at gameplay distance, to see whether the tuck reads and the loop carries forward. |
 
 Not done: the flight tuck, heel lift at push-off, any offset between left and right legs. Nothing is in the game.
+
+### Flight tuck (commit `c943070`)
+A paw in the air is now drawn in under its own joint within the first fifth of its swing, held, then released over the last third to reach for the next spot. Planted spots and timing unchanged; the contact check passes with the same figures. Worst stretch rose from 2.86 to 3.71, at phases 0.1 to 0.3 where the forelegs are most folded.
+
+ChatGPT's review: **approved; park this bound until it is seen in the game.** It reads as a bounding hare. No further change before integration. There is a slight crease where the folded forelegs meet the chest; if it flickers in motion, look at those skin weights first. Still missing: the loop watched at full speed from gameplay distance, from the side and from the player's view.

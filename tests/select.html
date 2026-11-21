@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,out={},r=v.range,d=w.document,sel=d.getElementById("stageSel"),steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ const key=code=>w.dispatchEvent(new w.KeyboardEvent("keydown",{code,cancelable:true}));
+ out.list={options:sel.options.length,stages:v.STAGES.length,first:sel.options[0].textContent,shadeLabel:sel.options[20].textContent,value:+sel.value};
+ v.begin(false);steps(2);
+ // pick a stage from the list
+ sel.value="20";sel.dispatchEvent(new w.Event("change"));steps(2);
+ out.pick={stage:r.stage,phase:r.phase,shades:v.spirits.filter(s=>s.base.visible).length,listFollows:+sel.value};
+ // keys step through the stages, and stop at both ends
+ key("BracketRight");steps(2);out.next=r.stage;key("BracketLeft");key("BracketLeft");steps(2);out.backTwo=r.stage;
+ key("PageDown");steps(2);out.pageDown=r.stage;out.listAfterKeys=+sel.value;
+ v.stageGo(0);key("BracketLeft");steps(2);out.stopsAtFirst=r.stage;v.stageGo(v.STAGES.length-1);key("BracketRight");steps(2);out.stopsAtLast=r.stage===v.STAGES.length-1;
+ // changing stage starts it afresh: full quiver, no score
+ v.stageGo(1);steps(2);v.loose(v.rig.position.clone().add(new v.T.Vector3(0,1.5,0)),new v.T.Vector3(v.YARD.ux,.1,v.YARD.uz).normalize(),1);steps(5);const used=r.arrows;
+ key("BracketRight");steps(2);out.fresh={usedBefore:used,arrowsNow:r.arrows,want:v.STAGES[2].arrows,score:r.score};
+ // not while drawing the bow
+ const c=d.getElementById("view");c.dispatchEvent(new w.MouseEvent("mousedown",{button:0,bubbles:true}));steps(5);const at=r.stage;key("BracketRight");steps(2);out.ignoredWhileDrawing=r.stage===at;w.dispatchEvent(new w.MouseEvent("mouseup",{button:0}));steps(3);
+ // from roaming, picking a stage returns to the range
+ v.setMode("roam");steps(2);sel.value="5";sel.dispatchEvent(new w.Event("change"));steps(2);out.fromRoam={on:r.on,stage:r.stage};
+ // stars show in the list after a stage is cleared
+ v.stageGo(0);steps(2);const T=v.T,M=v.rangeRounds,Y=v.YARD;
+ for(let i=0;i<5;i++){steps(1);const o=v.rig.position.clone().add(new T.Vector3(0,1.5,0)),to=M[0].root.getWorldPosition(new T.Vector3()),f=new T.Vector3(to.x-o.x,0,to.z-o.z),dd=f.length(),hh=to.y-o.y,s=62,g=7,a=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*dd*dd+2*hh*s*s)))/(g*dd));v.loose(o,f.normalize().multiplyScalar(Math.cos(a)).add(new T.Vector3(0,Math.sin(a),0)),1);steps(30);}
+ {let n=0;while(r.phase!=="results"&&n++<900)steps(1);}out.starsInList=sel.options[0].textContent;
+ // VR: a flick of the left stick steps a stage, once per flick; the right stick does not
+ v.fake.on=true;const pad=x=>({axes:[0,0,x,0],buttons:[{},{},{},{pressed:false}]});
+ v.hands[0].source={handedness:"left",gamepad:pad(0)};v.hands[1].source={handedness:"right",gamepad:pad(0)};for(const h of v.hands)h.grip.matrixAutoUpdate=true;
+ v.stageGo(3);steps(3);v.hands[0].source.gamepad=pad(1);steps(1);const a1=r.stage;steps(10);out.vr={flickRight:a1,heldOnlyOnce:r.stage};
+ v.hands[0].source.gamepad=pad(0);steps(2);v.hands[0].source.gamepad=pad(-1);steps(2);out.vr.flickLeft=r.stage;
+ v.hands[0].source.gamepad=pad(0);steps(2);v.hands[1].source.gamepad=pad(1);steps(3);out.vr.rightStickIgnored=r.stage===out.vr.flickLeft;
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r="THREW "+e.stack;}document.getElementById("out").textContent="RESULT "+r;}else if(++tries>80){clearInterval(t);document.getElementById("out").textContent="RESULT no vale";}},250);
+</script>

@@ -1,0 +1,76 @@
+<!doctype html><meta charset="utf-8"><title>slice1test</title>
+<iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe>
+<pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById('g').contentWindow;w.addEventListener('error',e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={},V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+n.toFixed(2);
+ const steps=(n,dt=.016)=>{for(let i=0;i<n;i++)v.tick(dt);};
+ v.setMode("roam");v.place(0,0,Math.atan2(24,22));v.begin(false);steps(2);
+ out.start=v.lessonInfo().title;out.facingYard=R(-Math.sin(v.look.yaw)*-.737+-Math.cos(v.look.yaw)*-.676);
+ out.ground={stand:R(v.groundAt(-24,-22))};
+ function shoot(target,from){
+  if(from)v.place(from[0],from[1]);steps(1);
+  const o=v.rig.position.clone().add(V(0,1.5,0)),to=target.base.getWorldPosition(V()),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;
+  const ang=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*d*d+2*h*s*s)))/(g*d)),dir=flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0));
+  v.loose(o,dir,1);steps(Math.ceil((d/55+.3)/.016));
+ }
+ const D=v.drills;
+ shoot(D.near,[-24,-22]);out.l1a=v.prog.count;shoot(D.near);shoot(D.near);out.afterL1=v.state.lesson;
+ shoot(D.mover,[-30,-27]);out.wrongTargetNoProgress=v.state.lesson===1&&v.prog.done.size===0;
+ shoot(D.d20,[-24,-22]);shoot(D.d20);out.repeatCountsOnce=v.prog.done.size;shoot(D.d40);shoot(D.d70);out.afterL2=v.state.lesson;
+ for(let i=0;i<3;i++){shoot(D.mover,[D.mover.base.position.x+2,D.mover.base.position.z+3.5]);}out.afterL3=v.state.lesson;
+ out.arrowRides=v.projectiles.some(q=>q.o.parent===D.mover.base);
+ // shooting the far round from the ground must not pass lesson 5 early (we are on lesson 4 = climb, index 3)
+ // desktop climb: low wall
+ const wall=v.wallTop(),tw=v.tower();
+ v.place(-25,-17);v.look.yaw=Math.PI/2;v.look.pitch=0;v.keys.add('KeyW');
+ let n=0;while(!v.climb&&n++<200)steps(1);out.wallClimbStarted=!!v.climb;out.bowSlung=v.bow.visible===false;
+ n=0;while(v.climb&&n++<400)steps(1);v.keys.delete('KeyW');steps(3);
+ out.onWall=R(v.rig.position.y-wall.top);out.wallFlag=v.prog.wall;out.bowBack=v.bow.visible;
+ // step off the wall forward and fall
+ v.keys.add('KeyW');steps(90);v.keys.delete('KeyW');out.fellToGround=R(v.rig.position.y-v.groundAt(v.rig.position.x,v.rig.position.z));
+ // tower: climb part way, let go with Space, fall
+ v.place(-30,-14);v.look.yaw=Math.PI/2;v.keys.add('KeyW');n=0;while(!v.climb&&n++<200)steps(1);steps(60);const midY=v.rig.position.y-tw.top;
+ v.keys.delete('KeyW');v.keys.add('Space');steps(2);v.keys.delete('Space');out.spaceLetsGo=!v.climb;steps(120);out.midClimb=R(midY);out.landed=R(v.rig.position.y-v.groundAt(v.rig.position.x,v.rig.position.z));
+ // climb down with S
+ v.place(-30,-14);v.look.yaw=Math.PI/2;v.keys.add('KeyW');n=0;while(!v.climb&&n++<200)steps(1);steps(40);v.keys.delete('KeyW');v.keys.add('KeyS');steps(120);v.keys.delete('KeyS');out.climbDownEnds=!v.climb;
+ // tower all the way
+ v.place(-30,-14);v.look.yaw=Math.PI/2;v.keys.add('KeyW');n=0;while(!v.climb&&n++<200)steps(1);n=0;while(v.climb&&n++<600)steps(1);v.keys.delete('KeyW');steps(3);
+ out.onTower=R(v.rig.position.y-tw.top);out.afterL4=v.state.lesson;
+ // walk around on top: collider must not push us off
+ const before=v.rig.position.clone();v.keys.add('KeyS');steps(8);v.keys.delete('KeyS');out.stillOnTop=R(v.rig.position.y-tw.top);
+ // lesson 5: from the ground first (must not pass), then from the top
+ const top=[v.rig.position.x,v.rig.position.z];
+ shoot(D.d70,[-24,-22]);out.groundShotNoPass=v.state.lesson===4;
+ v.place(-30,-14);v.look.yaw=Math.PI/2;v.keys.add('KeyW');n=0;while(!v.climb&&n++<200)steps(1);n=0;while(v.climb&&n++<600)steps(1);v.keys.delete('KeyW');steps(3);
+ shoot(D.d70);out.afterL5=v.state.lesson;out.done=v.lessonInfo().title;
+ // ---- simulated VR climbing with controllers
+ v.fake.on=true;const g0=v.groundAt(-25.9,-17);v.rig.position.set(-25.9,g0,-17);v.rig.rotation.y=0;
+ for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?'right':'left'};h.grip.matrixAutoUpdate=true;h.grip.position.set(-.5,1.5,i?.2:-.2);}
+ steps(2);
+ const grab=i=>v.hands[i].raySpace.dispatchEvent({type:'squeezestart'}),drop=i=>v.hands[i].raySpace.dispatchEvent({type:'squeezeend'});
+ grab(0);out.vrGrab=!!v.hands[0].climb;steps(1);out.vrBowSlung=v.bow.visible===false;
+ let hand=0;
+ for(let k=0;k<12&&v.rig.position.y-g0<wall.top-g0-.9;k++){
+  // pull the holding hand down 0.5 m, then reach up with the other and take hold
+  while(v.hands[hand].grip.position.y>.85){v.hands[hand].grip.position.y-=.05;steps(1);}
+  const other=1-hand;v.hands[other].grip.position.y=Math.min(1.7,wall.top+.2-v.rig.position.y);steps(1);grab(other);(out.log=out.log||[]).push([k,hand,R(v.rig.position.y-g0),!!v.hands[other].climb,R(v.hands[other].hold.getWorldPosition(V()).x),R(v.hands[other].hold.getWorldPosition(V()).y-g0),v.bowHand?1:0]);drop(hand);v.hands[hand].grip.position.y=1.2;hand=other;steps(1);
+ }
+ out.vrRose=R(v.rig.position.y-g0);out.vrStillHolding=!!v.hands[hand].climb;
+ drop(hand);steps(2);out.vrMantled=R(v.rig.position.y-wall.top);
+ const eye=v.camera.getWorldPosition(V());out.vrEyeOnWall=Math.abs(eye.x-wall.x)<=wall.hx&&Math.abs(eye.z-wall.z)<=wall.hz;out.vrBowBack=v.bow.visible;
+ // let go low down: fall back to the ground
+ v.rig.position.set(-25.9,g0,-17);for(const i of[0,1])v.hands[i].grip.position.set(-.5,1.5,i?.2:-.2);steps(2);
+ grab(0);for(let j=0;j<10;j++){v.hands[0].grip.position.y-=.05;steps(1);}out.vrPartUp=R(v.rig.position.y-g0);drop(0);steps(60);out.vrFellBack=R(v.rig.position.y-v.groundAt(v.rig.position.x,v.rig.position.z));
+ // a grip away from any wall still takes the bow
+ v.rig.position.set(-22,v.groundAt(-22,-24),-24);steps(2);const b=v.bow.position.clone();v.hands[0].grip.position.copy(v.rig.worldToLocal(b));steps(1);grab(0);steps(1);out.vrGripTakesBow=v.bowHand===v.hands[0];
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{
+ const w=document.getElementById('g').contentWindow;
+ if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r='THREW '+e.stack;}document.getElementById('out').textContent='RESULT '+r;}
+ else if(++tries>80){clearInterval(t);document.getElementById('out').textContent='RESULT no vale';}
+},250);
+</script>

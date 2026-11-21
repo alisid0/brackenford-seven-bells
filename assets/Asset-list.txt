@@ -1,0 +1,62 @@
+Brackenford — models wanted for Chapter 2, The Waking
+For generating in Tripo (or any text-to-3D tool) and dropping into this folder.
+
+HOW TO MAKE THEM
+Paste a prompt below into Tripo's text-to-3D. Choose a low-poly or stylised setting if offered, and the lowest face count that still reads well.
+Export as GLB (binary glTF) with the texture embedded. Save it in this folder under the file name given.
+Aim for under 5,000 triangles per creature and under 10,000 for the stall. Keep each file under 3 MB.
+If the tool offers rigging or animation, skip it for now: the game moves and bends the models itself.
+Pose: standing naturally on flat ground, facing forward. No base or plinth. One object per file.
+
+THE LOOK
+Flat-shaded low-poly, soft warm colours, no realism, no fur detail. These are spirits made of leaves and light, not animals:
+friendly, a little glowing, nothing that reads as prey or as a trophy.
+
+CREATURES
+mist-hare-sitting.glb
+  "A stylised low-poly spirit hare made of pale gold leaves and soft light, sitting upright with long ears raised, friendly, flat shaded, simple shapes, no fur, plain background"
+mist-hare-crouching.glb
+  "A stylised low-poly spirit hare made of pale gold leaves and soft light, crouched low to the ground with ears laid back, flat shaded, simple shapes, no fur, plain background"
+mist-hare-running.glb
+  "A stylised low-poly spirit hare made of pale gold leaves and soft light, in mid-leap with legs stretched out, flat shaded, simple shapes, no fur, plain background"
+lantern-bird-perched.glb
+  "A stylised low-poly spirit songbird made of folded paper and warm lantern light, perched with wings closed, flat shaded, simple shapes, plain background"
+lantern-bird-flying.glb
+  "A stylised low-poly spirit songbird made of folded paper and warm lantern light, wings spread wide in flight, flat shaded, simple shapes, plain background"
+sun-bird.glb
+  "A stylised low-poly spirit pheasant with a long sweeping tail, made of golden leaves and bright sunlight, wings half open, majestic and gentle, flat shaded, simple shapes, plain background"
+
+MEADOW
+tall-grass-clump.glb
+  "A clump of tall stylised low-poly meadow grass, knee high, soft green and straw yellow, flat shaded, simple blades"
+meadow-bush.glb
+  "A round stylised low-poly bush with small pale flowers, flat shaded, soft greens"
+fallen-log.glb
+  "A stylised low-poly fallen tree log with moss on top, flat shaded, warm browns"
+perch-post.glb
+  "A stylised low-poly weathered wooden fence post with a short crossbar, flat shaded"
+
+SHOP
+market-stall.glb
+  "A stylised low-poly medieval wooden market stall with a striped cloth awning and an empty counter, flat shaded, warm colours"
+bow-short.glb
+  "A stylised low-poly short wooden hunting bow, straight grip, unstrung, flat shaded, light wood"
+bow-war.glb
+  "A stylised low-poly tall dark yew longbow, straight grip, unstrung, flat shaded"
+bow-recurve.glb
+  "A stylised low-poly horn recurve bow with curved tips, unstrung, flat shaded, dark horn and red binding"
+(Bows must be unstrung: the game draws its own string so that it can be pulled.)
+
+WHAT HAPPENS WITHOUT THEM
+The game is being built with simple shapes made in code standing in for every item above, so nothing waits on this list.
+When a file with one of these names appears in this folder, it can replace its stand-in.
+Loading GLB files needs one small extra library added to the game, which has not been added yet.
+
+MAKING THEM AUTOMATICALLY
+tools/make-assets.mjs does the whole chain for the same list (kept in asset-list.json): a concept picture from OpenAI's image model, then a 3D model of that picture from Tripo, saved here as a GLB.
+It needs your own keys, set in the terminal before running it and never stored by the script: TRIPO_API_KEY, and OPENAI_API_KEY for the picture step.
+  node tools/make-assets.mjs --plan            shows what it would make and costs nothing
+  node tools/make-assets.mjs --images-only     makes only the pictures, into assets/concepts, so you can look before paying for models
+  node tools/make-assets.mjs --only sun-bird   makes one model
+  node tools/make-assets.mjs                   makes everything not yet made
+Both services charge the account each key belongs to. The script has been checked only as far as its plan and its refusals without keys; it has never been run against either service.

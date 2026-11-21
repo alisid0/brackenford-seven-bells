@@ -1,0 +1,85 @@
+<!doctype html><meta charset="utf-8"><title>range test</title>
+<iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe>
+<pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById('g').contentWindow;w.addEventListener('error',e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={},V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+n.toFixed(2),r=v.range,Y=v.YARD;
+ const steps=(n,dt=.016)=>{for(let i=0;i<n;i++)v.tick(dt);};
+ const fin=()=>{let n=0;while(r.phase!=='results'&&n++<900)steps(1);};
+ v.begin(false);steps(2);
+ out.startsOnRange=r.on&&r.stage===0&&r.phase==='play';out.atLine=R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z));
+ v.keys.add('KeyW');steps(30);v.keys.delete('KeyW');out.noWalking=R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z));
+ // aim at a point on a mark's face: off is metres to the side on the face
+ function shootAt(mark,off=0,perfect=false,wait=true){
+  steps(1);const o=v.rig.position.clone().add(V(0,1.5,0)),to=mark.root.getWorldPosition(V()).add(V(Y.rx*off,0,Y.rz*off)),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;
+  const ang=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*d*d+2*h*s*s)))/(g*d)),dir=flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0));
+  v.loose(o,dir,1,perfect);if(wait)steps(Math.ceil((d/55+.25)/.016));
+ }
+ const M=v.rangeRounds;
+ // stage 1: five bullseyes
+ const s0=r.score;shootAt(M[0]);out.firstHit={score:r.score,streak:r.streak,arrows:r.arrows};
+ shootAt(M[0],0,true);out.perfectWorthMore=r.score-out.firstHit.score>out.firstHit.score;
+ shootAt(M[0],.35);out.outerRingLess=r.score;shootAt(M[0]);shootAt(M[0]);out.streak5=r.best;out.arrowsLeft=r.arrows;
+ {let n=0;while(r.phase!=='replay'&&n++<300)steps(1);const P=v.replay,hit=M[0].root.getWorldPosition(V());steps(30);
+  out.replay={phase:r.phase,camFromMark:R(P.cam.distanceTo(hit)),arrowShown:P.arrow.visible,arrowFromMark:R(P.arrow.position.distanceTo(hit)),bowHidden:v.bow.visible===false,noShooting:(()=>{const b=v.state.shots;v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,0,Y.uz),1);return v.state.shots===b;})()};
+  steps(75);out.replay.struck=P.struck;out.replay.arrowAtHit=R(P.arrow.getWorldPosition(V()).distanceTo(P.hit));}
+ fin();out.results={phase:r.phase,stars:r.stars,score:r.score,open:v.state.range.open,next:v.rangeSigns.next.base.visible,again:v.rangeSigns.again.base.visible,back:v.rangeSigns.back.base.visible};
+ out.popups=v.pops.length;
+ // shoot the NEXT sign
+ shootAt({root:v.rangeSigns.next.meshes[0]});steps(3);out.signNext=r.stage===1&&r.phase==='play';
+ // a miss breaks the streak; arrows run out
+ shootAt(M[0]);shootAt(M[1]);const st=r.streak;v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(40);out.missBreaksStreak=st===2&&r.streak===0;
+ const before=v.state.shots;for(let i=0;i<6;i++)shootAt(M[0]);out.noExtraArrows=r.arrows===0;fin();out.stage2Phase=r.phase;
+ // keys: again
+ r.pending='again';steps(2);out.keyAgain=r.stage===1&&r.phase==='play'&&r.score===0;
+ // wind: stage 7 has wind -5 (blowing left); aim dead centre and see where the arrow goes
+ v.setStage(6);steps(2);out.wind=R(r.wind);shootAt(M[0],0,false,false);
+ let q=v.projectiles[v.projectiles.length-1],n=0;while(!q.stuck&&n++<200)steps(1);
+ const c=M[0].root.getWorldPosition(V());out.driftRight=R((q.o.getWorldPosition(V()).x-c.x)*Y.rx+(q.o.getWorldPosition(V()).z-c.z)*Y.rz);
+ // compensate: aim upwind by the drift
+ const sc=r.score;shootAt(M[0],-out.driftRight);out.compensatedHit=r.score>sc;
+ // slider moves
+ v.setStage(7);steps(2);const a=M[0].base.position.clone();steps(60);out.sliderMoved=R(M[0].base.position.distanceTo(a));
+ const sc2=r.score;shootAt(M[0]);out.sliderHit=r.score>sc2;out.arrowRides=v.projectiles.some(p=>p.o.parent===M[0].tilt);
+ // pop-ups: a mark lying down cannot be scored
+ v.setStage(9);steps(2);n=0;while(M.every(m=>m.up)&&n++<600)steps(1);steps(30);const down=M.find(m=>!m.up),sc3=r.score,ar=r.arrows;
+ shootAt(down);out.downNotScored=r.score===sc3&&r.arrows===ar-1;const upM=M.find(m=>m.up&&m.tilt.rotation.x>-.2);if(upM){const sc4=r.score;shootAt(upM);out.upScored=r.score>sc4;}
+ // every stage sets up on dry ground
+ let dry=true,max=0;for(let i=0;i<v.STAGES.length;i++){v.setStage(i);steps(1);for(const m of M)if(m.base.visible){if(v.groundAt(m.base.position.x,m.base.position.z)<1.2)dry=false;max++;}}out.allStagesDry=dry;out.marksPlaced=max;
+ // stars need a real score: one outer hit on stage 3 is not enough
+ v.setStage(2);steps(2);shootAt(M[0],.75);for(let i=0;i<5;i++){v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(30);}fin();out.outerHitNoReplay=!r.replayed;out.weakRun={phase:r.phase,stars:r.stars,next:v.rangeSigns.next.base.visible};
+ // a good final arrow with no bullseye is replayed; a good early arrow followed by misses is not
+ const miss=()=>{v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(30);};
+ v.setStage(2);steps(2);for(let i=0;i<5;i++)miss();shootAt(M[0],.28);fin();out.finalArrowReplayed=r.replayed&&r.shot.ring===80;
+ v.setStage(2);steps(2);shootAt(M[0],.28);for(let i=0;i<5;i++)miss();fin();out.earlyNearMissNoReplay=!r.replayed;
+ // the final arrow is replayed wherever it hits, and when it only just misses; not when it lands far away
+ v.setStage(2);steps(2);for(let i=0;i<5;i++)miss();shootAt(M[0],.85);fin();out.finalOuterRingReplayed=r.replayed&&!r.shot.miss&&r.shot.ring<60;
+ v.setStage(2);steps(2);for(let i=0;i<5;i++)miss();shootAt(M[0],2.2);fin();out.finalNearMissReplayed={replayed:r.replayed,miss:!!(r.shot&&r.shot.miss),wide:r.shot?R(r.shot.off):null};
+ v.setStage(2);steps(2);for(let i=0;i<6;i++)miss();fin();out.finalFarMissNoReplay=!r.replayed;
+ // long lane: exactly one replay, of the closest arrow, even when every arrow missed
+ v.setStage(4);steps(2);shootAt(M[0],6);shootAt(M[0],2.6);shootAt(M[0],9);for(let i=0;i<3;i++)miss();
+ {let n=0;while(r.phase!=='replay'&&n++<400)steps(1);}out.longMiss={replayed:r.replayed,miss:!!r.shot.miss,wide:R(r.shot.off),camNearMark:R(v.replay.cam.distanceTo(M[0].root.getWorldPosition(V())))};
+ steps(125);out.longMiss.played=v.replay.struck;fin();
+ v.setStage(4);steps(2);shootAt(M[0],2.6);shootAt(M[0],.9);for(let i=0;i<4;i++)miss();fin();out.longHit={replayed:r.replayed,miss:!!r.shot.miss,off:R(r.shot.off),pts:r.shot.pts>0};
+ // switch to roaming and back
+ v.setMode('roam');steps(2);out.roam={rounds:M.some(m=>m.base.visible),drills:v.drills.near.base.visible,lesson:v.lessonInfo().title};
+ const p0=v.rig.position.clone();v.keys.add('KeyW');steps(30);v.keys.delete('KeyW');out.roamWalks=R(v.rig.position.distanceTo(p0));
+ v.setMode('range');steps(2);out.backOnRange=r.on&&R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z))===0&&!v.drills.near.base.visible;
+ // simulated VR: no stick walking on the range, perfect release from the hands
+ v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?'right':'left',gamepad:{axes:[0,0,0,-1],buttons:[]}};h.grip.matrixAutoUpdate=true;}
+ steps(3);const p1=v.rig.position.clone();steps(40);out.vrNoWalk=R(v.rig.position.distanceTo(p1));
+ // replay in simulated VR: the player is set down by the mark, then put back at the line
+ v.setStage(0);steps(2);for(let i=0;i<5;i++)shootAt(M[0]);{let n=0;while(!v.replay.moved&&n++<400)steps(1);}
+ out.vrReplay={moved:v.replay.moved,headAtCam:R(v.camera.getWorldPosition(V()).distanceTo(v.replay.cam))};
+ // skip with a trigger pull
+ v.hands[1].raySpace.dispatchEvent({type:'selectstart'});steps(2);out.vrReplay.skipped=r.phase==='results';out.vrReplay.backAtLine=R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z));out.vrReplay.signs=v.rangeSigns.again.base.visible;
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{
+ const w=document.getElementById('g').contentWindow;
+ if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r='THREW '+e.stack;}document.getElementById('out').textContent='RESULT '+r;}
+ else if(++tries>80){clearInterval(t);document.getElementById('out').textContent='RESULT no vale';}
+},250);
+</script>

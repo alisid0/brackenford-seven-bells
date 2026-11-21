@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,out={},R=n=>+n.toFixed(2),c=w.document.getElementById("view"),steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ const down=()=>c.dispatchEvent(new w.MouseEvent("mousedown",{button:0,bubbles:true})),up=()=>w.dispatchEvent(new w.MouseEvent("mouseup",{button:0})),wheel=d=>c.dispatchEvent(new w.WheelEvent("wheel",{deltaY:d,cancelable:true,bubbles:true}));
+ const speed=()=>R(v.projectiles[v.projectiles.length-1].velocity.length());
+ v.begin(false);steps(2);
+ down();steps(12);out.early={charge:R(v.charge)};up();out.early.speed=speed();
+ down();steps(70);out.full={charge:R(v.charge)};up();out.full.speed=speed();
+ down();steps(70);for(let i=0;i<8;i++)wheel(100);steps(2);out.wheelDown={charge:R(v.charge),held:v.drawHold!==null,label:w.document.getElementById("pow").textContent};steps(60);out.wheelDown.stays=R(v.charge);up();out.wheelDown.speed=speed();
+ down();steps(5);for(let i=0;i<4;i++)wheel(-100);steps(2);out.wheelUp=R(v.charge);up();
+ out.labelCleared=(steps(2),w.document.getElementById("pow").textContent==="");
+ out.softShotCounts=(()=>{v.setStage(0);steps(2);const b=v.range.arrows;down();steps(70);for(let i=0;i<6;i++)wheel(100);steps(2);up();return v.range.arrows===b-1;})();
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r="THREW "+e.stack;}document.getElementById("out").textContent="RESULT "+r;}else if(++tries>80){clearInterval(t);document.getElementById("out").textContent="RESULT no vale";}},250);
+</script>

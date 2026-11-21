@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={},R=n=>+n.toFixed(3),V=(x,y,z)=>new T.Vector3(x,y,z),c=w.document.getElementById("view"),steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ const down=()=>c.dispatchEvent(new w.MouseEvent("mousedown",{button:0,bubbles:true})),up=()=>w.dispatchEvent(new w.MouseEvent("mouseup",{button:0}));
+ const key=code=>w.dispatchEvent(new w.KeyboardEvent("keydown",{code}));
+ // does the nocked arrow's shaft pass through any part of the riser? cast along it and a little either side
+ const clear=()=>{v.bow.updateMatrixWorld(true);const ray=new T.Raycaster(),o=v.preview.position.clone(),q=v.preview.quaternion,len=.62*v.preview.scale.x;let hits=0;
+  for(const[dx,dy]of[[0,0],[.008,0],[-.008,0],[0,.008],[0,-.008]]){const tail=o.clone().add(V(dx,dy,.62).multiplyScalar(v.preview.scale.x).applyQuaternion(q));ray.set(tail,V(0,0,-1).applyQuaternion(q));ray.far=len;hits+=ray.intersectObjects([...v.riser.children,...v.gripSide.children],false).length;}return hits;};
+ const sideOfView=()=>{const eye=v.camera.getWorldPosition(V()),right=V(1,0,0).applyQuaternion(v.camera.quaternion);return R(v.bow.position.clone().sub(eye).dot(right));};
+ v.begin(false);steps(40);
+ out.right={hand:v.state.hand,bowAt:sideOfView(),riser:v.riser.scale.x,restClear:clear()===0};
+ down();steps(30);out.right.halfDrawClear=clear()===0;steps(50);out.right.fullDrawClear=clear()===0;up();steps(40);
+ // the old straight grip would have been struck: a rod down the middle of the bow is in the arrow's way
+ const arrowSide=()=>R(v.bow.worldToLocal(v.preview.position.clone()).x);out.right.arrowLeftOfBow=arrowSide();const restX=()=>R(v.bow.worldToLocal(v.gripSide.children[2].getWorldPosition(V())).x);out.right.restOnArrowSide=restX();
+ out.right.arrowAboveRest=R(v.bow.worldToLocal(v.preview.position.clone()).y-v.bow.worldToLocal(v.gripSide.children[2].getWorldPosition(V())).y);out.straightBow=v.riser.children.length===1;
+ // an arrow down the middle of this bow would strike it: the check must be able to fail
+ {const keep=v.preview.position.clone();v.preview.position.copy(v.bow.localToWorld(V(0,v.REST,.14-.62)));out.testCatchesCentredArrow=clear()>0;v.preview.position.copy(keep);}
+ key("KeyH");steps(3);
+ out.left={hand:v.state.hand,bowAt:sideOfView(),arrowRightOfBow:arrowSide(),restOnArrowSide:restX(),grip:v.gripSide.scale.x,restClear:clear()===0};
+ down();steps(80);out.left.fullDrawClear=clear()===0;const before=v.state.shots;up();steps(30);out.left.shoots=v.state.shots===before+1;
+ out.saved=JSON.parse(w.localStorage.getItem("brackenford-seven-bells-v1")).hand;
+ out.buttons=[w.document.getElementById("handL").className,w.document.getElementById("handR").className];
+ w.document.getElementById("handR").click();steps(3);out.buttonBack=v.state.hand+" "+sideOfView();
+ // VR: the hand that holds the bow decides
+ v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left"};h.grip.matrixAutoUpdate=true;}
+ steps(2);const take=i=>{v.hands[i].grip.position.copy(v.rig.worldToLocal(v.bow.position.clone()));steps(1);v.hands[i].raySpace.dispatchEvent({type:"squeezestart"});steps(2);};
+ take(1);out.vrRightHand={held:v.bowHand===v.hands[1],side:v.handSide,clear:clear()===0};
+ v.hands[1].grip.position.set(.6,1,0);steps(1);take(0);out.vrLeftHand={held:v.bowHand===v.hands[0],side:v.handSide,clear:clear()===0};
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r="THREW "+e.stack;}document.getElementById("out").textContent="RESULT "+r;}else if(++tries>80){clearInterval(t);document.getElementById("out").textContent="RESULT no vale";}},250);
+</script>

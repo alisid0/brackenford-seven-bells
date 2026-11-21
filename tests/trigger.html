@@ -1,0 +1,53 @@
+<!doctype html><meta charset="utf-8"><iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={},R=n=>+n.toFixed(2),V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ const pull=i=>v.hands[i].raySpace.dispatchEvent({type:"selectstart"}),let_go=i=>v.hands[i].raySpace.dispatchEvent({type:"selectend"}),squeeze=i=>v.hands[i].raySpace.dispatchEvent({type:"squeezestart"});
+ const last=()=>v.projectiles[v.projectiles.length-1],fwd=()=>V(0,0,-1).transformDirection(v.bow.matrixWorld);
+ v.fake.on=true;
+ // simulated controllers held in front of the player: left low and forward, right by the hip
+ for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left"};h.grip.matrixAutoUpdate=true;}
+ v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);
+ steps(3);
+ out.bowGivenToLeft=v.bowHand===v.hands[0];out.defaultMode=v.state.draw;
+ // two-handed (the default): a trigger away from the string, or on the bow hand, does nothing
+ let m=v.state.shots;pull(1);steps(30);out.two={awayIgnored:!v.charging};let_go(1);pull(0);steps(30);out.two.bowHandIgnored=!v.charging;let_go(0);steps(1);out.two.noShot=v.state.shots===m;
+ v.setDraw("one");
+ // 1. trigger on the free hand, nowhere near the string: quick draw
+ let n=v.state.shots;pull(1);steps(1);out.quick={charging:v.charging,isQuick:v.quickHand===v.hands[1]};
+ steps(20);out.quick.partCharge=R(v.charge);steps(50);out.quick.fullCharge=R(v.charge);
+ const aim=fwd();let_go(1);steps(1);out.quick.shot=v.state.shots===n+1;out.quick.speed=R(last().velocity.length());out.quick.alongBow=R(last().velocity.clone().normalize().dot(aim));out.quick.cleared=!v.charging&&v.quickHand===null;
+ // 2. a short tap is a soft shot; a touch too short is no shot
+ n=v.state.shots;pull(1);steps(18);let_go(1);steps(1);out.softTap={shot:v.state.shots===n+1,speed:R(last().velocity.length())};
+ // 3. trigger on the bow hand itself also shoots
+ n=v.state.shots;pull(0);steps(60);let_go(0);steps(1);out.bowHandTrigger=v.state.shots===n+1;
+ // single-handed: a trigger at the string is still a quick draw
+ {const s0=v.bow.localToWorld(V(0,v.REST,.14));v.hands[1].grip.position.copy(v.rig.worldToLocal(s0));steps(1);pull(1);steps(1);out.oneAtString=v.quickHand===v.hands[1];let_go(1);steps(1);}
+ v.setDraw("two");
+ // 4. trigger with the free hand at the string: the real draw, power from how far the hand is pulled back
+ const str=v.bow.localToWorld(V(0,v.REST,.14));v.hands[1].grip.position.copy(v.rig.worldToLocal(str.clone()));steps(1);
+ n=v.state.shots;pull(1);steps(1);out.string={taken:v.drawHand===v.hands[1]&&v.quickHand===null};
+ const back=v.bow.localToWorld(V(0,v.REST,.14+.2));v.hands[1].grip.position.copy(v.rig.worldToLocal(back.clone()));steps(2);out.string.half=R(v.charge);
+ const far=v.bow.localToWorld(V(0,v.REST,.14+.45));v.hands[1].grip.position.copy(v.rig.worldToLocal(far.clone()));steps(2);out.string.full=R(v.charge);
+ // twist the bow hand 25 degrees: the bow stays along the arrow and the shot does not turn
+ const before=fwd(),hold=v.hands[0].grip.quaternion.clone();v.hands[0].grip.quaternion.multiply(new T.Quaternion().setFromEuler(new T.Euler(0,.44,0)));steps(3);
+ const arrowDir=V(0,0,-1).applyQuaternion(v.preview.quaternion);out.string.bowAlongArrow=R(fwd().dot(arrowDir));out.string.twistTurnsAimBy=R(Math.acos(Math.min(1,fwd().dot(before)))*57.3);
+ // a jolt of the string hand is smoothed, not followed at once
+ const jolt=far.clone().add(V(.05,0,0));v.hands[1].grip.position.copy(v.rig.worldToLocal(jolt));steps(1);out.string.joltFollowed=R(v.drawAt.distanceTo(far)/.05);
+ v.hands[1].grip.position.copy(v.rig.worldToLocal(far.clone()));steps(6);
+ let_go(1);steps(1);out.string.shot=v.state.shots===n+1;out.string.speed=R(last().velocity.length());v.hands[0].grip.quaternion.copy(hold);
+ // 5. on the range a trigger shot uses an arrow and can score
+ v.setDraw("one");v.setStage(0);steps(2);const a0=v.range.arrows;v.hands[1].grip.position.set(.25,1,-.1);steps(1);pull(1);steps(60);let_go(1);steps(2);out.rangeUsesArrow=v.range.arrows===a0-1;
+ // 6. losing tracking mid-draw cancels instead of firing
+ n=v.state.shots;pull(1);steps(20);v.hands[1].source=null;steps(2);out.lostTrackingCancels=!v.charging&&v.state.shots===n;v.hands[1].source={handedness:"right"};steps(2);
+ // 7. a grip squeeze near the bow still swaps hands, and a left-handed archer is given the bow in the right
+ v.hands[1].grip.position.copy(v.rig.worldToLocal(v.bow.position.clone()));steps(1);squeeze(1);steps(2);out.gripSwaps=v.bowHand===v.hands[1];
+ // the right stick click swaps the mode in the headset
+ v.hands[0].source={handedness:"left",gamepad:{axes:[0,0,0,0],buttons:[{},{},{},{pressed:false}]}};v.hands[1].source={handedness:"right",gamepad:{axes:[0,0,0,0],buttons:[{},{},{},{pressed:true}]}};const was=v.state.draw;steps(2);out.stickClickSwaps=v.state.draw!==was;steps(5);out.heldClickSwapsOnce=v.state.draw!==was;
+ out.savedDraw=JSON.parse(w.localStorage.getItem("brackenford-seven-bells-v1")).draw;
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r="THREW "+e.stack;}document.getElementById("out").textContent="RESULT "+r;}else if(++tries>80){clearInterval(t);document.getElementById("out").textContent="RESULT no vale";}},250);
+</script>

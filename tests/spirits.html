@@ -1,0 +1,55 @@
+<!doctype html><meta charset="utf-8"><iframe id="g" src="../Brackenford-Seven-Bells.html" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+const errors=[];
+function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={},R=n=>+n.toFixed(2),V=(x,y,z)=>new T.Vector3(x,y,z),r=v.range,Y=v.YARD,S=v.spirits,steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ const fin=()=>{let n=0;while(r.phase!=="results"&&n++<1200)steps(1);};
+ // loose a full-power arrow that will pass through a point in the world
+ function shootPoint(to,wait=true){steps(1);const o=v.rig.position.clone().add(V(0,1.5,0)),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;
+  const ang=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);if(wait)steps(Math.ceil((d/55+.3)/.016));}
+ const heart=sp=>sp.hitMesh.getWorldPosition(V()),first=v.STAGES.findIndex(s=>s.spirits);
+ v.begin(false);steps(2);
+ out.firstSpiritStage=first+1;out.stages=v.STAGES.length;
+ // --- First spirit: one sitter
+ v.setStage(first);steps(40);
+ out.sitter={shown:S[0].base.visible,live:S[0].live,state:S[0].state,others:S.slice(1).some(s=>s.base.visible),dist:R(S[0].base.position.distanceTo(v.rig.position)),inTargets:v.range.on};
+ shootPoint(heart(S[0]));out.sitter.woken=S[0].done&&S[0].state==="waking";out.sitter.score=r.score;out.sitter.hits=r.hits;
+ const arrowAfter=v.projectiles[v.projectiles.length-1];out.sitter.arrowFallsSpent=!!arrowAfter&&arrowAfter.spent===true;
+ {let n=0;while(r.phase==="play"&&n++<300)steps(1);}out.sitter.endsEarly={phase:r.phase,arrowsLeft:r.arrows};
+ out.sitter.replay={on:v.replay.on,spirit:!!(r.shot&&r.shot.spirit),asleepAgain:S[0].base.visible&&S[0].state==="idle"};
+ fin();out.sitter.result={stars:r.stars,earned:r.earned,gone:!S[0].base.visible,open:v.state.range.open===first+1};
+ // --- a near miss startles it; it comes back somewhere else
+ v.setStage(first);steps(40);const home=S[0].base.position.clone();
+ const beside=home.clone().add(V(Y.rx*1.6,0,Y.rz*1.6));shootPoint(beside);steps(8);
+ out.startle={state:S[0].state,live:S[0].live,streak:r.streak};steps(60);out.startle.away=S[0].state;
+ steps(300);out.startle.back={state:S[0].state,live:S[0].live,moved:R(S[0].base.position.distanceTo(home))};
+ // a miss far away does not startle
+ const farMiss=S[0].base.position.clone().add(V(Y.rx*6,0,Y.rz*6));shootPoint(farMiss);steps(8);out.startle.farMissIgnored=S[0].state==="idle";
+ // --- The warren: four sitters, woken one after another
+ v.setStage(first+1);steps(40);out.warren={count:S.filter(s=>s.base.visible).length};
+ for(const sp of S.filter(s=>s.cfg))shootPoint(heart(sp));out.warren.woken=r.hits;out.warren.streak=r.best;fin();out.warren.stars=r.stars;
+ // --- Ears in the grass
+ v.setStage(first+2);steps(40);const hid=S[0];
+ out.hide={sunk:R(hid.root.position.y),grass:v.grassClumps.filter(g=>g.visible).length,hasClump:!!hid.clump,earsAboveGround:R(heart(hid).y-hid.base.position.y)};
+ const low=hid.base.position.clone().add(V(0,.05,0)).add(V(Y.rx*.75,0,Y.rz*.75));shootPoint(low);steps(6);out.hide.bodyShotMisses=r.hits===0;out.hide.startledGoneForGood=(steps(60),!hid.base.visible&&hid.done);
+ shootPoint(heart(S[1]));out.hide.earShotWakes=r.hits===1;
+ // --- Creepers
+ v.setStage(first+3);steps(40);const cr=S[0],a0=cr.base.position.clone();let sunkSeen=false,openSeen=false;
+ for(let i=0;i<700;i++){steps(1);if(cr.sunk)sunkSeen=true;else if(cr.wait<=0)openSeen=true;}
+ out.creep={moved:R(cr.base.position.distanceTo(a0)),sinksInGrass:sunkSeen,crossesOpen:openSeen};
+ {let n=0;while(!(cr.wait<=0&&!cr.sunk)&&n++<600)steps(1);}shootPoint(heart(cr).add(V(0,0,0)),false);steps(30);out.creep.hitInOpen=r.hits>=1;
+ // --- Bolt
+ v.setStage(first+4);steps(40);const rn=S[0],b0=rn.base.position.clone();
+ {let n=0;while(rn.wait>0&&n++<200)steps(1);}const t0=rn.base.position.clone();steps(20);out.run={speed:R(rn.base.position.distanceTo(t0)/(20*.016))};
+ {let n=0;while(rn.wait<=0&&n++<400)steps(1);}shootPoint(heart(rn));out.run.hitWhileStopped=r.hits===1;
+ // lead a running one: aim where it will be when the arrow arrives
+ const r2=S[1];{let n=0;while(r2.wait>0&&n++<300)steps(1);}steps(3);
+ const p0=heart(r2);steps(1);const p1=heart(r2),vel=p1.clone().sub(p0).divideScalar(.016);vel.y=0;p1.y=r2.base.position.y+.45;const tof=p1.distanceTo(v.rig.position)/61+.032;out.run.leadDebug={vel:R(vel.length()),wait:R(r2.wait),tof:R(tof)};
+ const before=r.hits;shootPoint(p1.clone().addScaledVector(vel,tof),false);steps(40);out.run.ledShotHits=r.hits===before+1;
+ // --- leaving the range puts everything away
+ v.setMode("roam");steps(2);out.roamHidesAll=!S.some(s=>s.base.visible)&&!v.grassClumps.some(g=>g.visible);v.setMode("range");steps(2);
+ out.errors=errors;return out;
+}
+let tries=0;const t=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(w&&w.vale){clearInterval(t);let r;try{r=JSON.stringify(run());}catch(e){r="THREW "+e.stack;}document.getElementById("out").textContent="RESULT "+r;}else if(++tries>80){clearInterval(t);document.getElementById("out").textContent="RESULT no vale";}},250);
+</script>

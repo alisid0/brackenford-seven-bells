@@ -1,0 +1,10 @@
+# Unity generates these; they are rebuilt when the project is opened
+BrackenfordSevenBells/Library/
+BrackenfordSevenBells/Logs/
+BrackenfordSevenBells/UserSettings/
+BrackenfordSevenBells/Temp/
+BrackenfordSevenBells/obj/
+# raw models from Tripo: large, and the game uses the reduced files in assets/ instead
+assets/source/
+# Vercel's local link to the hosting project
+.vercel/

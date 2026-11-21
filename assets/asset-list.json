@@ -1,0 +1,19 @@
+{
+  "style": "stylised low-poly game asset, flat shaded, simple clean shapes, soft warm colours, a single object centred on a plain white background, no base or plinth, no text",
+  "assets": [
+    {"file": "mist-hare-sitting", "faces": 4000, "prompt": "a spirit hare made of pale gold leaves and soft light, sitting upright with long ears raised, friendly, no fur"},
+    {"file": "mist-hare-crouching", "faces": 4000, "prompt": "a spirit hare made of pale gold leaves and soft light, crouched low to the ground with ears laid back, no fur"},
+    {"file": "mist-hare-running", "faces": 4000, "prompt": "a spirit hare made of pale gold leaves and soft light, in mid-leap with legs stretched out, no fur"},
+    {"file": "lantern-bird-perched", "faces": 3500, "prompt": "a spirit songbird made of folded paper and warm lantern light, perched with wings closed"},
+    {"file": "lantern-bird-flying", "faces": 3500, "prompt": "a spirit songbird made of folded paper and warm lantern light, wings spread wide in flight"},
+    {"file": "sun-bird", "faces": 6000, "prompt": "a spirit pheasant with a long sweeping tail, made of golden leaves and bright sunlight, wings half open, majestic and gentle"},
+    {"file": "tall-grass-clump", "faces": 1500, "prompt": "a clump of tall meadow grass, knee high, soft green and straw yellow, simple blades"},
+    {"file": "meadow-bush", "faces": 2500, "prompt": "a round bush with small pale flowers, soft greens"},
+    {"file": "fallen-log", "faces": 2500, "prompt": "a fallen tree log with moss on top, warm browns"},
+    {"file": "perch-post", "faces": 1500, "prompt": "a weathered wooden fence post with a short crossbar"},
+    {"file": "market-stall", "faces": 9000, "prompt": "a medieval wooden market stall with a striped cloth awning and an empty counter"},
+    {"file": "bow-short", "faces": 3000, "prompt": "a short wooden bow with a straight grip, unstrung with no string, light wood"},
+    {"file": "bow-war", "faces": 3000, "prompt": "a tall dark yew longbow with a straight grip, unstrung with no string"},
+    {"file": "bow-recurve", "faces": 3000, "prompt": "a horn recurve bow with curved tips, unstrung with no string, dark horn and red binding"}
+  ]
+}

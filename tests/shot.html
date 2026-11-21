@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0}iframe{border:0;width:1000px;height:600px}</style>
+<iframe id="g" src="../Brackenford-Seven-Bells.html"></iframe><pre id="out">PENDING</pre>
+<script>
+const name=new URLSearchParams(location.search).get("v")||"range";
+const t=setInterval(()=>{
+ const w=document.getElementById("g").contentWindow;if(!w||!w.vale)return;clearInterval(t);const v=w.vale,T=v.T,Y=v.YARD,V=(x,y,z)=>new T.Vector3(x,y,z);
+ const steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};
+ v.begin(false);steps(2);
+ const shoot=(m,wait)=>{const o=v.rig.position.clone().add(V(0,1.5,0)),to=m.root.getWorldPosition(V()),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7,ang=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1,true);steps(wait);};
+ if(name==="range"){v.setStage(3);steps(5);shoot(v.rangeRounds[0],22);}
+ if(name==="wind"){v.setStage(15);steps(40);}
+ if(name==="results"){for(let i=0;i<5;i++)shoot(v.rangeRounds[0],16);{let n=0;while(v.range.phase!=="results"&&n++<900)steps(1);}v.look.pitch=-.05;steps(2);}
+ if(name==="replay"){v.setStage(3);steps(3);shoot(v.rangeRounds[1],40);for(let i=0;i<5;i++){v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(30);}{let n=0;while(!v.replay.on&&n++<400)steps(1);}steps(+(new URLSearchParams(location.search).get("f")||70));}
+ if(name==="miss"){v.setStage(4);steps(3);const m=v.rangeRounds[0],o=v.rig.position.clone().add(V(0,1.5,0)),to=m.root.getWorldPosition(V()).add(V(Y.rx*2.4,0,Y.rz*2.4)),fl=V(to.x-o.x,0,to.z-o.z),d=fl.length(),h=to.y-o.y,sp=62,g=7,an=Math.atan((sp*sp-Math.sqrt(sp*sp*sp*sp-g*(g*d*d+2*h*sp*sp)))/(g*d));v.loose(o,fl.normalize().multiplyScalar(Math.cos(an)).add(V(0,Math.sin(an),0)),1);steps(90);for(let i=0;i<5;i++){v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(30);}{let n=0;while(!v.replay.on&&n++<400)steps(1);}steps(+(new URLSearchParams(location.search).get("f")||80));}
+ if(name==="bow"){const q=new URLSearchParams(location.search);v.setHand(q.get("h")||"right");const c=w.document.getElementById("view");steps(40);if(q.get("d")){c.dispatchEvent(new w.MouseEvent("mousedown",{button:0,bubbles:true}));steps(+q.get("d"));}}
+ if(name==="spirit"){const q=new URLSearchParams(location.search),i=v.STAGES.findIndex(s=>s.spirits)+(+q.get("s")||0);v.setStage(i);steps(+q.get("f")||60);const sp=v.spirits[+q.get("k")||0],b=sp.base.position;if(q.get("near")){const d=+q.get("near");v.rig.position.set(b.x-Y.ux*d+Y.rx*.8,b.y,b.z-Y.uz*d+Y.rz*.8);v.look.yaw=Math.atan2(-(b.x-v.rig.position.x),-(b.z-v.rig.position.z));v.look.pitch=-.32;steps(2);}}
+ if(name==="pose"){const q=new URLSearchParams(location.search),i=v.STAGES.findIndex(s=>s.spirits);v.setStage(i);steps(40);const sp=v.spirits[0],b=sp.base.position;sp.base.rotation.y=Math.atan2(Y.rx,Y.rz);sp.state="pose";sp.gait=sp.gaitTo=+q.get("g")||0;sp.phase=+q.get("p")||0;sp.rear=+q.get("r")||0;v.rig.position.set(b.x-Y.ux*2.1,b.y,b.z-Y.uz*2.1);v.look.yaw=Math.atan2(-(b.x-v.rig.position.x),-(b.z-v.rig.position.z));v.look.pitch=-.3;v.tick(0);sp.gait=sp.gaitTo=+q.get("g")||0;sp.phase=+q.get("p")||0;sp.rear=+q.get("r")||0;v.posePeek(sp);}
+ if(name==="board"){for(let i=0;i<2;i++)shoot(v.rangeRounds[0],16);v.look.yaw-=.3;steps(3);}
+ document.getElementById("out").textContent="IMG "+v.shot()+" END";
+},200);
+</script>

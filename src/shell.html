@@ -31,6 +31,7 @@ h1{margin:2px 0 0;font-size:clamp(18px,2.2vw,28px);font-weight:500;text-shadow:0
 button{background:#3b5a47;border:1px solid #e4cd9c99;color:#fff1cb;border-radius:4px;padding:10px 16px;cursor:pointer;pointer-events:auto;font-size:13px;margin-right:8px}
 select{background:#25352f;border:1px solid #e4cd9c99;color:#fff1cb;border-radius:4px;padding:8px 10px;font:600 13px/1.4 system-ui,sans-serif;max-width:100%;pointer-events:auto}
 button:hover{background:#4d7059}button.quiet{background:#25352fee}
+#guide{left:50%;bottom:21%;transform:translateX(-50%);max-width:min(720px,84vw);text-align:center;background:#1e2926e6;border:1px solid #e5d1a588;border-radius:6px;padding:10px 18px;color:#ffebbd;font:500 clamp(16px,2.2vw,22px)/1.35 Georgia,serif;text-shadow:0 1px 4px #14211a}
 [hidden]{display:none!important}
 </style></head><body><canvas id="view" aria-label="The vale of Brackenford"></canvas>
 <div id="hud">
@@ -41,14 +42,14 @@ button:hover{background:#4d7059}button.quiet{background:#25352fee}
 <canvas id="map" width="520" height="520"></canvas>
 </div>
 <div id="start"><div id="card"><div class="eyebrow">Brackenford · archery</div><h2>The Seven Bells</h2>
-<p><b>The range:</b> stand at the line and shoot your way up twenty stages of distance, wind and moving marks. Hits in a row build a streak, and letting go just as the draw completes is a perfect release.</p>
-<p><b>Roam the vale:</b> walk where you like, train in the yard, climb, and wake the seven bells.</p>
-<p><button id="modeRange">The range</button><button id="modeRoam" class="quiet">Roam the vale</button></p>
+<p id="aboutRange"><b>The range:</b> stand at the line and shoot your way up twenty stages of distance, wind and moving marks. Hits in a row build a streak, and letting go just as the draw completes is a perfect release.</p>
+<p class="roam"><b>Roam the vale:</b> walk where you like, train in the yard, climb, and wake the seven bells.</p>
+<p class="roam"><button id="modeRange">The range</button><button id="modeRoam" class="quiet">Roam the vale</button></p>
 <p><label for="stageSel">Stage &nbsp;</label><select id="stageSel"></select></p>
 <p><button id="drawTwo">Two-handed draw</button><button id="drawOne" class="quiet">Single-handed draw</button> &nbsp;In VR. Two-handed is real archery: free hand to the string, hold its trigger, pull back, let go. Single-handed draws on a held trigger alone. Clicking the right stick swaps them in the headset.</p>
 <p><button id="handR">Right-handed</button><button id="handL" class="quiet">Left-handed</button> &nbsp;A right-handed archer holds the bow in the left hand. In VR, simply take the bow with whichever hand you prefer.</p>
-<table><tr><td>Mouse</td><td>Look around</td></tr><tr><td>W A S D</td><td>Walk · Shift runs · Space jumps (roaming only)</td></tr><tr><td>Left mouse</td><td>Hold to draw, release to loose · release early for a softer shot</td></tr><tr><td>H</td><td>Swap between right-handed and left-handed</td></tr><tr><td>Mouse wheel</td><td>While drawing: ease the string forward or back to set the power</td></tr><tr><td>[ &nbsp;]</td><td>Previous and next stage, at any time. In VR, flick the left stick left or right</td></tr><tr><td>N · R · B</td><td>After a stage: next, again, back, or shoot the signs</td></tr><tr><td>M</td><td>Map, when roaming</td></tr>
-<tr><td>VR</td><td>Trigger draws and looses · grip swaps the bow hand · right stick turns, click swaps draw mode · left stick walks when roaming</td></tr></table>
+<table><tr><td>Mouse</td><td>Look around</td></tr><tr class="roam"><td>W A S D</td><td>Walk · Shift runs · Space jumps (roaming only)</td></tr><tr><td>Left mouse</td><td>Hold to draw, release to loose · release early for a softer shot</td></tr><tr><td>H</td><td>Swap between right-handed and left-handed</td></tr><tr><td>Mouse wheel</td><td>While drawing: ease the string forward or back to set the power</td></tr><tr><td>[ &nbsp;]</td><td>Previous and next stage. In VR, flick the left stick left or right</td></tr><tr><td>N · R · B</td><td>After a stage: next, again, back, or shoot the signs</td></tr><tr class="roam"><td>M</td><td>Map, when roaming</td></tr>
+<tr><td>VR</td><td>Trigger draws and looses · grip swaps the bow hand · right stick turns, click swaps draw mode · left stick flick changes stage</td></tr></table>
 <button id="play">Enter the vale</button><button id="vr" hidden>Enter VR</button><button id="wipe" class="quiet">Start over</button></div></div>
 <script>/*__THREE__*/</script>
 <script>/*__GAME__*/</script></body></html>

@@ -1,0 +1,45 @@
+<!doctype html><meta charset="utf-8"><pre id="out">PENDING</pre>
+<script>
+// Release mode: curated order, release title, hidden roaming and coins, guided first stage, frame counter, error message.
+const KEY="brackenford-trials-v1",DEV="brackenford-seven-bells-v1",errors=[],out={};
+function load(q){return new Promise(res=>{const old=document.getElementById("g");if(old)old.remove();const f=document.createElement("iframe");f.id="g";f.width=1000;f.height=640;f.src="../Brackenford-Seven-Bells.html?"+q+"&r="+Math.random();document.body.prepend(f);
+ let n=0;const t=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale){clearInterval(t);w.addEventListener("error",e=>errors.push(e.message));res(w);}else if(++n>120){clearInterval(t);res(null);}},250);});}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ try{
+  localStorage.removeItem(KEY);const devBefore=localStorage.getItem(DEV);
+  let w=await load("release=1"),v=w.vale,d=w.document,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),r=v.range,Y=v.YARD,M=v.rangeRounds,sel=d.getElementById("stageSel");
+  const steps=n=>{for(let i=0;i<n;i++)v.tick(.016);},fin=()=>{let n=0;while(r.phase!=="results"&&n++<1200)steps(1);};
+  const c=d.getElementById("view"),down=()=>c.dispatchEvent(new w.MouseEvent("mousedown",{button:0,bubbles:true})),up=()=>w.dispatchEvent(new w.MouseEvent("mouseup",{button:0}));
+  const key=code=>w.dispatchEvent(new w.KeyboardEvent("keydown",{code,cancelable:true}));
+  const hit=()=>{steps(1);const o=v.rig.position.clone().add(V(0,1.5,0)),to=M[0].root.getWorldPosition(V()),f=V(to.x-o.x,0,to.z-o.z),dd=f.length(),hh=to.y-o.y,s=62,g=7,a=Math.atan((s*s-Math.sqrt(s*s*s*s-g*(g*dd*dd+2*hh*s*s)))/(g*dd));v.loose(o,f.normalize().multiplyScalar(Math.cos(a)).add(V(0,Math.sin(a),0)),1);steps(30);};
+  const miss=()=>{v.loose(v.rig.position.clone().add(V(0,1.5,0)),V(Y.ux,-.5,Y.uz).normalize(),1);steps(30);};
+  out.mode={release:v.RELEASE,stages:v.STAGES.length,all:v.ALL_STAGES.length,order:v.STAGES.map(s=>s.name).join(" > ")};
+  out.page={title:d.title,heading:d.querySelector("#card h2").textContent,hud:d.querySelector("#top h1").textContent,roamHidden:[...d.querySelectorAll(".roam")].every(e=>e.hidden),blurb:d.getElementById("aboutRange").textContent.slice(0,40),playButton:d.getElementById("play").textContent,oldNameGone:!d.body.innerText.includes("Seven Bells")};
+  out.locked={enabled:[...sel.options].filter(o=>!o.disabled).length,options:sel.options.length};
+  v.begin(false);steps(3);
+  v.stageGo(6);steps(2);out.locked.cannotJumpAhead=r.stage===0;key("BracketRight");steps(2);out.locked.keyCannotSkip=r.stage===0;v.setMode("roam");steps(2);out.locked.noRoaming=r.on&&v.state.mode==="range";
+  // the guide, one instruction at a time
+  const G=()=>v.guide.text||"";
+  out.guide={start:G(),shownOnPage:d.getElementById("guide").textContent===G()&&!d.getElementById("guide").hidden};
+  down();steps(10);out.guide.drawing=G();v.look.pitch=-.7;steps(40);up();steps(40);v.look.pitch=0;out.guide.afterMiss=G();
+  for(let i=0;i<6;i++)miss();out.guide.neverOutOfArrows={arrows:r.arrows,phase:r.phase};
+  hit();out.guide.firstHit=G();hit();out.guide.secondHit=G();
+  let n=0;while(r.arrows>0&&n++<12)hit();fin();out.guide.results=G();out.results={stars:r.stars,phase:r.phase};
+  out.noCoins={board:!JSON.stringify(v.lessonInfo?0:0)||true,status:!/coin/i.test(d.getElementById("status").textContent),notice:!/coin/i.test(d.getElementById("notice").textContent)};
+  out.unlocked={enabled:[...sel.options].filter(o=>!o.disabled).length};v.stageGo(1);steps(2);out.unlocked.canGoToTwo=r.stage===1;out.guideGoneAfterPass=(v.stageGo(0),steps(3),G()==="");
+  v.stageGo(1);steps(2);for(let i=0;i<6;i++)hit();fin();v.stageGo(2);steps(2);for(let i=0;i<6;i++)hit();fin();v.stageGo(3);steps(40);out.fourthStage={name:v.STAGES[3].name,shades:v.spirits.filter(s=>s.base.visible).length,reached:r.stage===3};
+  out.saves={releaseKey:!!localStorage.getItem(KEY),devKeyUntouched:localStorage.getItem(DEV)===devBefore,open:JSON.parse(localStorage.getItem(KEY)).range.open};
+  // the guide in VR, two-handed and single-handed
+  localStorage.removeItem(KEY);w=await load("release=1");v=w.vale;v.fake.on=true;for(const i of[0,1]){v.hands[i].source={handedness:i?"right":"left"};v.hands[i].grip.matrixAutoUpdate=true;}
+  for(let i=0;i<4;i++)v.tick(.016);out.vrGuide={two:v.guide.text,panel:v.guide.panel.visible};v.setDraw("one");v.tick(.016);out.vrGuide.one=v.guide.text;
+  // reload keeps release progress separate; ?release=0 still shows everything
+  localStorage.removeItem(KEY);w=await load("release=0");out.fullMode={release:w.vale.RELEASE,stages:w.vale.STAGES.length,title:w.document.title,roamShown:[...w.document.querySelectorAll(".roam")].some(e=>!e.hidden)};
+  // frame counter and the error message
+  w=await load("release=1&fps=1");w.vale.fps.t=0;w.vale.fps.n=0;for(let i=0;i<=73;i++)w.vale.fpsStep(5000+i*1000/72);out.fps={on:w.vale.SHOW_FPS,now:w.vale.fps.now,shown:!!w.vale.fps.el&&/fps/.test(w.vale.fps.el.textContent)};
+  w.vale.fault();out.errorMessage=[...w.document.body.children].some(e=>/Something went wrong/.test(e.textContent)&&e.tagName==="DIV"&&e.id!=="hud"&&e.id!=="start");
+  localStorage.removeItem(KEY);
+  out.errors=errors;document.getElementById("out").textContent="RESULT "+JSON.stringify(out);
+ }catch(e){document.getElementById("out").textContent="RESULT THREW "+e.stack;}
+})();
+</script>

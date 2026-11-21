@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>all tests</title><pre id="out">RUNNING</pre>
+<script>
+// Runs every test page one after another and prints a short line for each: whether it threw, any page errors, and which of
+// its checks came back false. A false is not always a failure (some checks are expected to be false); read them against the list below.
+const TESTS=["release","range","spirits","birds","select","trigger","hand","power","coins","slice1"];
+// checks that are false by design
+// (spirits run.ledShotHits and run.hitWhileStopped depend on a randomly moving runner, so they are reported but not counted)
+const FLAKY={"spirits":["run.ledShotHits","run.hitWhileStopped"]};
+const EXPECTED={"spirits":["sitter.others","startle.live"],"birds":["perch.nearMiss.live","perch.farMissIgnored","flush.landingFlushes.others"],"range":["results.back","weakRun.next","roam.rounds","longHit.miss"],"select":[],"trigger":[],"hand":[],"power":[],"coins":[],"slice1":[],"release":["fullMode.release"]};
+const falses=(o,p="")=>Object.entries(o||{}).flatMap(([k,v])=>v===false?[p+k]:v&&typeof v==="object"&&!Array.isArray(v)?falses(v,p+k+"."):[]);
+const lines=[];
+(async()=>{
+ const started=Date.now();
+ for(const name of TESTS){
+  for(const k of["brackenford-seven-bells-v1","brackenford-trials-v1"])localStorage.removeItem(k);   // every test starts from no saved progress
+  const f=document.createElement("iframe");f.width=1100;f.height=700;f.src=name+".html?r="+Math.random();document.body.append(f);
+  let text="";for(let i=0;i<360;i++){await new Promise(r=>setTimeout(r,500));try{text=f.contentDocument.getElementById("out").textContent;}catch{}if(text.startsWith("RESULT"))break;}
+  f.remove();
+  let line=name+": ";
+  if(!text.startsWith("RESULT"))line+="NO RESULT";
+  else if(text.startsWith("RESULT THREW")||text.startsWith("RESULT no"))line+="FAILED "+text.slice(7,260);
+  else{let o;try{o=JSON.parse(text.slice(7));}catch{o=null;}
+   if(!o)line+="UNREADABLE";else{const all=falses(o).filter(k=>!(EXPECTED[name]||[]).includes(k)),bad=all.filter(k=>!(FLAKY[name]||[]).includes(k)),luck=all.filter(k=>(FLAKY[name]||[]).includes(k));line+=(o.errors&&o.errors.length?"PAGE ERRORS "+JSON.stringify(o.errors).slice(0,200)+" ":"")+(bad.length?"UNEXPECTED FALSE: "+bad.join(", "):"ok")+(luck.length?" (chance-dependent, missed this run: "+luck.join(", ")+")":"")+(name==="release"?"  | "+JSON.stringify({order:o.mode.order,page:o.page,guide:o.guide,vrGuide:o.vrGuide,fps:o.fps}):"");}}
+  lines.push(line);document.getElementById("out").textContent="RUNNING\n"+lines.join("\n");
+ }
+ document.getElementById("out").textContent="DONE in "+Math.round((Date.now()-started)/1000)+"s\n"+lines.join("\n");
+})();
+</script>

@@ -2,7 +2,7 @@
 <script>
 // Two loads of the game: a fresh one, and one over a save made before coins existed.
 const KEY="brackenford-seven-bells-v1",errors=[],out={};
-function load(){return new Promise(res=>{const old=document.getElementById("g");if(old)old.remove();const f=document.createElement("iframe");f.id="g";f.width=1000;f.height=640;f.src="../Brackenford-Seven-Bells.html?"+Math.random();document.body.prepend(f);
+function load(){return new Promise(res=>{const old=document.getElementById("g");if(old)old.remove();const f=document.createElement("iframe");f.id="g";f.width=1000;f.height=640;f.src="../Brackenford-Seven-Bells.html?release=0&r="+Math.random();document.body.prepend(f);
  let n=0;const t=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale){clearInterval(t);w.addEventListener("error",e=>errors.push(e.message));res(w);}else if(++n>120){clearInterval(t);res(null);}},250);});}
 function play(w){
  const v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),r=v.range,Y=v.YARD,M=v.rangeRounds,steps=n=>{for(let i=0;i<n;i++)v.tick(.016);};

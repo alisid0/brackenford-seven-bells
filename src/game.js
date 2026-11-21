@@ -1,4 +1,18 @@
 'use strict';
+// Release settings come from src/config.json at build time. In release mode the game shows the curated stage order under the
+// release title and hides what is not finished (roaming, coins, free stage choice). Add ?release=0 to the address to see
+// everything as before, ?release=1 to force release mode, and ?fps=1 for a frame counter.
+const CONFIG=typeof BUILD_CONFIG!=='undefined'?BUILD_CONFIG:{release:false,title:'The Seven Bells',subtitle:'',world:'Brackenford',blurb:'',order:[]},QUERY=new URLSearchParams(location.search);
+const RELEASE=QUERY.has('release')?QUERY.get('release')!=='0':!!CONFIG.release, SHOW_FPS=QUERY.get('fps')==='1';
+// If something breaks, say so plainly instead of leaving the player with a frozen screen.
+let oops=false;
+function fault(){
+ if(oops)return;oops=true;const b=document.createElement('div');
+ b.textContent='Something went wrong. Please reload the page. Your progress is saved.';
+ b.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9;background:#7a2a22;color:#fff5d8;padding:10px 16px;border-radius:5px;font:600 14px system-ui,sans-serif;box-shadow:0 2px 12px #0008';
+ document.body.append(b);
+}
+window.addEventListener('error',fault);window.addEventListener('unhandledrejection',fault);
 const $=id=>document.getElementById(id), T=THREE, V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
 const clamp=T.MathUtils.clamp, lerp=T.MathUtils.lerp, smooth=T.MathUtils.smoothstep, hyp=Math.hypot;
 
@@ -222,7 +236,7 @@ function updateGrass(px,pz){
 }
 
 // ---------------------------------------------------------------- saved progress
-const SAVE='brackenford-seven-bells-v1';
+const SAVE=RELEASE?'brackenford-trials-v1':'brackenford-seven-bells-v1';   // the release keeps its own progress, as its stages are in a different order
 const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',mode:'range',range:{open:0,best:[],stars:[]}};
 try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[]};
  state.coins=typeof s.coins==='number'?Math.max(0,s.coins|0):state.range.stars.reduce((a,b)=>a+(b||0)*25,0)+Math.round(state.range.best.reduce((a,b)=>a+(b||0),0)/20);}}catch{}
@@ -424,7 +438,7 @@ function trainingStep(x,z,y){
 // Stand at the line and shoot: twenty short stages of distance, wind and moving marks. No walking.
 // A mark is [metres down the lane, metres to the right, size, slide, pop];
 // slide is [metres each way, speed], pop is [seconds up, seconds down, offset]. Wind is [steady, gust], positive blowing to the right.
-const STAGES=[
+const ALL_STAGES=[
  {name:'First marks',arrows:5,marks:[[10,0,1.2]]},
  {name:'Stepping back',arrows:6,marks:[[15,-2.5,1.2],[20,2.5,1.2]]},
  {name:'The drop',arrows:6,marks:[[30,0,1.4]]},
@@ -458,6 +472,9 @@ const STAGES=[
  {name:'Flush',arrows:8,marks:[],spirits:[{t:'flush',at:[13,-4]},{t:'flush',at:[18,3.5]},{t:'flush',at:[24,-1]}]},
  {name:'Flight line',arrows:10,wind:[3,0],marks:[],spirits:[{t:'cross',lane:15},{t:'cross',lane:21},{t:'cross',lane:27}]},
  {name:'Blighted meadow',arrows:10,marks:[],spirits:[{t:'sit',at:[13,-4],alt:[15,-6],back:5},{t:'hide',at:[19,4]},{t:'run',area:[20,27,-6,6]},{t:'perch',at:[16,1,2.6],back:5},{t:'cross',lane:24}]}];
+// The release plays a chosen few of these in its own order (stage numbers, from one); every stage stays here, none is deleted.
+const STAGES=RELEASE&&CONFIG.order.length?CONFIG.order.map(n=>ALL_STAGES[n-1]):ALL_STAGES;
+const coins=text=>RELEASE?'':text;   // coins are earned but not shown until there is something to spend them on
 const range={on:false,stage:0,phase:'idle',arrows:0,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,earned:0,wind:0,endAt:0,t0:0,ideal:1,pending:null,last:''};
 const rangeRounds=[],rangeSigns={};let rangeMeshes=[];
 for(let k=0;k<3;k++){
@@ -796,7 +813,7 @@ function rangeTargets(){
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
 }
 function setStage(i){
- const st=STAGES[i];Object.assign(range,{stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false});
+ const st=STAGES[i];Object.assign(range,{stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
@@ -825,10 +842,41 @@ function setStage(i){
  if($('stageSel').options.length===STAGES.length)$('stageSel').value=i;
  rangeTargets();say((st.chapter?'Chapter 2  ·  '+st.chapter+'  ·  ':'Stage '+(i+1)+'  ·  ')+st.name,st.chapter?5:3);note(523,.25,'sine',.08);
 }
+// ---- the guided first stage: one plain instruction at a time, until stage 1 has been passed once
+const guide=(()=>{
+ const el=document.createElement('div');el.id='guide';el.className='ui';el.hidden=true;$('hud').append(el);
+ const c=document.createElement('canvas');c.width=1024;c.height=256;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
+ // in VR the words stand on a low board just ahead of the line, under the line of sight to the target
+ const[x,z]=yardAt(3.4,0),g=groundAt(x,z),panel=new T.Mesh(new T.PlaneGeometry(2.4,.6),new T.MeshBasicMaterial({map:tex,transparent:true}));
+ panel.position.set(x,g+.62,z);panel.rotation.order='YXZ';panel.rotation.y=Math.atan2(YARD.x-x,YARD.z-z);panel.rotation.x=-.55;panel.visible=false;scene.add(panel);
+ let shown=null;
+ return{panel,get text(){return shown;},set(text){
+  panel.visible=!!text&&xrOn();if(text===shown)return;shown=text;el.textContent=text||'';el.hidden=!text;if(!text)return;
+  const k=c.getContext('2d');k.clearRect(0,0,1024,256);k.fillStyle='rgba(30,41,38,.9)';k.fillRect(0,0,1024,256);k.strokeStyle='#bcaa7a';k.lineWidth=8;k.strokeRect(8,8,1008,240);
+  k.fillStyle='#ffebbd';k.textAlign='center';k.textBaseline='middle';k.font='54px Georgia';const lines=[];let line='';
+  for(const w of text.split(' ')){if(k.measureText(line+' '+w).width>940&&line){lines.push(line);line=w;}else line=line?line+' '+w:w;}
+  lines.push(line);lines.forEach((l,i)=>k.fillText(l,512,128+(i-(lines.length-1)/2)*66));tex.needsUpdate=true;
+ }};
+})();
+const guiding=()=>range.on&&range.guided;
+function guideText(){
+ if(!guiding()||!(playing||xrOn())||range.phase==='replay')return'';
+ const vr=xrOn(),bare=vr&&hands.some(h=>h.source?.hand),one=vr&&state.draw==='one'&&!bare;
+ if(range.phase==='results')return range.stars?(vr?'Well shot. Shoot the NEXT sign to go on':'Well shot. Shoot the NEXT sign, or press N, to go on'):(vr?'Shoot the AGAIN sign to try once more':'Shoot the AGAIN sign, or press R, to try once more');
+ if(range.hits===0){
+  if(charging)return vr?(one?'Point the bow at the target, then let go of the trigger':'Pull your hand back, look along the arrow at the target, then let go'):'Put the small circle on the target, then let go';
+  if(range.fired)return'Aim at the middle of the target and try again';
+  return vr?(bare?'Pinch the bowstring with your free hand and pull it back':one?'Hold a trigger to draw the bow':'Bring your free hand to the bowstring and hold its trigger'):'Hold the left mouse button to draw the bow';
+ }
+ if(range.hits<2)return'A hit. Hits in a row build a streak';
+ return vr?'Let go just as you feel the pulse at full draw: a perfect release':'Let go just as the bar turns white: a perfect release';
+}
 function rangeLoosed(q,perfect){
  if(!range.on)return;q.windy=true;
  if(range.phase!=='play')return;
- q.ranged=true;q.perfect=perfect;q.path=[q.o.position.clone()];range.arrows--;q.final=range.arrows<=0;
+ q.ranged=true;q.perfect=perfect;q.path=[q.o.position.clone()];range.arrows--;range.fired++;
+ if(guiding()&&range.hits===0&&range.arrows<=0)range.arrows=3;   // a learner who has not yet hit anything is never left without arrows
+ q.final=range.arrows<=0;
  if(perfect)note(1320,.18,'sine',.07,0,1760);
  if(range.arrows<=0)range.endAt=elapsed+3.5;
 }
@@ -884,8 +932,8 @@ function showResults(){
  const i=range.stage,stars=range.stars,R=state.range;range.phase='results';stageList();
  rangeSigns.again.base.visible=true;rangeSigns.next.base.visible=i<STAGES.length-1&&R.open>i;rangeSigns.back.base.visible=i>0;rangeTargets();
  if(stars)[523,659,784,1047].slice(0,stars+1).forEach((f,k)=>note(f,.45,'sine',.1,k*.13));else note(196,.5,'triangle',.1,0,147);
- say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars):'Not enough  ·  shoot AGAIN')+(range.earned?'  ·  +'+range.earned+' coins':''),5);
- if(range.earned)[1568,1976,2349].forEach((f,k)=>note(f,.12,'triangle',.05,.5+k*.07));   // coins dropping into the purse
+ say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars):'Not enough  ·  shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
+ if(range.earned&&!RELEASE)[1568,1976,2349].forEach((f,k)=>note(f,.12,'triangle',.05,.5+k*.07));   // coins dropping into the purse
 }
 // ---- the replay: at the end of a stage the best shot is shown again, slowed, from beside its mark
 const replay={on:false,t:0,arrow:null,pts:[],cum:[],len:0,cam:V(),look:V(),gaze:V(),focus:V(),hit:V(),after:0,landed:false,struck:false,moved:false,save:null};
@@ -963,12 +1011,23 @@ function replayStep(dt){
  }
  if(R.t>=end||range.skip)endReplay();
 }
+// frames a second, averaged over each second, and the lowest second since the stage began (?fps=1)
+const fps={now:0,low:0,n:0,t:0,el:null};
+const fpsText=()=>SHOW_FPS?'      '+fps.now+' fps  low '+fps.low:'';
+function fpsStep(now){
+ if(!SHOW_FPS)return;fps.n++;if(!fps.t){fps.t=now;return;}
+ if(now-fps.t>=1000){
+  fps.now=Math.round(fps.n*1000/(now-fps.t));fps.low=fps.low?Math.min(fps.low,fps.now):fps.now;fps.n=0;fps.t=now;
+  if(!fps.el){fps.el=document.createElement('div');fps.el.style.cssText='position:fixed;right:10px;bottom:10px;z-index:8;background:#1e2926d9;color:#ffe5a9;padding:5px 9px;border-radius:4px;font:600 12px system-ui,sans-serif';document.body.append(fps.el);}
+  fps.el.textContent=fps.now+' fps · low '+fps.low;
+ }
+}
 function rangeInfo(){
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(range.phase==='results')return{title:'Stage '+(i+1)+'  ·  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars),
-  text:'Score '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.best[i]||0))+'.  '+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.  +'+range.earned+' coins.  Shoot a sign to go on.',
-  mark:'★ '+R.stars.reduce((a,b)=>a+(b||0),0)+' of '+STAGES.length*3+'      Coins '+state.coins,wind};
- return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak,mark:wind+(R.best[i]?'      best '+R.best[i]:'')+'      Coins '+state.coins,wind};
+  text:'Score '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.best[i]||0))+'.  '+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
+  mark:'★ '+R.stars.reduce((a,b)=>a+(b||0),0)+' of '+STAGES.length*3+coins('      Coins '+state.coins)+fpsText(),wind};
+ return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak,mark:wind+(R.best[i]?'      best '+R.best[i]:'')+coins('      Coins '+state.coins)+fpsText(),wind};
 }
 function rangeStep(dt){
  const w=range.on?STAGES[range.stage].wind||[0,0]:[0,0];
@@ -985,11 +1044,13 @@ function rangeStep(dt){
   r.tilt.rotation.x=lerp(r.tilt.rotation.x,r.up?0:-1.5,Math.min(1,dt*9));
  }
  spiritStep(dt);
+ guide.set(guideText());
  if(range.phase==='play'&&range.endAt&&elapsed>=range.endAt)rangeResults();
  const info=rangeInfo(),key=info.title+info.text+info.mark;
  if(key!==range.last){range.last=key;board.set(key,info);$('status').textContent=info.title+'\n'+info.text.replace(/      /g,'  ·  ')+'\n'+info.mark.replace(/      /g,'  ·  ');}
 }
 function setMode(m){
+ if(RELEASE)m='range';
  state.mode=m;range.on=m==='range';
  for(const id in drills)drills[id].base.visible=!range.on;
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
@@ -1005,11 +1066,11 @@ $('modeRange').onclick=()=>setMode('range');$('modeRoam').onclick=()=>setMode('r
 function stageList(){
  const sel=$('stageSel'),R=state.range;
  if(sel.options.length!==STAGES.length){sel.innerHTML='';STAGES.forEach(()=>sel.add(document.createElement('option')));}
- STAGES.forEach((st,i)=>{const n=R.stars[i]||0;sel.options[i].value=i;sel.options[i].textContent=(i+1)+'.  '+st.name+(st.spirits?'  (shades)':'')+(n?'   '+'★'.repeat(n)+'☆'.repeat(3-n):'')+(R.best[i]?'   best '+R.best[i]:'');});
+ STAGES.forEach((st,i)=>{const n=R.stars[i]||0;sel.options[i].value=i;sel.options[i].disabled=RELEASE&&i>R.open;sel.options[i].textContent=(i+1)+'.  '+st.name+(st.spirits?'  (shades)':'')+(n?'   '+'★'.repeat(n)+'☆'.repeat(3-n):'')+(R.best[i]?'   best '+R.best[i]:'');});
  sel.value=range.on?range.stage:clamp(R.open,0,STAGES.length-1);
 }
 function stageGo(i){
- i=clamp(i|0,0,STAGES.length-1);
+ i=clamp(i|0,0,RELEASE?clamp(state.range.open,0,STAGES.length-1):STAGES.length-1);   // in the release only stages already opened can be chosen
  if(!range.on)setMode('range');
  if(replay.on)endReplay();
  if(i!==range.stage||range.phase!=='play')setStage(i);
@@ -1413,7 +1474,7 @@ function vrStatus(){
  if(!bowHand)return bare?'Close a fist on the bow\nPoint a finger to walk':'Grip near the bow\nwith either hand';
  if(!state.shots)return bare?'Pinch the string\npull back and let go':state.draw==='one'?'Hold a trigger to draw\nlet go to loose':'Free hand to the string\nhold trigger, pull, let go';
  if(charging)return'Draw '+Math.round(charge*10)*10+'%'+String.fromCharCode(10)+(charge>=.95?'full draw':'pull further for more power');
- if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+'\n+'+range.earned+' coins  ·  '+state.coins+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+'\n'+i.wind;}
+ if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
  if(state.lesson<5&&hyp(rig.position.x-YARD.x,rig.position.z-YARD.z)<80){const i=lessonInfo();return i.title.split('  ·  ')[1]+'\n'+(i.mark||'See the board');}
  if(state.lesson<5&&state.bells.size===0)return'Training yard\nfollow the gold needle';
  if(state.done)return'The vale is awake\n'+counts().split('\n').slice(1).join('\n');
@@ -1631,10 +1692,18 @@ function tick(dt,frame){
  saveClock+=dt;if(saveClock>6&&(playing||vr)){saveClock=0;state.pos=[+feetNow.x.toFixed(1),+feetNow.z.toFixed(1),+yaw.toFixed(2)];save();}
 }
 renderer.setAnimationLoop((now,frame)=>{
+ fpsStep(now);
  const dt=last===null?0:Math.min(.05,(now-last)/1000);last=now;
  tick(dt,frame);renderer.render(scene,replay.on&&!renderer.xr.isPresenting?cine:camera);
 });
-flagDrills();setMode(state.mode);stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={perches,bushes,birdLift,stageGo,stageList,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+// the release title and wording, applied only in release mode so nothing is renamed for good until it is approved
+if(RELEASE){
+ document.title=CONFIG.title+(CONFIG.subtitle?' · '+CONFIG.subtitle:'');
+ for(const q of['#top h1','#card h2'])document.querySelector(q).textContent=CONFIG.title;
+ document.querySelector('#top .eyebrow').textContent=CONFIG.subtitle||'';document.querySelector('#card .eyebrow').textContent=(CONFIG.subtitle||'')+(CONFIG.world?'  ·  a tale of '+CONFIG.world:'');
+ $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
+}
+flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
+window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

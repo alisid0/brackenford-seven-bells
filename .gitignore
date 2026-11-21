@@ -10,3 +10,5 @@ assets/source/
 .vercel/
 # the test site is a copy of the built game; only its settings are kept here
 test-site/index.html
+# the trial build with the new hare (node src/build.mjs <three> --new-hare); rebuilt on demand
+Brackenford-Seven-Bells-new-hare.html

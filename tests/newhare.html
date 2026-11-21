@@ -1,0 +1,68 @@
+<!doctype html><meta charset="utf-8"><title>new hare</title><iframe id="g" src="../Brackenford-Seven-Bells-new-hare.html?release=0" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The standing hare and its timed bound inside the game (the trial build made by: node src/build.mjs <three> --new-hare).
+// It runs a stage of runners and a stage of creepers, and for every stretch a paw is meant to be planted it measures
+// how far that paw's joint actually moves over the ground. It also takes pictures from beside a hare and from the
+// archer's place. ?save=1 posts the pictures to the local relay (port 8767) so they land in assets/renders.
+const save=new URLSearchParams(location.search).get("save"),errors=[];
+async function run(){
+ const w=document.getElementById("g").contentWindow;w.addEventListener("error",e=>errors.push(e.message));
+ const v=w.vale,T=v.T,out={newHare:v.NEW_HARE},R=n=>+n.toFixed(3),S=v.spirits,steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);};
+ if(!v.NEW_HARE)throw new Error("this build has no new hare");
+ const put=async(name,url)=>{if(!save)return;const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+ // a picture from 2.3 m to one side of a shade, then the camera goes back where it was
+ function beside(sp,far=2.3){
+  const c=v.camera,p0=c.position.clone(),q0=c.quaternion.clone(),b=sp.base.position,ry=sp.base.rotation.y,at=new T.Vector3(b.x+Math.cos(ry)*far,b.y+.55,b.z-Math.sin(ry)*far);
+  c.parent.updateMatrixWorld(true);c.position.copy(c.parent.worldToLocal(at));c.lookAt(b.x,b.y+.4,b.z);const url=v.shot();c.position.copy(p0);c.quaternion.copy(q0);return url;
+ }
+ const paws=["0_Right_Limb_2","0_Left_Limb_2","1_Right_Limb_3","bone_21"];
+ // follow every moving shade for a while; for each run of frames in which a paw is down, how far its joint drifts
+ function contact(frames,move){
+  const open=new Map(),drifts=[];let moving=0,lowest=9;
+  for(let f=0;f<frames;f++){
+   for(const sp of S)sp.cycDrawn=sp.cyc;   // the game poses a shade before it moves it, so the pose on screen is for the stride it had going into the frame
+   steps(1);
+   for(const sp of S){
+    if(!sp.base.visible||!sp.bound||sp.state!=="idle")continue;
+    // steady travel only: up to speed, and not in the middle of turning to a new heading
+    const turned=Math.abs(sp.base.rotation.y-(sp.lastY??sp.base.rotation.y));sp.lastY=sp.base.rotation.y;
+    const going=sp.gait>.995*(sp.mode==="run"?1:.45)&&sp.wait<=0&&turned<.002;if(going)moving++;
+    const down=move.pose(sp.cycDrawn)._down;
+    paws.forEach((name,k)=>{
+     const key=S.indexOf(sp)+name,p=sp.rig[name].getWorldPosition(new T.Vector3()),g=v.groundAt(p.x,p.z);
+     if(going&&down[k]){lowest=Math.min(lowest,p.y-g);const o=open.get(key);if(o){o.max=Math.max(o.max,Math.hypot(p.x-o.x,p.z-o.z));o.n++;}else open.set(key,{x:p.x,z:p.z,max:0,n:1});}
+     else if(open.has(key)){const o=open.get(key);if(o.n>1)drifts.push(o.max);open.delete(key);}
+    });
+   }
+  }
+  drifts.sort((a,b)=>a-b);
+  return{framesMoving:moving,contacts:drifts.length,worstDrift:R(drifts[drifts.length-1]||0),typicalDrift:R(drifts[drifts.length>>1]||0),lowestJointAboveGround:R(lowest)};
+ }
+ const stage=name=>{const i=v.STAGES.findIndex(s=>s.name===name);if(i<0)throw new Error("no stage "+name);v.setStage(i);steps(50);};
+ v.begin(false);steps(2);
+ // sitting: the first shade stage
+ stage("First shade");steps(120);out.sit={shown:S[0].base.visible,bound:S[0].bound,bones:Object.keys(S[0].rig).length};
+ await put("newhare-sit-side",beside(S[0],1.8));await put("newhare-sit-player",v.shot());
+ // looking at the archer
+ S[0].lookUntil=1e9;steps(40);await put("newhare-look-side",beside(S[0],-1.8));S[0].lookUntil=0;
+ // runners
+ stage("Bolt");steps(90);
+ {let n=0;while(!S.some(sp=>sp.base.visible&&sp.gait>.95)&&n++<600)steps(1);}
+ const runner=S.find(sp=>sp.base.visible&&sp.gait>.95)||S[0];
+ for(let i=0;i<4;i++){await put("newhare-run-side-"+i,beside(runner));steps(2);}
+ await put("newhare-run-player",v.shot());
+ out.run=contact(900,v.HARE_MOVES.run);
+ // creepers
+ stage("Creepers");steps(60);
+ {let n=0;while(!S.some(sp=>sp.base.visible&&sp.gait>.42)&&n++<600)steps(1);}
+ const creeper=S.find(sp=>sp.base.visible&&sp.gait>.42)||S[0];
+ for(let i=0;i<3;i++){await put("newhare-creep-side-"+i,beside(creeper));steps(12);}
+ out.creep=contact(900,v.HARE_MOVES.lope);
+ // hiding
+ stage("Horns in the grass");steps(120);await put("newhare-hide-side",beside(S[0],1.8));
+ out.errors=errors;out.fault=!!(v.fault&&v.fault());
+ return out;
+}
+const wait=setInterval(()=>{const w=document.getElementById("g").contentWindow;if(!w||!w.vale)return;clearInterval(wait);
+ run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+JSON.stringify(errors));},300);
+</script>

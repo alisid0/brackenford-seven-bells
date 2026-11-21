@@ -1,5 +1,5 @@
-// Timed movement for the staging creatures. Not part of the game build: src/build.mjs does not read this file.
-// tests/creatures.html plays it and tools/check-moves.mjs measures it.
+// Timed movement for the new creatures. The normal game build does not include this file; a build made with
+// --new-hare does (see src/build.mjs). tests/creatures.html plays it and tools/check-moves.mjs measures it.
 //
 // A move is a function of phase only: pose(t) for t from 0 to 1 gives every bone's turn at that point of the cycle,
 // so it plays the same at any frame rate. The body follows a keyed path, and each leg is solved so that its paw
@@ -23,11 +23,18 @@ function reach(J,T,a,b,bend){
  return{a:da-ang(a),b:ang(sub(end,mid))-ang(b),short:Math.max(0,want-d)};
 }
 
-// The shade hare's bound. bones is the list from its staging file. The hare faces -z there, so "forward" below is
-// -z and a turn about x by a positive angle swings a hanging leg forward.
-// One cycle: hind paws down and pushing (0 to 0.30), flight, forepaws down (0.55 to 0.80), hind legs gather.
+// The shade hare's bound. bones is the list from its file. The hare faces -z there, so "forward" below is -z and a
+// turn about x by a positive angle swings a hanging leg forward.
+// One cycle as it was first drawn: hind paws down and pushing (0 to 0.30), flight, forepaws down (0.55 to 0.80),
+// hind legs gather. The body's path is keyed to those times.
+// Options: stride (how far one cycle carries it, in the model's own units), period (seconds, for players of the move
+// only), hind (when the hind paws lift) and fore (when the forepaws land and lift), which squeeze the same cycle into
+// shorter times on the ground so a longer stride stays within the legs' reach, and high (how much higher it leaps).
+const DRAWN=[0,.30,.55,.80,1];
 function hareBound(bones,opt={}){
- const stride=opt.stride||.9,period=opt.period||.46,hind=[0,.30],fore=[.55,.80];
+ const stride=opt.stride||.9,period=opt.period||.46,high=opt.high||1,real=[0,opt.hind||.30,...(opt.fore||[.55,.80]),1];
+ // real time in the cycle -> the time in the cycle as drawn
+ const drawn=t=>{let i=0;while(i<3&&t>=real[i+1])i++;return DRAWN[i]+(t-real[i])/(real[i+1]-real[i])*(DRAWN[i+1]-DRAWN[i]);};
  const J=n=>{const b=bones.find(b=>b.name===n);if(!b)throw new Error("no bone "+n);return[-b.head[2],b.head[1]];};
  const hips=J("Spine_0"),mid=J("Spine_1");
  const legs=[
@@ -40,21 +47,22 @@ function hareBound(bones,opt={}){
  const lift=loop([[0,-.07],[.15,-.055],[.30,-.02],[.43,.11],[.55,0],[.67,.03],[.80,0],[.90,-.04]]);
  const tip =loop([[0,-.05],[.15,.13],[.30,.24],[.42,.08],[.55,-.15],[.67,-.27],[.80,-.2],[.90,-.12]]);
  const bend=loop([[0,-.2],[.30,.1],[.42,.1],[.55,0],[.67,-.1],[.90,-.25]]);
- const body=t=>{const l=lift(t),p=tip(t),f=p+bend(t),h=[hips[0],hips[1]+l];
+ const body=u=>{let l=lift(u);if(l>0)l*=high;const p=tip(u),f=p+bend(u),h=[hips[0],hips[1]+l];
   return{l,p,f,h,top:leg=>leg.front?add(add(h,rot(sub(mid,hips),p)),rot(sub(leg.top,mid),f)):add(h,rot(sub(leg.top,hips),p))};};
  // each leg's planted spot is set so the paw passes under its joint at the middle of its time on the ground
- for(const leg of legs){const on=leg.front?fore:hind,tm=(on[0]+on[1])/2;leg.on=on;leg.tm=tm;leg.spot=body(tm).top(leg)[0]+(leg.front?.03:.02);}
+ for(const leg of legs){const on=leg.front?[real[2],real[3]]:[real[0],real[1]],tm=(on[0]+on[1])/2;leg.on=on;leg.tm=tm;leg.spot=body(drawn(tm)).top(leg)[0]+(leg.front?.03:.02);}
+ const ss=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
  function pose(t){
-  t-=Math.floor(t);const B=body(t),o={_lift:B.l,_travel:stride*t,_marks:[],_short:0,_down:[]};
+  t-=Math.floor(t);const u=drawn(t),B=body(u),o={_lift:B.l,_travel:stride*t,_marks:[],_short:0,_down:[]};
   o.Spine_0=[B.p];o.Spine_1=[B.f-B.p];o.Head_1=[-B.f*.8];o["1_Left_Limb_0"]=[-B.p*.6];
-  const air=Math.sin(Math.PI*Math.min(1,Math.max(0,(t-.25)/.35)));o.Head_2=o.Ear2_0=[.15+.3*air];o.Head_3=o.Ear2_1=[.15*air];
+  const air=Math.sin(Math.PI*Math.min(1,Math.max(0,(u-.25)/.35)));o.Head_2=o.Ear2_0=[.15+.3*air];o.Head_3=o.Ear2_1=[.15*air];
   for(const leg of legs){
    const[t0,t1]=leg.on,down=t>=t0&&t<=t1,at=x=>leg.spot-stride*(x-leg.tm),top=B.top(leg);let T,toe=0;
    if(down)T=[at(t),leg.foot[1]];
    else{
     // in the air the paw travels from the spot it left to the next one, and on the way is drawn in to a tucked
     // point close under its own joint: quickly after leaving the ground, held, then let go to reach for the next spot
-    const s=((t-t1+1)%1)/(1-(t1-t0)),e=s*s*(3-2*s),up=Math.sin(Math.PI*s),ss=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);},w=ss(0,.2,s)*(1-ss(.7,1,s))*.92;
+    const s=((t-t1+1)%1)/(1-(t1-t0)),e=s*s*(3-2*s),up=Math.sin(Math.PI*s),w=ss(0,.2,s)*(1-ss(.7,1,s))*.92;
     const path=[at(t1)+(at(t0)-at(t1))*e,leg.foot[1]+.06*up],tuck=add(top,leg.front?[.07,-.2]:[.06,-.21]);
     T=[path[0]+(tuck[0]-path[0])*w,path[1]+(tuck[1]-path[1])*w];toe=-.7*up;
    }
@@ -64,7 +72,11 @@ function hareBound(bones,opt={}){
   }
   return o;
  }
- return{pose,stride,period,phases:{hind,fore},paws:legs.map(l=>l.names[2])};
+ return{pose,stride,period,paws:legs.map(l=>l.names[2])};
 }
-root.MOVES={hareBound};
+// The hare's gaits in the game. Strides are in the model's own units (the model is one unit tall with its ears).
+//   lope  the bound as first drawn, used at walking pace
+//   run   the same cycle with a long stride and short, quick contacts, for a hare at full speed
+const HARE={lope:{stride:.9,period:.78,high:.5},run:{stride:2.4,period:.3,hind:.17,fore:[.50,.63],high:1.5}};
+root.MOVES={hareBound,HARE};
 })(typeof window!=="undefined"?window:globalThis);

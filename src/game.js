@@ -535,14 +535,59 @@ const RIG=(()=>{
  g.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(si),4));g.setAttribute('skinWeight',new T.BufferAttribute(w,4));
  return{geo:g,bones:m.bones};
 })();
-function rigInstance(material){
- const bones=RIG.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;}),by={};
- RIG.bones.forEach((b,i)=>{
+function rigInstance(material,R=RIG){
+ const bones=R.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;}),by={};
+ R.bones.forEach((b,i)=>{
   const o=bones[i];by[b.name]=o;
-  if(b.parent<0)o.position.fromArray(b.head);else{const q=RIG.bones[b.parent].head;o.position.set(b.head[0]-q[0],b.head[1]-q[1],b.head[2]-q[2]);bones[b.parent].add(o);}
+  if(b.parent<0)o.position.fromArray(b.head);else{const q=R.bones[b.parent].head;o.position.set(b.head[0]-q[0],b.head[1]-q[1],b.head[2]-q[2]);bones[b.parent].add(o);}
  });
- const skinned=new T.SkinnedMesh(RIG.geo,material);skinned.add(bones[0]);skinned.updateMatrixWorld(true);skinned.bind(new T.Skeleton(bones));skinned.frustumCulled=false;
+ const skinned=new T.SkinnedMesh(R.geo,material);skinned.add(bones[0]);skinned.updateMatrixWorld(true);skinned.bind(new T.Skeleton(bones));skinned.frustumCulled=false;
  return{mesh:skinned,by};
+}
+// ---- The new standing hare and its timed bound. Only a build made with --new-hare carries them (src/build.mjs), and
+// there ?hare=old goes back to the first hare. Its file keeps Tripo's colours, so it is recoloured here to the style
+// sheet: dark plum, lighter plum on the lighter faces, ember eyes. It faces -z in its file.
+const NEW_HARE=!!CONFIG.newHare&&QUERY.get('hare')!=='old'&&typeof MOVES!=='undefined'&&typeof MODELS!=='undefined'&&!!MODELS['shade-hare-standing'];
+const RIG2=NEW_HARE?(()=>{
+ const m=MODELS['shade-hare-standing'],bytes=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0)),g=modelGeometry({p:m.p,c:m.c},m.unit),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),w=new Float32Array(sw.length);
+ for(let i=0;i<w.length;i+=4){const sum=sw[i]+sw[i+1]+sw[i+2]+sw[i+3]||1;for(let k=0;k<4;k++)w[i+k]=sw[i+k]/sum;}
+ g.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(si),4));g.setAttribute('skinWeight',new T.BufferAttribute(w,4));
+ const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90,faces=c.length/3,col=g.attributes.color,pos=g.attributes.position;let lo=1e9,hi=-1e9;
+ for(let f=0;f<faces;f++)if(!red(f)){lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
+ const plum=new T.Color('#4A2943'),light=new T.Color('#6D3362'),ember=new T.Color('#E02E32'),k=new T.Color(),eyes=[[0,0,0,0],[0,0,0,0]];
+ for(let f=0;f<faces;f++){
+  if(red(f)){k.copy(ember);for(let v=0;v<3;v++){const i=f*3+v,e=eyes[pos.getX(i)<0?0:1];e[0]+=pos.getX(i);e[1]+=pos.getY(i);e[2]+=pos.getZ(i);e[3]++;}}else k.copy(plum).lerp(light,(lum(f)-lo)/(hi-lo||1));
+  for(let v=0;v<3;v++)col.setXYZ(f*3+v,k.r,k.g,k.b);
+ }
+ const head=m.bones.find(b=>b.name==='Head_1').head;
+ return{geo:g,bones:m.bones,rootY:m.bones[0].head[1],eyes:eyes.filter(e=>e[3]).map(e=>V(e[0]/e[3]-head[0],e[1]/e[3]-head[1],e[2]/e[3]-head[2]))};
+})():null;
+const HARE_MOVES=RIG2?{lope:MOVES.hareBound(RIG2.bones,MOVES.HARE.lope),run:MOVES.hareBound(RIG2.bones,MOVES.HARE.run)}:null,HARE_SCALE=.55;
+const EARS2=[['Head_2','Head_3','Head_4'],['Ear2_0','Ear2_1','Ear2_2']];
+// The standing hare's pose. Its bound comes from src/moves.js and is driven by how far it has travelled (sp.cyc, in
+// strides), so its paws do not slide; everything else is laid over that. On this hare a positive turn about x tips the
+// body nose-up, swings a leg forward and lays an ear back.
+function standingPose(sp,dt){
+ const B=sp.rig;sp.gait+=(sp.gaitTo-sp.gait)*Math.min(1,dt*8);
+ const run=sp.mode==='run',w=Math.min(1,sp.gait/(run?1:.45)),t=elapsed+sp.seed,rear=sp.rear,low=(sp.mode==='hide'||sp.sunk?1:0)*(1-w),turn=sp.turn*sp.look;
+ for(const n in B)B[n].rotation.set(0,0,0);
+ const p=(run?HARE_MOVES.run:HARE_MOVES.lope).pose(sp.cyc);
+ for(const n in p)if(n[0]!=='_'&&B[n])B[n].rotation.x=p[n][0]*w;
+ B.Root.position.y=RIG2.rootY+p._lift*w;
+ const add=(n,x,y=0,z=0)=>{const r=B[n].rotation;r.x+=x;r.y+=y;r.z+=z;};
+ add('Spine_1',Math.sin(t*2.1)*.022);                                             // breathing
+ // crouched low while it hides, and risen on its haunches as it is banished; the hind legs turn the other way to stay planted
+ const tipUp=rear*.5-low*.2,fold=low+rear*.9;
+ add('Spine_0',tipUp);add('1_Right_Limb_0',-tipUp);add('bone_18',-tipUp);add('1_Left_Limb_0',-tipUp*.6);
+ for(const leg of['0_Right_Limb','0_Left_Limb']){add(leg+'_0',.7*fold);add(leg+'_1',-fold);add(leg+'_2',.5*low);}
+ // head: turns to look at the archer, lifts a little as it does
+ add('Head_0',0,turn*.45);add('Head_1',low*.2-sp.look*.06-rear*.3,turn*.55,Math.sin(t*.9)*.03*(1-sp.look));
+ // ears: sway, lie back in fear, prick when it looks, and one twitches now and then
+ EARS2.forEach((chain,side)=>chain.forEach((name,i)=>{
+  const k=(i+1)/3,lag=t*2.3-i*.6+side*1.3;
+  add(name,Math.sin(lag)*.04+(i<2?sp.fear*.22-sp.look*.06:0),0,(side?-1:1)*(Math.sin(lag*.7)*.03)+(sp.twitch>0&&side===sp.twitchSide?Math.sin(sp.twitch*40)*.1*k:0));
+ }));
+ if(sp.twitch>0)sp.twitch-=dt;else if(Math.random()<dt*.25){sp.twitch=.25;sp.twitchSide=Math.random()<.5?0:1;}
 }
 const EARS=[['Head_2','Head_3','Head_4','Head_5','Head_6'],['bone_16','bone_17','bone_18','bone_19','bone_20']];
 // The hare's whole animation, written out by hand: there are no recorded clips.
@@ -550,7 +595,7 @@ const EARS=[['Head_2','Head_3','Head_4','Head_5','Head_6'],['bone_16','bone_17',
 //   look   0..1, how far the head has turned to the archer (turn is the angle)
 //   rear   0..1, rising on its haunches as it is banished     fear  0..1, ears flattening as it slinks off
 function shadePose(sp,dt){
- const B=sp.rig;if(!B)return;
+ const B=sp.rig;if(!B)return;if(sp.bound)return standingPose(sp,dt);
  sp.gait+=(sp.gaitTo-sp.gait)*Math.min(1,dt*8);
  const t=elapsed+sp.seed,g=sp.gait,sn=Math.sin(sp.phase),cs=Math.cos(sp.phase),breath=Math.sin(t*2.1)*.022,rear=sp.rear,low=sp.mode==='hide'||sp.sunk?1:0;
  // spine: the haunches drive each bound and the chest pitches the other way, which keeps the head level
@@ -583,8 +628,13 @@ for(let k=0;k<5;k++){
  const glow=new T.MeshStandardMaterial({color:'#3b2444',emissive:'#6a1838',emissiveIntensity:.7,flatShading:true,roughness:.8,transparent:true});
  const leaf=new T.MeshStandardMaterial({color:'#8c1f2e',emissive:'#ff4a2a',emissiveIntensity:.8,flatShading:true,roughness:.8,transparent:true});
  const ember=new T.MeshBasicMaterial({color:0xff3b1f,transparent:true}),flare=new T.MeshBasicMaterial({color:0xff5a2a,transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending});
- const head=new T.Group(),ears=[],flares=[];let rig=null;
- if(RIG){
+ const head=new T.Group(),ears=[],flares=[];let rig=null,bound=false;
+ if(RIG2){
+  // the standing hare: one unit tall with its ears, drawn at the same size as the first hare and turned to face +z
+  const fig=new T.Group();fig.scale.setScalar(HARE_SCALE);fig.rotation.y=Math.PI;root.add(fig);glow.color.set('#ffffff');glow.vertexColors=true;glow.emissive.set('#5a0f24');glow.emissiveIntensity=.3;
+  const made=rigInstance(glow,RIG2);fig.add(made.mesh);rig=made.by;bound=true;
+  for(const e of RIG2.eyes){mesh(rig.Head_1,new T.SphereGeometry(.017,6,5),ember,e);flares.push(mesh(rig.Head_1,new T.SphereGeometry(.03,8,6),flare,e));}
+ }else if(RIG){
   // the rigged hare: one unit tall with its ears, so it is drawn at a little over half size
   const fig=new T.Group();fig.scale.setScalar(.55);root.add(fig);glow.color.set('#ffffff');glow.vertexColors=true;glow.emissive.set('#5a0f24');glow.emissiveIntensity=.3;
   const made=rigInstance(glow);fig.add(made.mesh);rig=made.by;
@@ -606,7 +656,7 @@ for(let k=0;k<5;k++){
  }
  const mist=mesh(root,new T.SphereGeometry(.44,10,8),new T.MeshBasicMaterial({color:0x3d2352,transparent:true,opacity:.34,depthWrite:false}),V(0,.24,0));
  const hitMesh=new T.Mesh(new T.SphereGeometry(1,8,6));hitMesh.visible=false;root.add(hitMesh);   // what an arrow actually strikes
- const sp={kind:'spirit',rig,seed:k*7.3,gait:0,gaitTo:0,phase:0,turn:0,rear:0,fear:0,twitch:0,twitchSide:0,base,tilt,root,head,ears,flares,flare,glow,glow0:glow.emissiveIntensity,leaf,ember,look:0,lookUntil:0,nextLook:0,mist,hitMesh,meshes:[hitMesh],scale:SPIRIT_SIZE,up:true,kick:-10,live:false,done:true,mode:'sit',state:'off',t:0};
+ const sp={kind:'spirit',rig,bound,cyc:0,seed:k*7.3,gait:0,gaitTo:0,phase:0,turn:0,rear:0,fear:0,twitch:0,twitchSide:0,base,tilt,root,head,ears,flares,flare,glow,glow0:glow.emissiveIntensity,leaf,ember,look:0,lookUntil:0,nextLook:0,mist,hitMesh,meshes:[hitMesh],scale:SPIRIT_SIZE,up:true,kick:-10,live:false,done:true,mode:'sit',state:'off',t:0};
  hitMesh.userData.target=sp;sp.set=spiritSet;spirits.push(sp);
 }
 for(let k=0;k<9;k++){
@@ -788,6 +838,7 @@ function spiritStep(dt){
     if(!sp.goal){sp.goal=spiritNext(sp);sp.pace=run?.82+Math.random()*.4:.8+Math.random()*.45;}
     const[tx,tz]=yardAt(sp.goal[0],sp.goal[1]),b=sp.base.position,dx=tx-b.x,dz=tz-b.z,d=hyp(dx,dz),speed=(run?6.5:.95)*sp.pace,go=speed*dt;
     spiritFace(sp,tx,tz);sp.gaitTo=run?1:.45;sp.phase+=dt*(run?13:6.5)*sp.pace;
+    if(sp.bound)sp.cyc+=Math.min(go,d)/((run?HARE_MOVES.run:HARE_MOVES.lope).stride*HARE_SCALE*SPIRIT_SIZE);   // the standing hare's bound follows the ground it covers
     if(d<=go){
      b.x=tx;b.z=tz;sp.along=sp.goal[0];sp.goal=null;
      // a runner sometimes only checks its stride and is off again; otherwise it stops, for a while that is never the same twice
@@ -796,7 +847,7 @@ function spiritStep(dt){
     b.y=groundAt(b.x,b.z);
     // it hops as it goes, and sinks to its ears wherever the grass is tall
     sp.sunk=sp.mode==='creep'&&grassClumps.some(g=>g.visible&&hyp(g.position.x-b.x,g.position.z-b.z)<.85)?1:0;
-    const hop=Math.max(0,Math.sin(sp.phase))*(run?.16:.05);
+    const hop=sp.bound?0:Math.max(0,Math.sin(sp.phase))*(run?.16:.05);   // the standing hare's leap is in its own pose
     sp.root.position.y=lerp(sp.root.position.y,hop-.3*sp.sunk,Math.min(1,dt*12));sp.root.rotation.x=sp.rig?0:run?-.18+hop:0;   // a rigged hare pitches with its own spine
     const dxy=b.x-YARD.x,dzy=b.z-YARD.z;sp.right=dxy*YARD.rx+dzy*YARD.rz;
    }
@@ -1704,6 +1755,6 @@ if(RELEASE){
  $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

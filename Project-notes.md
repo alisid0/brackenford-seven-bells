@@ -203,3 +203,15 @@ Not done: the flight tuck, heel lift at push-off, any offset between left and ri
 A paw in the air is now drawn in under its own joint within the first fifth of its swing, held, then released over the last third to reach for the next spot. Planted spots and timing unchanged; the contact check passes with the same figures. Worst stretch rose from 2.86 to 3.71, at phases 0.1 to 0.3 where the forelegs are most folded.
 
 ChatGPT's review: **approved; park this bound until it is seen in the game.** It reads as a bounding hare. No further change before integration. There is a slight crease where the folded forelegs meet the chest; if it flickers in motion, look at those skin weights first. Still missing: the loop watched at full speed from gameplay distance, from the side and from the player's view.
+
+## The standing hare in the game, as a separate trial build (21 November 2026)
+At the developer's instruction. The normal build, the test site and the public site do not carry it.
+
+- **How it is kept apart.** `node src/build.mjs <three> --new-hare` writes a second file, `Brackenford-Seven-Bells-new-hare.html` (2,878,909 bytes, not committed), which adds the standing hare from `assets/staging` and `src/moves.js`. Without the switch the build has neither, and the new game code does nothing. In the trial build `?hare=old` goes back to the first hare.
+- **What changed in `src/game.js`.** The standing hare is recoloured to the style sheet when it loads, stands in for the first hare on every hare shade, and has its own pose function: the bound from `src/moves.js` driven by distance travelled, with the head turn, eye flare, fear, hiding crouch, banish rear, breathing and ear twitch laid over it. The old hop is switched off for it because its leap is in its own pose.
+- **Two gaits** (`MOVES.HARE`): a lope for creeping shades (the bound as drawn, 0.9 stride) and a run for bolting ones (stride 2.4, short contacts, 69% of the cycle in the air), both passing `tools/check-moves.mjs`.
+- **Measured in the game** by `tests/newhare.html`, during steady travel: running, 126 paw contacts, typical drift 0 mm, worst 83 mm; creeping, 140 contacts, typical 0 mm, worst 2 mm. No page errors.
+- **Normal build re-tested**: `tests/all.html` passes all ten pages (one chance-dependent check missed, as it sometimes does). The normal build grew from 2,705,658 to 2,710,568 bytes because the dormant code is in it.
+- **Pictures** from the game: `assets/renders/newhare-*.jpg`.
+
+Not done, and known: the hit area was not re-tuned for the taller hare; a creeping hare still sinks 0.3 m into tall grass as the first one did, which buries more of this one; the worst running drift (83 mm) was not traced; its sitting pose is simply standing; it has not been seen in a headset or by ChatGPT; frame rate with five skinned hares has not been measured on Quest.

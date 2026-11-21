@@ -195,6 +195,29 @@ That leaves about 1,500 credits for retries, which experience says will be neede
 | V18 | Recovery | Built in part | Headset off and on, lost controller, leaving and re-entering VR |
 | V19 | Guardian and space | Needed | Play is stationary; nothing may ask the player to step far or turn fast |
 
+### VR presence: places that only feel right in a headset
+
+The developer's direction: the game should use what VR is uniquely good at, the feeling of really being somewhere. Height, depth and water do this best. The core stays the bow, with little walking, so these are **shooting positions**, reached by a fade or a few steps, not long journeys. All of it is after release.
+
+| # | Place | The feeling | How it plays | Needs |
+|---|---|---|---|---|
+| P1 | Watchtower top | Standing high, looking down on the range | Shooting steeply downward; arrows drop less than expected | Tower exists (hidden in release); a railing |
+| P2 | Cliff ledge above the vale | A wide view with a real drop at your feet | Long shots across a valley, with wind | Cliff, ledge, low wall |
+| P3 | Rope bridge over a gorge | Height on both sides, planks underfoot, a slight sway | Targets below and to both sides | Bridge (code), gorge |
+| P4 | Creek crossing | Stepping stones and a plank bridge over running water | A short walk between two shooting spots | Creek, stones, plank bridge (code) |
+| P5 | Jetty and boat on the lake | Water all around; a gentle bob | Floating targets, shades surfacing | Jetty (G4), boat (G5) |
+| P6 | Under the great blossom tree | Looking up through branches, petals falling | Shades perched overhead | Great tree (F3) |
+| P7 | Bell tower | The highest point; a bell to ring with an arrow | Chapter finale | Bell (H8) |
+
+Comfort rules for all of these:
+- **Height is optional.** A "fear of heights" setting swaps a high place for a lower version of the same stage, or adds a solid floor and a higher railing.
+- **Sway and bob are gentle, and can be switched off.** The player's own viewpoint is never moved by the game; only the scenery moves.
+- **Getting there:** a fade by default. Walking a bridge or stepping stones is offered as a choice (smooth walk or step-by-step teleport), never forced.
+- **A railing or edge at every drop,** so the player's eyes have something near to hold on to.
+- **Seated players** get the same view, with the height adjusted.
+
+New code-made pieces these need: railing, rope bridge, plank bridge, stepping stones, gorge and cliff terrain, creek water. None needs Tripo.
+
 ## Part 3. Mixed-reality elements
 
 Mixed reality is an experiment behind its own switch. Nothing is promised until it has run on a real Quest. Every item marked "to confirm" depends on what the Quest Browser allows.

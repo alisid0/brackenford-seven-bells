@@ -50,6 +50,8 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 23. Bows: recurve and longbow are built in code from the present bow; the Thornwood and Bellwarden's bows go through Tripo. All share the same grip, rest and string points.
 24. Mixed reality starts with "the window": one stationary lane seen through a wall, after release.
 25. Arcade is not part of the launch and has no Day 5 decision. Day 5 decides the desktop and Quest release only.
+27. VR presence is a design pillar. After release, stages gain shooting positions that use height, depth and water: a tower top, a cliff ledge, a rope bridge, a creek crossing, a jetty and boat, a bell tower. These are places to shoot from, not long walks, and every one has a comfort option (height off, sway off, fade or walk). Listed in `Asset-and-XR-list.md`.
+28. Concept images for the theme, title menu and interface kit are being made with ChatGPT now, one at a time, each approved by the developer. They are pictures only: no game change before release, and nothing goes to Tripo until ChatGPT has reviewed it.
 26. Which Quest failures allow an "experimental" VR label, and which mean the Enter VR button is withheld, are defined in `Release-checklist.md`.
 
 ## Standing rules

@@ -30,6 +30,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   out.unlocked={enabled:[...sel.options].filter(o=>!o.disabled).length};v.stageGo(1);steps(2);out.unlocked.canGoToTwo=r.stage===1;out.guideGoneAfterPass=(v.stageGo(0),steps(3),G()==="");
   v.stageGo(1);steps(2);for(let i=0;i<6;i++)hit();fin();v.stageGo(2);steps(2);for(let i=0;i<6;i++)hit();fin();v.stageGo(3);steps(40);out.fourthStage={name:v.STAGES[3].name,shades:v.spirits.filter(s=>s.base.visible).length,reached:r.stage===3};
   out.saves={releaseKey:!!localStorage.getItem(KEY),devKeyUntouched:localStorage.getItem(DEV)===devBefore,open:JSON.parse(localStorage.getItem(KEY)).range.open};
+  // a browser that refuses to store anything: the game must carry on, with no error and no banner
+  {const before=errors.length;w.Storage.prototype.setItem=()=>{throw new Error("storage blocked");};v.stageGo(0);steps(2);for(let i=0;i<5;i++)hit();fin();for(let i=0;i<500;i++)v.tick(.016);
+   out.storageBlocked={finished:r.phase==="results",noErrors:errors.length===before,noBanner:![...d.body.children].some(e=>e.tagName==="DIV"&&/Something went wrong/.test(e.textContent)&&e.id!=="hud"&&e.id!=="start")};delete w.Storage.prototype.setItem;}
   // the guide in VR, two-handed and single-handed
   localStorage.removeItem(KEY);w=await load("release=1");v=w.vale;v.fake.on=true;for(const i of[0,1]){v.hands[i].source={handedness:i?"right":"left"};v.hands[i].grip.matrixAutoUpdate=true;}
   for(let i=0;i<4;i++)v.tick(.016);out.vrGuide={two:v.guide.text,panel:v.guide.panel.visible};v.setDraw("one");v.tick(.016);out.vrGuide.one=v.guide.text;

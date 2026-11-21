@@ -14,7 +14,7 @@ Test site for these checks: https://archery-range-test.vercel.app (the release b
 
 ### Progress
 - [ ] Stars, best scores and the unlocked stage survive a reload
-- [ ] Still plays, without saving, when the browser blocks storage
+- [x] Still plays, without saving, when the browser blocks storage (automated: tests/release.html)
 - [ ] "Start over" clears progress
 
 ### Desktop

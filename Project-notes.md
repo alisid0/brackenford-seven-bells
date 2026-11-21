@@ -81,12 +81,13 @@ The developer's Day 1 playtest on computer and Quest, using `Day-1-test-sheet.md
 - Tripo and ChatGPT must be signed in on the developer's home computer before any new asset can be made.
 
 ## Concept images (with ChatGPT)
-Standing rule from the developer: every proposal comes as 4 to 8 clearly different variants, labelled A, B, C and so on. The developer picks one or mixes parts of several, and ChatGPT then makes one combined final version. The palette from the style sheet is locked.
+For the interface, the developer has left the choices to Claude and ChatGPT, to be made on colour and design theory from the approved menu and style sheet, one small step at a time. For other proposals: 4 to 8 clearly different variants, labelled A, B, C and so on. The developer picks one or mixes parts of several, and ChatGPT then makes one combined final version. The palette from the style sheet is locked.
 
 | Image | File in `assets/concepts/` | State |
 |---|---|---|
 | 1. Theme and style sheet | `style-sheet-v1.jpg` | Approved as the starting point; palette locked. The curved bow in it is illustrative only |
 | 2. Title menu, variants A to D | `title-menu-a.jpg` to `title-menu-d.jpg` | The developer chose C: the cloth banner tied between two posts |
 | 2. Title menu, final | `title-menu-final.jpg` | Approved by the developer |
-| 3. Interface kit, variants A to D | `interface-kit-a.jpg` to `interface-kit-d.jpg` | Waiting for the developer's choice |
+| 3. Interface kit, variants A to D | `set-aside/interface-kit-a.jpg` to `-d.jpg` | Set aside: they looked alike and did not match the menu |
+| 3. Interface, step by step | `kit-step1-controls.jpg`, `kit-step2-panels.jpg` | In progress, one small sheet at a time; see `Interface-design-rules.md` |
 | 4. View down from the watchtower | — | Proposed by ChatGPT |

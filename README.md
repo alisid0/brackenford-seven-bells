@@ -16,6 +16,7 @@ A fantasy archery game for the browser and for VR headsets, set in the world of 
 | [Stages.md](Stages.md) | All 29 stages and the 17 chosen for release |
 | [Arcade-plan.md](Arcade-plan.md) | Endless Survival and Score Attack: rules, timing, build order |
 | [Art-and-animation-plan.md](Art-and-animation-plan.md) | Look, graphics budgets, asset pipeline, animation and its testing, roadmap |
+| [Interface-design-rules.md](Interface-design-rules.md) | Colour, material and shape rules for menus and panels |
 | [Asset-and-XR-list.md](Asset-and-XR-list.md) | Every asset needed, and every VR and mixed-reality element |
 | [Release-page-text.md](Release-page-text.md) | Draft wording for the release page |
 | [Readme.txt](Readme.txt) | How to build and run |

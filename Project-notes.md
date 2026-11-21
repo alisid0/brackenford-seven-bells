@@ -127,3 +127,13 @@ Both went through the full pipeline: ChatGPT concept, Tripo image-to-3D (55 cred
 Answer to the open question "which Tripo rig preset suits a bird": "Other" gave jointed wings on the first try.
 
 Not yet done: neither creature is animated or in the game; the flap test ChatGPT asked for has not been run; neither has been seen in a headset or shown to ChatGPT. The colour snap used in the viewer comes out too pale and needs tuning against the style sheet.
+
+### ChatGPT's review of the two Tripo models (21 November 2026)
+Verdict: keep both meshes; neither needs regenerating. Work still to do, in its order:
+
+1. **Hare rig:** add the missing lower joint to the left foreleg before animating creep or bound, so both front paws can plant and land. Give the second ear its own bone so both ears can prick. The tail can follow the pelvis. Sit and head turn can be tested with the rig as it is.
+2. **Crow rig:** the wing chains are enough to test flap, fold, glide and bank now. Add a jointed chain to the single-bone leg before animating perch and take-off. The wing weights are unverified until the flap and fold test is run.
+3. **Crow tail:** longer and more swept than the concept, its main difference in silhouette. Check that it clears the torso in the fold test before deciding whether to shorten it.
+4. **Colours, both:** dark plum body `#4A2943`, lighter plum facets `#6D3362`, ember-red eyes only `#E02E32`, kept flat. These are sampled from the style sheet. The grey cast and orange eyes in the first pictures are the biggest mismatch.
+
+None of this has been done yet.

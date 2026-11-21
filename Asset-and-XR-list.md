@@ -201,20 +201,29 @@ The developer's direction: the game should use what VR is uniquely good at, the 
 
 | # | Place | The feeling | How it plays | Needs |
 |---|---|---|---|---|
-| P1 | Watchtower top | Standing high, looking down on the range | Shooting steeply downward; arrows drop less than expected | Tower exists (hidden in release); a railing |
-| P2 | Cliff ledge above the vale | A wide view with a real drop at your feet | Long shots across a valley, with wind | Cliff, ledge, low wall |
-| P3 | Rope bridge over a gorge | Height on both sides, planks underfoot, a slight sway | Targets below and to both sides | Bridge (code), gorge |
-| P4 | Creek crossing | Stepping stones and a plank bridge over running water | A short walk between two shooting spots | Creek, stones, plank bridge (code) |
-| P5 | Jetty and boat on the lake | Water all around; a gentle bob | Floating targets, shades surfacing | Jetty (G4), boat (G5) |
-| P6 | Under the great blossom tree | Looking up through branches, petals falling | Shades perched overhead | Great tree (F3) |
-| P7 | Bell tower | The highest point; a bell to ring with an arrow | Chapter finale | Bell (H8) |
+| P1 | Watchtower top | Standing high, looking down on the range | **Prototype first.** Two or three targets below, from a fixed railed deck. Owns the steep downward shots | Tower exists (hidden in release); a railing |
+| P2 | Cliff ledge above the vale | A wide view with a real drop at your feet | Long shots across the valley. Targets and wind cues must read clearly before wind or distance is raised | Cliff, ledge, low wall |
+| P3 | Rope bridge over a gorge | Height on both sides | A fixed shooting deck; the ropes, banners and water move, the floor does not. Targets within a comfortable forward arc | Bridge (code), gorge |
+| P4 | Creek crossing | Running water close by | **Second to build; the first water place.** Two fixed shooting spots with a fade between them; the plank bridge may be walked where the room allows. Stepping stones are scenery | Creek, stones, plank bridge (code) |
+| P5 | Jetty on the lake | Water all around | Shoot from the jetty; distant boats and floating targets bob. Shooting from a boat waits until a moored version has been tested on Quest | Jetty (G4), boat (G5) |
+| P6 | Under the great blossom tree | Looking up through branches, petals falling | The low-height showcase. Perched targets above and ahead, never a long steep upward aim | Great tree (F3) |
+| P7 | Bell tower | The highest point | Chapter finale: the bell framed across a gap with the valley beyond | Bell (H8) |
 
-Comfort rules for all of these:
-- **Height is optional.** A "fear of heights" setting swaps a high place for a lower version of the same stage, or adds a solid floor and a higher railing.
-- **Sway and bob are gentle, and can be switched off.** The player's own viewpoint is never moved by the game; only the scenery moves.
-- **Getting there:** a fade by default. Walking a bridge or stepping stones is offered as a choice (smooth walk or step-by-step teleport), never forced.
-- **A railing or edge at every drop,** so the player's eyes have something near to hold on to.
-- **Seated players** get the same view, with the height adjusted.
+Comfort rules for all of these (reviewed by ChatGPT; still proposals until tested on a Quest):
+- **Height comfort is a real low route.** Switched on, the stage uses a lower platform, or a solid floor that hides the drop. Target order and difficulty stay about the same. If a ranked mode ever uses these stages, the two versions are scored separately.
+- **The shooting surface and the viewpoint never move.** Sway and bob apply to scenery only, and can be switched off. A steady railing and horizon give the eyes a reference.
+- **Moving between spots is a fade by default.** "Short walk" means real steps within the player's own space. There is no stick-driven walking in these stages.
+- **A railing at every drop.**
+- **Seated play is checked from seated eye height:** the nearest target visible over the rail, room to draw without reaching through it, the same targets and scoring.
+
+Four settings, grouped as **VR Comfort** on the title menu:
+
+| Setting | Options |
+|---|---|
+| Play posture | Standing / Seated |
+| Height comfort | On / Off |
+| Scenery sway | On / Off |
+| Move between spots | Fade / Short walk |
 
 New code-made pieces these need: railing, rope bridge, plank bridge, stepping stones, gorge and cliff terrain, creek water. None needs Tripo.
 

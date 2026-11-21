@@ -90,4 +90,4 @@ For the interface, the developer has left the choices to Claude and ChatGPT, to 
 | 2. Title menu, final | `title-menu-final.jpg` | Approved by the developer |
 | 3. Interface kit, variants A to D | `set-aside/interface-kit-a.jpg` to `-d.jpg` | Set aside: they looked alike and did not match the menu |
 | 3. Interface, step by step | `kit-step1-controls.jpg` to `kit-step6-comfort.jpg` | All six sheets done; see `Interface-design-rules.md` |
-| 4. View down from the watchtower | — | Proposed by ChatGPT |
+| 4. View from the watchtower, variants A to D | `watchtower-a.jpg` to `watchtower-d.jpg` | Waiting for the developer. Only A reads as high up; B, C and D look like a ground-level porch |

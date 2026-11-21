@@ -1,0 +1,56 @@
+# Archer's Realm: The Range — release checklist
+
+Known-good build: git tag `known-good-2026-11-21` (commit `a1e717d`), which is what the public URL serves.
+Work happens on the `release-prep` branch and is shown on a Vercel preview address. The public URL changes only when every "must" below is ticked.
+
+## Must pass before publishing
+
+### Fresh start
+- [ ] Opens in a private window with no saved data, on Chrome, Edge and Firefox (Safari if a Mac is to hand)
+- [ ] Title card shows the release name and nothing that promises unbuilt features
+- [ ] A first-time player finishes stage 1 with no outside help
+
+### Progress
+- [ ] Stars, best scores and the unlocked stage survive a reload
+- [ ] Still plays, without saving, when the browser blocks storage
+- [ ] "Start over" clears progress
+
+### Desktop
+- [ ] Draw, loose and soft shots with the mouse; mouse wheel sets the draw
+- [ ] Stage keys ([ and ], N, R, B) and Esc behave as described on the title card
+- [ ] Every shipped stage reaches its results screen
+- [ ] One star is achievable on a first try on each of the first eight stages
+
+### Quest (real headset, Quest Browser)
+- [ ] Enter VR starts an immersive session; bow is in hand
+- [ ] Two-handed draw: free hand to string, trigger, pull, release
+- [ ] Single-handed draw: hold any trigger
+- [ ] Left-handed play: bow in the right hand
+- [ ] Scoreboard and signs readable; BACK, AGAIN and NEXT signs work when shot
+- [ ] Left-stick flick changes stage
+- [ ] Replay plays, returns the player to the line, and can be skipped with a trigger
+- [ ] Every shipped stage reaches its results screen
+- [ ] Frame rate: no visible stutter on the busiest shipped stage; measured figure recorded
+- [ ] No tester reports nausea
+
+### Recovery
+- [ ] Leaving VR and re-entering works
+- [ ] Taking the headset off and putting it back on resumes play
+- [ ] A lost controller mid-draw cancels the shot instead of firing
+
+### Legal and assets
+- [ ] Tripo plan terms allow commercial use of the hare model, and its page on Tripo is set as intended (public or private)
+- [ ] OpenAI terms allow use of the concept image the hare was made from
+- [ ] No third-party art, sound or code beyond three.js (MIT licence)
+- [ ] No analytics, cookies or accounts added since the audit
+
+### Release
+- [ ] All scripted test pages in `tests/` pass on the release commit
+- [ ] Release commit tagged; previous public build's tag noted for rollback
+- [ ] Page title, description and share preview say what the game is
+
+## Fallback (decided on Day 5)
+If any Quest "must" is still failing on Day 5, publish the verified desktop game and label VR "experimental, Quest Browser". Say nothing stronger about VR than what was tested on a real headset.
+
+## Not in this release
+Shop and upgrades, boss, enemies that attack, new creatures, mobile touch, leaderboards, music, the Unity project. All 29 stages stay in the code; stages left out of the release are hidden, not deleted.

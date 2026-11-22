@@ -10,9 +10,13 @@ The build is on the **test site** (deployed 22 November 2026; not indexed by sea
 - All 29 stages with the special arrows: https://archery-range-test.vercel.app/?release=0&arrows=1
 - The release with the new hare: https://archery-range-test.vercel.app/new-hare.html?fps=1
 
+The first thing you see is now the new cloth menu: a cream banner between two posts with one red **Begin**. **Start over** and **Copy playtest summary** are under **Settings**. Tell me what you think of it as you go.
+
+To try the menu inside the headset as well (never run on a real headset yet), use https://archery-range-test.vercel.app/?fps=1&vrmenu=1 after you have earned at least one star: on entering VR a cloth should hang about 2.4 m ahead; point a controller at Continue and press its trigger.
+
 The same pages also run from this folder (double-click `Brackenford-Seven-Bells.html`).
 
-Use Chrome or Edge. On the title card press **Start over** once before you begin, so the counters start from nothing.
+Use Chrome or Edge. Under **Settings** press **Start over** (it asks twice) once before you begin, so the counters start from nothing.
 
 ## Part 1: the journey as a new player (about 12 minutes)
 
@@ -71,7 +75,7 @@ For each of the five, one line:
 
 ## When you finish
 
-Go back to the title card (Esc, or reload) and press **Copy playtest summary**. Paste what it copies into the chat with Claude. It holds counts only: tries, clears, retries, near misses, minutes. It is kept on your computer and sent nowhere.
+Go back to the menu (Esc, or reload), open **Settings** and press **Copy playtest summary**. Paste what it copies into the chat with Claude. It holds counts only: tries, clears, retries, near misses, minutes. It is kept on your computer and sent nowhere.
 
 Then send your answers to the questions, however rough.
 

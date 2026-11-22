@@ -2,7 +2,7 @@
 
 The developer asked (22 November 2026) why the menu designed earlier was never built, and then said: "discuss with the other agents how the first menu of the game is supposed to look". This page is the outcome. Gemini's side is in `design/first-menu-spec.md` and `design/first-menu-reply.md`; ChatGPT's is recorded here, since it cannot write to the repository; Claude ran the exchange and checked it against the game.
 
-**Status: approved by the developer on 22 November 2026 ("Approve, build it"). The first-release version is built on `release-prep`; see "What is built" at the end. Not yet on the test site or the public site.**
+**Status: approved by the developer on 22 November 2026 ("Approve, build it"). The first-release version is built on `release-prep`; see "What is built" at the end. On the test site since 22 November 2026; not on the public site.**
 
 Pictures: `assets/concepts/first-menu-1-new-player.jpg`, `first-menu-2-returning-vr.jpg`, `first-menu-3-overlook-map.jpg`. The earlier approved picture is `title-menu-final.jpg`.
 

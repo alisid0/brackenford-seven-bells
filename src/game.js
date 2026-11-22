@@ -864,7 +864,7 @@ const RAM_ON=(QUERY.has('ram')?QUERY.get('ram')==='1':!!CONFIG.ram)&&typeof MODE
 // first, again: seconds before the first ram and between rams; from: where it appears [metres along the lane, most it
 // may stand to either side]; stand: seconds it paws before it charges; speed in m/s; reach: how near the bell's foot it
 // rears; value: points for banishing it; size: metres per model unit; stride: metres covered by one cycle of its legs
-const RAM_RULE={first:[20,30],again:[30,45],from:[34,3],stand:4,speed:2.6,reach:1.6,value:300,size:1.77,stride:1.35,least:20};
+const RAM_RULE={first:[22,26],again:[34,38],from:[34,3],stand:2.8,speed:2.2,reach:1.6,value:300,size:1.77,stride:1.35,least:20};
 // Recolour the ram's faces by part inside the locked shade palette (plum body, lighter ridged horns, near-black hooves,
 // darker muzzle and belly, picked-out dorsal spikes, ember eyes). Shared with tests/creatures.html so renders match.
 function ramColor(m,pos,c,si,sw,col){

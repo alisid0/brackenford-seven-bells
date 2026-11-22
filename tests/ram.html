@@ -46,11 +46,11 @@ async function run(){
   o.off={on:v.RAM_ON,built:!!v.ram,phase:v.range.phase};}
  wipe();
  o.checks={
-  built:o.start.on===true&&o.start.built&&o.start.hidden&&o.start.dueIn>=19&&o.start.dueIn<=30,
-  arrives:o.arrives.afterSeconds>=18&&o.arrives.afterSeconds<=31&&o.arrives.state==="stand"&&o.arrives.along===34&&Math.abs(o.arrives.right)<=3&&o.arrives.live,
+  built:o.start.on===true&&o.start.built&&o.start.hidden&&o.start.dueIn>=21&&o.start.dueIn<=26,
+  arrives:o.arrives.afterSeconds>=20&&o.arrives.afterSeconds<=27&&o.arrives.state==="stand"&&o.arrives.along===34&&Math.abs(o.arrives.right)<=3&&o.arrives.live,
   stands:o.stands.state==="stand"&&o.stands.moved<.01&&o.stands.pawing>.8&&o.stands.shoulder>.95&&o.stands.shoulder<1.25,
-  charges:o.charges.state==="charge"&&Math.abs(o.charges.metresPerSecond-2.6)<.2&&o.charges.straight>.98,
-  oneArrow:o.banished.hits===1&&o.banished.gain>=300&&o.banished.stateAfterHit==="waking"&&o.banished.goneAfter&&o.banished.nextIn>=29&&o.banished.nextIn<=45,
+  charges:o.charges.state==="charge"&&Math.abs(o.charges.metresPerSecond-2.2)<.2&&o.charges.straight>.98,
+  oneArrow:o.banished.hits===1&&o.banished.gain>=300&&o.banished.stateAfterHit==="waking"&&o.banished.goneAfter&&o.banished.nextIn>=33&&o.banished.nextIn<=38,
   rears:o.rears.state==="rear"&&o.rears.risen>.6&&o.rears.distance<=1.7&&o.rears.boundBefore===0,
   bindsAll:o.strikes.bound===3&&o.strikes.canStillBeHit===false&&o.strikes.scoreSame&&o.leaves.gone,
   bellFrees:o.freed.bound===0,

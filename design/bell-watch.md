@@ -50,9 +50,9 @@ Binding costs the player nothing, as ChatGPT asked.
 
 ## The shade ram (built, switch `ram`)
 
-One at a time. The first appears 20 to 30 seconds into a run, later ones 30 to 45 seconds after the last has gone, and none in the last 20 seconds. It appears 34 m down the lane, up to 3 m to either side, facing the bell. It stands and paws the ground for 4 seconds with its eyes flaring, then walks straight for the foot of the belfry at 2.6 m/s with its head down: about seven seconds on today's range. One arrow anywhere on its body, head or horns banishes it for 300 points plus the usual distance and streak. If it arrives it rears, comes down on the post and puts all three thorn bands on the bell at once; an arrow into the bell throws them off as before. It never harms the player and takes no points.
+One at a time. The first appears 22 to 26 seconds into a run, later ones 34 to 38 seconds after the last has gone, and none in the last 20 seconds: four rams in a run, so chance does not swing the score. It appears 34 m down the lane, up to 3 m to either side, facing the bell. It stands and paws the ground for 2.8 seconds with its eyes flaring, then walks straight for the foot of the belfry at 2.2 m/s with its head down: about seven seconds on today's range. One arrow anywhere on its body, head or horns banishes it for 300 points plus the usual distance and streak. If it arrives it rears, comes down on the post and puts all three thorn bands on the bell at once; an arrow into the bell throws them off as before. It never harms the player and takes no points.
 
-All of these numbers are Claude's first guesses, in `RAM_RULE` in `src/game.js`, for Gemini to check and a person to feel. `tests/ram.html` covers the behaviour; `tests/creatures.html?only=ram` draws its three moves.
+The numbers are Gemini's (`design/ram-numbers.md`), applied on the developer's word, in `RAM_RULE` in `src/game.js`; they still want a person to feel them. `tests/ram.html` covers the behaviour; `tests/creatures.html?only=ram` draws its three moves.
 - **The end cloth** with Score and Best; the streak ribbons at 5, 10 and 20; per-hit feedback for snap and long shots.
 - **An endless variant**, and a run per place once the other places exist.
 - On today's range the bell stands to the left, outside the lane, so hares leave the lane to reach it.

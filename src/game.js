@@ -857,62 +857,145 @@ for(let k=0;k<5;k++){
 //   It appears far down the lane, stands and paws the ground for a few seconds with its eyes flaring, then walks
 //   straight for the bell, slow and heavy, head down. One arrow banishes it. If it gets there it rears, comes down on
 //   the post and puts all three thorn bands on the bell at once. It never harms the player and costs no points.
-//   Tripo's model (assets/staging/shade-ram-rig-turned.json), one unit tall with its horns; drawn so its shoulder is
-//   1.1 m up. It faces +z; +x is its left. Its file keeps Tripo's colours, so it is recoloured here as the hare is.
+//   Tripo's model (assets/staging/shade-ram-rig-turned-patched.json, with left hind leg mirrored from the right), one
+//   unit tall with its horns; drawn so its shoulder is 1.1 m up. It faces +z; +x is its left. Recoloured by part inside
+//   the locked plum/ember palette (design/theme-look.md) so it reads as a shade beside the hares.
 const RAM_ON=(QUERY.has('ram')?QUERY.get('ram')==='1':!!CONFIG.ram)&&typeof MODELS!=='undefined'&&!!MODELS['shade-ram'];
 // first, again: seconds before the first ram and between rams; from: where it appears [metres along the lane, most it
 // may stand to either side]; stand: seconds it paws before it charges; speed in m/s; reach: how near the bell's foot it
 // rears; value: points for banishing it; size: metres per model unit; stride: metres covered by one cycle of its legs
-const RAM_RULE={first:[20,30],again:[30,45],from:[34,3],stand:4,speed:2.6,reach:1.6,value:300,size:1.77,stride:1.5,least:20};
+const RAM_RULE={first:[20,30],again:[30,45],from:[34,3],stand:4,speed:2.6,reach:1.6,value:300,size:1.77,stride:1.35,least:20};
+// Recolour the ram's faces by part inside the locked shade palette (plum body, lighter ridged horns, near-black hooves,
+// darker muzzle and belly, picked-out dorsal spikes, ember eyes). Shared with tests/creatures.html so renders match.
+function ramColor(m,pos,c,si,sw,col){
+ const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90,faces=c.length/3;
+ let lo=1e9,hi=-1e9,rx=0,rn=0;
+ for(let f=0;f<faces;f++)if(red(f)){rx+=pos[f*9];rn++;}else{lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
+ rx/=rn||1;   // the head is turned in the file, so the two eyes are told apart by which side of their own middle they lie
+ const names=m.bones.map(b=>b.name),byName=new Map(m.bones.map(b=>[b.name,b.head]));
+ const chain=ns=>{const pts=ns.map(n=>byName.get(n)).filter(Boolean),cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1],pts[i][2]-pts[i-1][2]));return{pts,cum,len:cum[cum.length-1]||1};};
+ const proj=(ch,x,y,z)=>{let best=1e9,u=0;for(let i=0;i<ch.pts.length-1;i++){const a=ch.pts[i],b=ch.pts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],l2=dx*dx+dy*dy+dz*dz||1e-9,t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy+(z-a[2])*dz)/l2)),d2=(x-a[0]-dx*t)**2+(y-a[1]-dy*t)**2+(z-a[2]-dz*t)**2;if(d2<best){best=d2;u=(ch.cum[i]+t*(ch.cum[i+1]-ch.cum[i]))/ch.len;}}return u;};
+ const hR=new Set(['Head_2','Head_3','Head_4','Head_5','Head_6']),hL=new Set(['bone_16','bone_17','bone_18','bone_19','bone_20']);
+ const cR=chain([...hR]),cL=chain([...hL]),feet=new Set(['bone_26','bone_30','0_Right_Limb_4','HindL_4','0_Left_Limb_3']);
+ const C={plum:new T.Color('#4A2943'),light:new T.Color('#6D3362'),ember:new T.Color('#E02E32'),hLo:new T.Color('#5A3251'),hHi:new T.Color('#8A567C'),hTip:new T.Color('#462640'),hoof0:new T.Color('#1F1720'),hoof1:new T.Color('#312632'),dark0:new T.Color('#2E182B'),dark1:new T.Color('#40213A'),spike0:new T.Color('#7B3565'),spike1:new T.Color('#944478')};
+ const k=new T.Color(),body=new T.Color(),eyes=[[0,0,0,0],[0,0,0,0]],bw=new Float32Array(m.bones.length);
+ for(let f=0;f<faces;f++){
+  const u=(lum(f)-lo)/(hi-lo||1);
+  if(red(f)){
+   k.copy(C.ember);
+   for(let v=0;v<3;v++){const i=f*3+v,x=pos[i*3],e=eyes[x<rx?0:1];e[0]+=x;e[1]+=pos[i*3+1];e[2]+=pos[i*3+2];e[3]++;}
+  }else{
+   let cx=0,cy=0,cz=0,topI=0,topW=-1;bw.fill(0);
+   for(let v=0;v<3;v++){
+    const vi=f*3+v;cx+=pos[vi*3]/3;cy+=pos[vi*3+1]/3;cz+=pos[vi*3+2]/3;
+    for(let j=0;j<4;j++){const bi=si[vi*4+j],w=sw[vi*4+j];if(w>0){bw[bi]+=w;if(bw[bi]>topW){topW=bw[bi];topI=bi;}}}
+   }
+   const b=names[topI],i0=f*9,e1x=pos[i0+3]-pos[i0],e1y=pos[i0+4]-pos[i0+1],e1z=pos[i0+5]-pos[i0+2],e2x=pos[i0+6]-pos[i0],e2y=pos[i0+7]-pos[i0+1],e2z=pos[i0+8]-pos[i0+2];
+   const nx=e1y*e2z-e1z*e2y,ny=e1z*e2x-e1x*e2z,nz=e1x*e2y-e1y*e2x,nyN=ny/(Math.hypot(nx,ny,nz)||1);
+   body.copy(C.plum).lerp(C.light,u);
+   if(hR.has(b)||hL.has(b)){
+    const t=proj(hR.has(b)?cR:cL,cx,cy,cz),ridge=.5+.5*Math.sin(t*Math.PI*16);
+    k.copy(C.hLo).lerp(C.hHi,Math.min(1,ridge*.72+u*.28));
+    if(t>.86)k.lerp(C.hTip,(t-.86)/.14*.55);
+   }else if(feet.has(b)&&cy<.075){
+    k.copy(C.hoof0).lerp(C.hoof1,u);
+    if(cy>.062)k.lerp(body,(cy-.062)/.013);
+   }else if(b==='bone_21'||b==='bone_22'||(b==='Head_1'&&cz>.37&&cy<.72)){
+    k.copy(C.dark0).lerp(C.dark1,u);
+   }else if((b==='Root'||b==='0_Right_Limb_0'||b==='Spine_0')&&cz>=-.36&&cz<=.20&&Math.abs(cx)<.095&&cy>.612+.08*cz){
+    k.copy(C.spike0).lerp(C.spike1,u);
+   }else if(cy<.44&&nyN<-.15&&cz>=-.35&&cz<=.28&&Math.abs(cx)<.17){
+    k.copy(C.dark0).lerp(C.dark1,u);
+   }else k.copy(body);
+  }
+  for(let v=0;v<3;v++){const o=f*9+v*3;col[o]=k.r;col[o+1]=k.g;col[o+2]=k.b;}
+ }
+ return eyes.filter(e=>e[3]).map(e=>[e[0]/e[3],e[1]/e[3],e[2]/e[3]]);
+}
 const RAM_RIG=RAM_ON?(()=>{
  const m=MODELS['shade-ram'],bytes=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0)),g=modelGeometry({p:m.p,c:m.c},m.unit),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),w=new Float32Array(sw.length);
  for(let i=0;i<w.length;i+=4){const sum=sw[i]+sw[i+1]+sw[i+2]+sw[i+3]||1;for(let k=0;k<4;k++)w[i+k]=sw[i+k]/sum;}
- g.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(si),4));g.setAttribute('skinWeight',new T.BufferAttribute(w,4));
- const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90,faces=c.length/3,col=g.attributes.color,pos=g.attributes.position;let lo=1e9,hi=-1e9,rx=0,rn=0;
- for(let f=0;f<faces;f++)if(red(f)){rx+=pos.getX(f*3);rn++;}else{lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
- rx/=rn||1;   // the head is turned in the file, so the two eyes are told apart by which side of their own middle they lie
- const plum=new T.Color('#4A2943'),light=new T.Color('#6D3362'),ember=new T.Color('#E02E32'),k=new T.Color(),eyes=[[0,0,0,0],[0,0,0,0]];
- for(let f=0;f<faces;f++){
-  if(red(f)){k.copy(ember);for(let v=0;v<3;v++){const i=f*3+v,e=eyes[pos.getX(i)<rx?0:1];e[0]+=pos.getX(i);e[1]+=pos.getY(i);e[2]+=pos.getZ(i);e[3]++;}}else k.copy(plum).lerp(light,(lum(f)-lo)/(hi-lo||1));
-  for(let v=0;v<3;v++)col.setXYZ(f*3+v,k.r,k.g,k.b);
- }
+ g.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(si),4));g.setAttribute('skinWeight',new T.Float32BufferAttribute(w,4));
+ const eyes=ramColor(m,g.attributes.position.array,c,si,sw,g.attributes.color.array);
  const head=m.bones.find(b=>b.name==='Head_1').head;
- return{geo:g,bones:m.bones,rootY:m.bones[0].head[1],eyes:eyes.filter(e=>e[3]).map(e=>V(e[0]/e[3]-head[0],e[1]/e[3]-head[1],e[2]/e[3]-head[2]))};
+ return{geo:g,bones:m.bones,rootY:m.bones[0].head[1],eyes:eyes.map(e=>V(e[0]-head[0],e[1]-head[1],e[2]-head[2]))};
 })():null;
-// The ram's whole animation, written out by hand, as one pose: each named bone and how far it is turned about x, y, z.
+// The ram's whole animation as one pose: each named bone and how far it is turned about x, y, z.
 //   cyc   how far it has walked, in cycles of its legs     go    0 standing .. 1 charging
 //   paw   0..1, scraping the ground with its left forefoot     rear  0..1, risen on its hind legs     t  the clock
-// About x, a positive turn swings a leg back, drops the head and lifts the tail. Tripo hung the legs unevenly: the
-// right hind leg and both forelegs turn from the top, the left hind leg only from the joint below its hip.
-const RAM_LEGS=[['Spine_1','bone_29',0,1],['bone_23','bone_25',.5,1],['0_Right_Limb_1','0_Right_Limb_3',0,1],['0_Left_Limb_0','0_Left_Limb_2',.5,1.5]];   // top bone, bending bone, place in the cycle, how much more it must turn
+// Side-plane 2-bone IK (same method as src/moves.js for the hare) keeps every planted hoof locked to the ground while
+// charging at RAM_RULE.speed over RAM_RULE.stride metres per cycle. The ram faces +z, so a positive x-turn swings a leg
+// back, drops the head and lifts the tail.
+const RAM_DUTY=.44;
+let RAM_FRAME_SRC=null,RAM_FRAME=null;
+function ramFrame(bones){
+ if(RAM_FRAME&&RAM_FRAME_SRC===bones)return RAM_FRAME;
+ const at=n=>{const b=bones.find(x=>x.name===n);return b?[b.head[2],b.head[1]]:null;};
+ const hasHindL=!!at('HindL_1');
+ const defs=[
+  {front:true,bend:1,phase:0,names:['Spine_1','bone_29','bone_30']},
+  {front:true,bend:1,phase:.5,names:['bone_23','bone_25','bone_26']},
+  {front:false,bend:-1,phase:0,names:['0_Right_Limb_1','0_Right_Limb_3','0_Right_Limb_4']},
+  {front:false,bend:-1,phase:.5,names:hasHindL?['HindL_1','HindL_3','HindL_4']:['0_Left_Limb_0','0_Left_Limb_2','0_Left_Limb_3']}
+ ];
+ const legs=defs.map(d=>{
+  const top=at(d.names[0]),knee=at(d.names[1]),foot=at(d.names[2]);
+  return{...d,top,foot,a:[knee[0]-top[0],knee[1]-top[1]],b:[foot[0]-knee[0],foot[1]-knee[1]],spot:top[0]+(d.front?.02:-.03)};
+ });
+ const hips=at('0_Right_Limb_0'),hipR=at('0_Right_Limb_1'),hipDz=hips&&hipR?hips[0]-hipR[0]:0;
+ RAM_FRAME_SRC=bones;RAM_FRAME={legs,hasHindL,hipDz};return RAM_FRAME;
+}
+function ramReach(J,Tpt,a,b,bend){
+ const la=hyp(a[0],a[1]),lb=hyp(b[0],b[1]),vx=Tpt[0]-J[0],vy=Tpt[1]-J[1],want=hyp(vx,vy)||1e-6;
+ const d=Math.min(Math.max(want,Math.abs(la-lb)+1e-4),la+lb-1e-4);
+ const A=Math.acos(Math.max(-1,Math.min(1,(la*la+d*d-lb*lb)/(2*la*d)))),da=Math.atan2(vy,vx)+bend*A;
+ const mx=J[0]+la*Math.cos(da),my=J[1]+la*Math.sin(da),ex=J[0]+vx*d/want,ey=J[1]+vy*d/want;
+ return{a:da-Math.atan2(a[1],a[0]),b:Math.atan2(ey-my,ex-mx)-Math.atan2(b[1],b[0]),short:Math.max(0,want-d)};
+}
 function ramPoseOf(s){
  const P={},add=(n,x=0,y=0,z=0)=>{const r=P[n]||(P[n]=[0,0,0]);r[0]+=x;r[1]+=y;r[2]+=z;};
- const go=s.go||0,paw=s.paw||0,rear=s.rear||0,t=s.t||0,ph=(s.cyc||0)*Math.PI*2;
+ const go=s.go||0,paw=s.paw||0,rear=s.rear||0,t=s.t||0,cyc=((s.cyc||0)%1+1)%1,ph=cyc*Math.PI*2;
+ const B=s.bones||(RAM_RIG&&RAM_RIG.bones),F=B?ramFrame(B):null,stride=RAM_RULE.stride/RAM_RULE.size;
  add('Head_0',0,-.35);add('Head_1',0,-.35);                                        // Tripo modelled the head turned to its left: bring it straight
- add('Spine_0',Math.sin(t*1.7)*.012);                                              // breathing
+ add('Spine_0',Math.sin(t*1.7)*.012*(1-go));                                       // breathing (quiets during the heavy trot)
  // head: carried low in the charge, nodding as it paws, chin tucked so the horns lead when it rears
- add('Head_0',.26*go+paw*(.2+.1*Math.sin(t*2.6))+.3*rear);add('Head_1',.1*go+.1*paw+.25*rear);
+ add('Head_0',.28*go+paw*(.2+.1*Math.sin(t*2.6))+.3*rear);add('Head_1',.12*go+.1*paw+.25*rear);
  add('bone_1',.35*go+.5*rear+Math.sin(t*3.1)*.08,0,Math.sin(t*2.3)*.12);           // tail
- // a heavy trot: opposite corners move together; a leg bends as it swings forward and is straight while it bears weight
- RAM_LEGS.forEach(([top,bend,at,more],i)=>{
-  const a=ph+at*Math.PI*2,fold=Math.max(0,Math.cos(a))*go;
-  add(top,(-Math.sin(a)*.42*go-fold*.2)*more);add(bend,fold*(i<2?.75:.6));
- });
+ const lift=(-.042+.01*Math.sin(ph*2-.8))*go+(F&&rear>1e-4?F.hipDz*Math.sin(.7*rear):0);
+ P._lift=lift;
+ // heavy charging trot: opposite corners plant together; each planted hoof sweeps back at the ram's travel speed so it
+ // stays locked to the ground, then lifts and swings forward over the swing phase
+ if(go>1e-4&&F){
+  P._travel=-stride*cyc;P._short=0;P._down=[];P._marks=[];
+  for(const leg of F.legs){
+   const u=(cyc-leg.phase+1)%1,down=u<=RAM_DUTY;
+   const z0=leg.spot+stride*(RAM_DUTY*.5),z1=leg.spot-stride*(RAM_DUTY*.5);
+   let Tpt,toe=0;
+   if(down)Tpt=[leg.spot-stride*(u-RAM_DUTY*.5),leg.foot[1]];
+   else{const sc=(u-RAM_DUTY)/(1-RAM_DUTY),e=sc*sc*(3-2*sc),up=Math.sin(Math.PI*sc);Tpt=[z1+(z0-z1)*e,leg.foot[1]+(leg.front?.095:.085)*up];toe=(leg.front?.32:-.22)*up;}
+   const bt=[leg.foot[0]+(Tpt[0]-leg.foot[0])*go,leg.foot[1]+(Tpt[1]-leg.foot[1])*go];
+   const r=ramReach([leg.top[0],leg.top[1]+lift],bt,leg.a,leg.b,leg.bend);
+   add(leg.names[0],-r.a);add(leg.names[1],-(r.b-r.a));add(leg.names[2],r.b+toe*go);
+   P._down.push(down);
+   if(down){P._short=Math.max(P._short,r.short);P._marks.push(-(bt[0]+(leg.front?.03:0)));} // negated so tests/creatures.html places the bar at +z
+  }
+ }
  // pawing: the left forefoot lifts, reaches and drags back, over and over
- {const a=t*5.2;add('Spine_1',paw*(-.32-.26*Math.cos(a)));add('bone_29',paw*(.5+.42*Math.sin(a)));}
- // rearing: the whole forehand swings up about the hips; the right hind leg turns back by the same amount to stay
- // planted (the left one does not hang from the hips), and the forelegs fold under the chest
- add('0_Right_Limb_0',-.7*rear);add('0_Right_Limb_1',.7*rear);
- for(const[top,bend]of RAM_LEGS.slice(0,2)){add(top,-.55*rear);add(bend,1.1*rear);}
- P._lift=Math.sin(ph*2)*.012*go;
+ if(paw>1e-4){const a=t*5.2;add('Spine_1',paw*(-.32-.26*Math.cos(a)));add('bone_29',paw*(.5+.42*Math.sin(a)));}
+ // rearing: the whole forehand swings up about the hips; both hind legs hang from 0_Right_Limb_0 on the patched rig and
+ // turn back by the same amount to stay planted, while the forelegs fold under the chest
+ if(rear>1e-4){
+  add('0_Right_Limb_0',-.7*rear);add('0_Right_Limb_1',.7*rear);if(!F||F.hasHindL)add('HindL_1',.7*rear);
+  for(const[top,bend]of[['Spine_1','bone_29'],['bone_23','bone_25']]){add(top,-.55*rear);add(bend,1.1*rear);}
+ }
  return P;
 }
 const ram=RAM_RIG?(()=>{
  const base=new T.Group(),tilt=new T.Group(),root=new T.Group();scene.add(base);base.add(tilt);tilt.add(root);base.visible=false;root.scale.setScalar(RAM_RULE.size);
  const glow=new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,emissive:'#5a0f24',emissiveIntensity:.3,flatShading:true,roughness:.8,transparent:true});
- const leaf=new T.MeshBasicMaterial({transparent:true,opacity:0}),ember=new T.MeshBasicMaterial({color:0xff3b1f,transparent:true}),flare=new T.MeshBasicMaterial({color:0xff5a2a,transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending});
+ const leaf=new T.MeshBasicMaterial({transparent:true,opacity:0}),ember=new T.MeshBasicMaterial({color:0xe02e32,transparent:true}),flare=new T.MeshBasicMaterial({color:0xff4c2e,transparent:true,opacity:.24,depthWrite:false,blending:T.AdditiveBlending});
  const made=rigInstance(glow,RAM_RIG),rig=made.by,flares=[];root.add(made.mesh);
- for(const e of RAM_RIG.eyes){mesh(rig.Head_1,new T.SphereGeometry(.02,6,5),ember,e);flares.push(mesh(rig.Head_1,new T.SphereGeometry(.045,8,6),flare,e));}
+ for(const e of RAM_RIG.eyes){mesh(rig.Head_1,new T.SphereGeometry(.011,6,5),ember,e);flares.push(mesh(rig.Head_1,new T.SphereGeometry(.022,8,6),flare,e));}
  const mist=new T.Mesh(new T.SphereGeometry(.01,4,3),new T.MeshBasicMaterial({transparent:true,opacity:0}));mist.visible=false;root.add(mist);   // no smoke; kept so it shares the hares' code
  // what an arrow strikes: one rounded shape about its body and one about its head and horns, each fixed to a bone
  // (in the game: body about 1.3 m long, 0.65 m deep and wide; head and horns about 0.7 m across)
@@ -957,7 +1040,7 @@ function ramStep(dt){
   const u=sp.t/.9;sp.rear=Math.min(1,sp.t/.35);ease('go',0,8);ease('paw',0,8);sp.root.scale.setScalar(RAM_RULE.size*(1+u*.25));sp.glow.emissiveIntensity=sp.glow0+u*2;spiritShow(sp,Math.max(0,1-u*u));
   if(u>=1){sp.root.scale.setScalar(RAM_RULE.size);sp.glow.emissiveIntensity=sp.glow0;ramOff();}
  }
- const hot=sp.state==='stand'||sp.state==='charge'?.5+.25*Math.sin(elapsed*7):.2;sp.flare.opacity=hot*sp.ember.opacity;for(const f of sp.flares)f.scale.setScalar(1+hot);
+ const hot=sp.state==='stand'||sp.state==='charge'?.5+.25*Math.sin(elapsed*7):.2;sp.flare.opacity=hot*.45*sp.ember.opacity;for(const f of sp.flares)f.scale.setScalar(1+hot*.4);
  const B=sp.rig,P=ramPoseOf({cyc:sp.cyc,go:sp.go,paw:sp.paw,rear:sp.rear,t:elapsed});
  for(const n in B)B[n].rotation.set(0,0,0);for(const n in P)if(n[0]!=='_'&&B[n])B[n].rotation.set(P[n][0],P[n][1],P[n][2]);
  B.Root.position.y=RAM_RIG.rootY+(P._lift||0);
@@ -2341,6 +2424,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

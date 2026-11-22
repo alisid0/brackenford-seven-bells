@@ -27,17 +27,20 @@ const wait=setInterval(async()=>{
  const srgb=c=>new T.Color().setRGB(c[0]/255,c[1]/255,c[2]/255,T.SRGBColorSpace);
  const gl=document.createElement("canvas");gl.width=gl.height=CELL;
  const R=new T.WebGLRenderer({canvas:gl,antialias:true,preserveDrawingBuffer:true});R.setClearColor(0xffffff);
- async function build(file){
+ async function build(file,recolor){
   const m=await (await fetch("../assets/staging/"+file+"?"+Date.now())).json();
   const p=new Int16Array(bytes(m.p).buffer),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),n=p.length/3;
   const pos=new w.Float32Array(p.length),col=new w.Float32Array(p.length),ix=new w.Uint16Array(n*4),wt=new w.Float32Array(n*4);
   for(let i=0;i<p.length;i++)pos[i]=p[i]/m.unit;
   for(let i=0;i<n;i++){let s=0;for(let k=0;k<4;k++)s+=sw[i*4+k];for(let k=0;k<4;k++){ix[i*4+k]=si[i*4+k];wt[i*4+k]=sw[i*4+k]/(s||1);}}
-  // recolour: red faces are eyes; every other face is plum, lighter where the original face was lighter
-  const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90;let lo=1e9,hi=-1e9;
-  for(let f=0;f<m.faces;f++)if(!red(f)){lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
-  const a=srgb(PLUM),b=srgb(PLUM_LIGHT),e=srgb(EMBER);
-  for(let f=0;f<m.faces;f++){const k=red(f)?e:a.clone().lerp(b,(lum(f)-lo)/(hi-lo||1));for(let v=0;v<3;v++)col.set([k.r,k.g,k.b],f*9+v*3);}
+  // recolour: red faces are eyes; every other face is plum, lighter where the original face was lighter (or per-part when supplied)
+  if(recolor)recolor(m,pos,c,si,sw,col);
+  else{
+   const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90;let lo=1e9,hi=-1e9;
+   for(let f=0;f<m.faces;f++)if(!red(f)){lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
+   const a=srgb(PLUM),b=srgb(PLUM_LIGHT),e=srgb(EMBER);
+   for(let f=0;f<m.faces;f++){const k=red(f)?e:a.clone().lerp(b,(lum(f)-lo)/(hi-lo||1));for(let v=0;v<3;v++)col.set([k.r,k.g,k.b],f*9+v*3);}
+  }
   const geo=new T.BufferGeometry();geo.setAttribute("position",new T.BufferAttribute(pos,3));geo.setAttribute("color",new T.BufferAttribute(col,3));
   geo.setAttribute("skinIndex",new T.BufferAttribute(ix,4));geo.setAttribute("skinWeight",new T.BufferAttribute(wt,4));geo.computeVertexNormals();
   const bones=m.bones.map(b=>{const o=new T.Bone();o.name=b.name;return o;});
@@ -144,17 +147,17 @@ const wait=setInterval(async()=>{
   report.push({crow:crow.info,missing:[...crow.missing]});
  }
  if(!only||only==="ram"){
-  // The ram (turned by tools/turn-ram.mjs) faces +z; x is left-right, +x its left.
-  const ram=await build("shade-ram-rig-turned.json");
+  // The ram (turned by tools/turn-ram.mjs, left hind leg repaired by tools/patch-ram.mjs) faces +z; x is left-right, +x its left.
+  const ram=await build("shade-ram-rig-turned-patched.json",w.vale&&w.vale.ramColor);
   const at=[0,.5,0],V=[{name:"left side",from:[1,0,0],half:.75,at},{name:"front",from:[0,0,1],half:.75,at},{name:"above",from:[0,1,0],up:[0,0,1],half:.75,at:[0,0,0]},{name:"front quarter",from:[.8,.3,1],half:.75,at}];
   // ?poses=<pose>;<pose> draws a sheet of loose poses for trying bones out: "rest", or a pose written as JSON
   if(Q.get("poses"))await ram.sheet(Q.get("sheet")||"d3-ram-probe",Q.get("poses").split(";").map(k=>({label:k,pose:k==="rest"?{}:JSON.parse(k)})),V);
   // its three moves, taken from the game's own pose (ramPoseOf in src/game.js), so what is drawn here is what plays
   const pose=w.vale&&w.vale.ramPoseOf,S=[V[0],V[3]];
   if(pose){
-   await ram.sheet("d3-ram-stand",[{label:"as Tripo made it",pose:{}},{label:"standing",pose:pose({})},...[0,.3,.6,.9].map(t=>({label:"pawing t "+t,pose:pose({paw:1,t})}))],[V[0],V[1],V[3]]);
-   await ram.sheet("d3-ram-charge",Array.from({length:8},(_,i)=>({label:"charge "+(i/8).toFixed(2),pose:pose({go:1,cyc:i/8})})),S);
-   await ram.sheet("d3-ram-rear",[0,.35,.7,1].map(r=>({label:"rear "+r,pose:pose({rear:r})})),S);
+   await ram.sheet("d3-ram-stand",[{label:"as Tripo made it",pose:{}},{label:"standing",pose:pose({bones:ram.bones})},...[0,.3,.6,.9].map(t=>({label:"pawing t "+t,pose:pose({paw:1,t,bones:ram.bones})}))],[V[0],V[1],V[3]]);
+   await ram.sheet("d3-ram-charge",Array.from({length:8},(_,i)=>({label:"charge "+(i/8).toFixed(2),pose:pose({go:1,cyc:i/8,bones:ram.bones})})),S);
+   await ram.sheet("d3-ram-rear",[0,.35,.7,1].map(r=>({label:"rear "+r,pose:pose({rear:r,bones:ram.bones})})),S);
   }
   report.push({ram:ram.info,missing:[...ram.missing]});
  }

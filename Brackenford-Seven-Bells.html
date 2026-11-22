@@ -80261,7 +80261,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.xr.enabled=true
 // (120 degrees left of the shooting direction, 25 degrees up: Gemini's direction, agreed by ChatGPT), warm key and cool
 // fill, haze from 110 m to 480 m, and ChatGPT's colours for sky, clouds, meadow and water. Off: everything as before.
 const GRADE=QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade;
-const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
+const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',lawnFace:'#7D9C41',ringRed:'#AE493D',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
  haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
  hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33]};   // the valley's rim in three bands by height (metres), the highest the lightest
 scene.fog=GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
@@ -80424,7 +80424,7 @@ function panelNear(p,reach){
 const sky=new T.Mesh(new T.SphereGeometry(1300,24,12),new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,
  uniforms:{top:{value:new T.Color()},hor:{value:new T.Color()}},
  vertexShader:'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
- fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float h;void main(){gl_FragColor=vec4(mix(hor,top,pow(clamp(h,0.,1.),.5)),1.);\n#include <colorspace_fragment>\n}'}));
+ fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float h;void main(){gl_FragColor=vec4(mix(hor,top,'+(GRADE?'smoothstep(0.,'+Math.sin(LOOK.skyBlueBy*Math.PI/180).toFixed(3)+',h)':'pow(clamp(h,0.,1.),.5)')+'),1.);\n#include <colorspace_fragment>\n}'}));
 sky.frustumCulled=false;scene.add(sky);
 const sunDisc=new T.Mesh(new T.CircleGeometry(38,24),new T.MeshBasicMaterial({color:0xfff3cf,fog:false,depthWrite:false}));scene.add(sunDisc);
 const clouds=[];
@@ -80691,7 +80691,7 @@ function oldWorldShow(){const hide=WORLD2&&range.on;if(hide===oldHidden)return;o
 if(WORLD2){
  const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);
  const P=(along,right,y=0)=>V(-right,y,along);   // a place given as metres along the lane, to the right, and up
- const LAWN='#99B44E',EDGE='#8DA748',FACE='#829B47',WATER='#5897BE',SAND='#B8A275',ROCK='#9a968c',BLOSSOM='#F299B5';   // ChatGPT's colours, set after it saw the first build
+ const LAWN=GRADE?LOOK.lawn:'#99B44E',EDGE='#8DA748',FACE=GRADE?LOOK.lawnFace:'#829B47',WATER='#5897BE',SAND='#B8A275',ROCK='#9a968c',BLOSSOM='#F299B5';   // ChatGPT's colours, set after it saw the first build
  // the lane: a lighter strip of mown grass from the line to the far end
  box(R,P((LANE.from+LANE.to)/2,0,.02),V(LANE.half*2,.04,LANE.to-LANE.from),LAWN);
  for(const s of[-1,1])for(let a=LANE.from,i=0;a<40;i++){const len=3+2.5*Math.abs(Math.sin(i*1.7+s)),wide=.7+.6*Math.abs(Math.sin(i*2.9+s*2));box(R,P(a+len/2,s*(LANE.half+wide/2),.015),V(wide,.03,len),EDGE);a+=len;}   // a broken shoulder about a metre wide, so the lawn does not end in a ruled line
@@ -80920,7 +80920,7 @@ for(let k=0;k<3;k++){
  // a round on a single post that can lie back (pop-ups) and slide sideways
  const root=new T.Group(),tilt=new T.Group(),face=new T.Group();scene.add(root);root.add(tilt);tilt.add(face);root.visible=false;
  const item={kind:'range',root:face,base:root,tilt,kick:-10,meshes:[],scale:1.2,up:true};
- for(const[r,dz,c]of[[.68,0,'#bf9959'],[.50,.038,red],[.37,.072,cream],[.23,.11,red],[.10,.15,gold]]){const o=mesh(face,new T.CylinderGeometry(r,r,.045,28),c,V(0,0,dz));o.rotation.x=Math.PI/2;o.userData.target=item;item.meshes.push(o);}
+ for(const[r,dz,c]of[[.68,0,'#bf9959'],[.50,.038,GRADE?LOOK.ringRed:red],[.37,.072,cream],[.23,.11,GRADE?LOOK.ringRed:red],[.10,.15,gold]]){const o=mesh(face,new T.CylinderGeometry(r,r,.045,28),c,V(0,0,dz));o.rotation.x=Math.PI/2;o.userData.target=item;item.meshes.push(o);}
  item.post=stick(tilt,V(0,0,-.06),V(0,1,-.06),.06,timber);
  targets.push(item);rangeRounds.push(item);
 }

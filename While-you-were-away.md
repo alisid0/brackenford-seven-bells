@@ -6,6 +6,8 @@ Nothing was put on the public site. The test site was not changed after you left
 
 ## Your decisions
 
+**Answered on your return, 22 November 2026: "Yes I do approve of all these."** All six are settled as recommended: the theme is The Silent Peal; the first place is Willowbank Range; ribbons are switched on; coins are hidden everywhere; one place ships first; mixed reality waits for your headset test of Trials.
+
 | # | Decision | What we recommend | Where to look |
 |---|---|---|---|
 | 1 | **The theme.** Gemini chose "The Silent Peal" from ChatGPT's four; ChatGPT agrees. Do you? | Yes. It scored 38 of 40 against 26, 26 and 22, and the game already has bells that ring | `design/theme-directions.md` (the four), `design/theme.md`, `design/theme-look.md` |

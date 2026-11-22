@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><title>the practice bell</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The Silent Peal's first piece (design/theme.md, design/small-specs.md 4A): the Practice Bell beside the first range.
+// Bound and dull until the first place's four stages each hold a star; then unbound, rung by an arrow, or by itself
+// when the player goes on; remembered after a reload; outside the lane; absent with its switch off.
+const errors=[],KEY="brackenford-trials-v1";
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+const put=stars=>localStorage.setItem(KEY,JSON.stringify({bells:[],marks:[],lanterns:[],shots:40,longest:30,pos:null,done:false,lesson:0,coins:0,hand:"right",draw:"two",mode:"range",range:{open:stars.length,best:stars.map(s=>s*200),stars}}));
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,7))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+function kit(w){
+ const v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.5)*60));};
+ const centre=()=>v.rangeRounds.filter(t=>t.base.visible)[0].root.getWorldPosition(V()),bell=()=>v.peal.mesh.getWorldPosition(V());
+ const results=()=>{for(let i=0;i<1500&&!(r.phase==="results"&&!v.replay.on);i++)steps(1);steps(5);};
+ const start=()=>{v.begin(false);steps(2);v.setStage(0);steps(30);};
+ const saved=()=>JSON.parse(localStorage.getItem(KEY)).range.bell1;
+ return{v,r,steps,fire,centre,bell,results,start,saved};
+}
+async function run(){
+ const o={};
+ // three of the four stages starred: the bell stays bound
+ {wipe();put([3,2,1]);const k=kit(await game("?peal=1"));k.start();const p=k.v.peal,at=k.v.laneAt(p.root.position.x,p.root.position.z);
+  o.placed={along:+at[0].toFixed(1),right:+at[1].toFixed(1),shown:p.root.visible,state:p.root.userData.state,outsideLane:Math.abs(at[1])>9};
+  const t0=p.rungAt;k.fire(k.bell());o.bound={rang:p.rungAt!==t0,saved:k.saved()||0,arrowsLeft:k.r.arrows};
+  for(let i=0;i<4;i++)k.fire(k.centre());k.results();o.bound.afterClear={state:p.root.userData.state,saved:k.saved()||0};}
+ // all four starred, bell not yet freed: clearing a stage unbinds it; an arrow rings it
+ {wipe();put([3,2,1,1]);const k=kit(await game("?peal=1"));k.start();const p=k.v.peal;o.before=p.root.userData.state;
+  for(let i=0;i<5;i++)k.fire(k.centre());k.results();o.unbound={state:p.root.userData.state,saved:k.saved(),rung:p.rung};
+  k.fire(k.bell());k.steps(4);o.rung={rung:p.rung,swing:+Math.abs(p.root.userData.bell.rotation.z).toFixed(3),chevrons:p.chevrons.filter(c=>c.visible).length};
+  k.steps(300);o.settled={swing:+Math.abs(p.root.userData.bell.rotation.z).toFixed(3),chevrons:p.chevrons.filter(c=>c.visible).length};}
+ // freed but not rung: going on rings it softly
+ {wipe();put([3,2,1,1]);const k=kit(await game("?peal=1"));k.start();const p=k.v.peal;for(let i=0;i<5;i++)k.fire(k.centre());k.results();const was=p.rung;k.r.pending="again";for(let i=0;i<600&&k.r.phase==="results";i++)k.steps(1);o.selfRung={before:was,after:p.rung};}
+ // remembered after a reload
+ {const k=kit(await game("?peal=1"));k.start();o.reload={state:k.v.peal.root.userData.state,saved:k.saved()};}
+ // switched off
+ {wipe();put([3,2,1,1]);const k=kit(await game("?peal=0"));k.start();o.off={PEAL:k.v.PEAL,built:!!k.v.peal.root};}
+ wipe();
+ o.checks={
+  placed:o.placed.shown&&o.placed.state==="silent"&&o.placed.along===22&&o.placed.right===-12.5&&o.placed.outsideLane,
+  boundIsDull:o.bound.rang===false&&o.bound.saved===0&&o.bound.arrowsLeft===4&&o.bound.afterClear.state==="silent"&&o.bound.afterClear.saved===0,
+  unbinds:o.before==="silent"&&o.unbound.state==="restored"&&o.unbound.saved===1&&o.unbound.rung===false,
+  rings:o.rung.rung===true&&o.rung.swing>.02&&o.rung.chevrons>=1&&o.settled.swing===0&&o.settled.chevrons===0,
+  ringsItself:o.selfRung.before===false&&o.selfRung.after===true,
+  remembered:o.reload.state==="restored"&&o.reload.saved===1,
+  off:o.off.PEAL===false&&o.off.built===false,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

@@ -291,7 +291,7 @@ function playtest(){
   stages:Object.fromEntries(st.map(([n,s])=>[n,{tries:s.tries,abandoned:s.tries-s.done,clears:s.clears,retriesAfterClear:s.again,bestStars:s.stars}]))};
 }
 const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',mode:'range',range:{open:0,best:[],stars:[]}};
-try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[],named:s.range.named&&typeof s.range.named==='object'?s.range.named:null};
+try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={bell1:s.range.bell1?1:0,open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[],named:s.range.named&&typeof s.range.named==='object'?s.range.named:null};
  state.coins=typeof s.coins==='number'?Math.max(0,s.coins|0):state.range.stars.reduce((a,b)=>a+(b||0)*25,0)+Math.round(state.range.best.reduce((a,b)=>a+(b||0),0)/20);}}catch{}
 function save(){try{rangeNames();localStorage.setItem(SAVE,JSON.stringify({bells:[...state.bells],marks:[...state.marks],lanterns:[...state.lanterns],shots:state.shots,longest:state.longest,pos:state.pos,done:state.done,lesson:state.lesson,coins:state.coins,hand:state.hand,draw:state.draw,mode:state.mode,range:state.range}));}catch{}}
 
@@ -587,7 +587,7 @@ function rangeNames(){
  R.stars=STAGES.map(st=>R.named[st.name]?R.named[st.name].s|0:0);R.best=STAGES.map(st=>R.named[st.name]?R.named[st.name].b|0:0);
  let open=0;while(open<STAGES.length-1&&R.stars[open]>0)open++;R.open=open;
 })();
-const coins=text=>RELEASE?'':text;   // coins are earned but not shown until there is something to spend them on
+const coins=text=>RELEASE||CONFIG.coins===false?'':text;   // coins are earned but not shown until there is something to spend them on
 const range={on:false,stage:0,phase:'idle',arrows:0,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,earned:0,wind:0,endAt:0,t0:0,ideal:1,pending:null,last:''};
 const rangeRounds=[],rangeSigns={};let rangeMeshes=[];
 for(let k=0;k<3;k++){
@@ -992,10 +992,12 @@ function rangeTargets(){
  rangeMeshes=[];for(const r of rangeRounds)if(r.base.visible)rangeMeshes.push(...r.meshes);
  for(const sp of spirits)if(sp.live&&sp.base.visible){rangeMeshes.push(sp.hitMesh);if(sp.hitHead)rangeMeshes.push(sp.hitHead);}
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
+ if(peal.mesh)rangeMeshes.push(peal.mesh);
 }
 function setStage(i){
  const st=STAGES[i];Object.assign(range,{gap:'',gain:0,perfectHits:0,specialUsed:0,ribbon:'',stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
  quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
+ if(PEAL){pealBuild();if(state.range.bell1&&!peal.rung)pealRing(true);}
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
@@ -1182,9 +1184,50 @@ function rangeResults(){
  range.shot=Math.max(...STAGES[i].marks.map(m=>m[0]))>=40?range.closest:range.shot||range.lastShot;
  save();if(range.shot)startReplay();else showResults();
 }
+// ---- The Silent Peal: the Practice Bell. One switch: "peal" in src/config.json, or ?peal=1 / ?peal=0.
+//   A forked belfry stands 22 m out and 12.5 m to one side of the lane, outside it and behind no target. It is
+//   silent (iron, thorn-bound, a shade crow on the fork) until the first place's four stages each hold a star. Then
+//   the thorns break and the bell turns bronze; an arrow rings it, and if the player goes on without ringing it, it
+//   rings itself softly as the next stage begins. Once unbound it stays so, and can be rung between stages.
+const PEAL=(QUERY.has('peal')?QUERY.get('peal')==='1':!!CONFIG.peal)&&typeof PROPS!=='undefined'&&!!PROPS.belfry;
+const PEAL_STAGES=['First marks','Stepping back','The drop','First shade'],PEAL_TONE=523;
+// The plan puts the bell 22 m out and 12.5 m to the RIGHT. On today's range the scoreboard stands in that line of sight, so
+// until the first place is rebuilt to its plan (where the board moves) the bell stands the same distance to the LEFT.
+const PEAL_AT=WORLD2?[22,12.5]:[22,-12.5];
+const peal={root:null,target:{kind:'peal'},mesh:null,rungAt:-99,rung:false,chevrons:[],at:V()};
+function pealBuild(){
+ if(!PEAL||peal.root)return;
+ const[x,z]=yardAt(PEAL_AT[0],PEAL_AT[1]),b=PROPS.belfry(T,{state:state.range.bell1?'restored':'silent'});
+ b.position.set(x,groundAt(x,z),z);b.rotation.y=Math.atan2(YARD.x-x,YARD.z-z);b.visible=false;scene.add(b);peal.root=b;peal.rung=!!state.range.bell1;
+ // what an arrow strikes: a plain shape round the bell, unseen
+ const m=new T.Mesh(new T.CylinderGeometry(.36,.36,.9,8),new T.MeshBasicMaterial({visible:false}));m.position.set(0,-.45,0);m.userData.target=peal.target;b.userData.bell.add(m);peal.mesh=m;
+ // three open chevrons that spread from the lip when it rings, so the ring reads with the sound off
+ for(let i=0;i<3;i++){const c=new T.Group();for(const s of[-1,1]){const k=new T.Mesh(new T.BoxGeometry(.5,.07,.02),new T.MeshBasicMaterial({color:i===1?'#F0C75A':'#F6E6BD'}));k.position.set(0,s*.17,0);k.rotation.z=s*-.7;c.add(k);}c.visible=false;b.add(c);peal.chevrons.push(c);}
+}
+function pealCleared(){const R=state.range;return PEAL_STAGES.every(n=>{const i=STAGES.findIndex(s=>s.name===n);return i>=0&&R.stars[i]>0;});}
+function pealRing(soft){
+ const b=peal.root;if(!b)return;peal.rungAt=elapsed;peal.rung=true;bellSound(PEAL_TONE,0,soft?.6:1);
+ b.userData.bell.getWorldPosition(peal.at);
+}
+function pealUnbind(){
+ const b=peal.root;if(!b||state.range.bell1)return;state.range.bell1=1;peal.rung=false;save();
+ b.userData.set('restored');b.userData.bell.getWorldPosition(peal.at);peal.at.y-=.5;burst(peal.at,'#4A2943',14,.9);note(392,.25,'sine',.1,0,523);
+ say('Practice Bell unbound  ·  shoot the bell to ring it, or shoot NEXT',7);
+}
+function pealHit(q){
+ rangeEnded(q);if(!peal.root)return;
+ if(!state.range.bell1){note(110,.3,'triangle',.18,0,90);thump(300,.12,.2);return;}   // still bound: a dull thud
+ const first=!peal.rung;pealRing(false);if(first)say('Practice Bell restored',4);
+}
+function pealStep(){
+ const b=peal.root;if(!b)return;b.visible=range.on;if(!range.on)return;
+ const age=elapsed-peal.rungAt;b.userData.bell.rotation.z=age<3?Math.exp(-1.3*age)*Math.sin(age*6)*.44:0;
+ peal.chevrons.forEach((c,i)=>{const t=(age-i*.12)/.6;c.visible=t>0&&t<1;if(c.visible){c.position.set(.45+t*.9,1.35,.05);c.scale.setScalar(.5+t*.9);}});
+}
 function showResults(){
  const i=range.stage,stars=range.stars,R=state.range;range.phase='results';stageList();
  rangeSigns.again.base.visible=true;rangeSigns.next.base.visible=i<STAGES.length-1&&R.open>i;rangeSigns.back.base.visible=i>0;rangeTargets();
+ if(PEAL&&stars&&!R.bell1&&pealCleared())pealUnbind();
  if(stars)[523,659,784,1047].slice(0,stars+1).forEach((f,k)=>note(f,.45,'sine',.1,k*.13));else note(196,.5,'triangle',.1,0,147);
  say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars)+(range.gap?'  ·  '+range.gap:''):'Not enough  ·  '+(range.gap?range.gap+'  ·  ':'')+'shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
  if(range.earned&&!RELEASE)[1568,1976,2349].forEach((f,k)=>note(f,.12,'triangle',.05,.5+k*.07));   // coins dropping into the purse
@@ -1517,6 +1560,7 @@ function stepBits(dt){
  }
 }
 function hit(t,q){
+ if(t.kind==='peal'){pealHit(q);return;}
  if(t.kind==='grass'){kilnClear(t,q);return;}
  if(t.kind==='range'||t.kind==='spirit'){rangeHit(t,q);return;}
  if(t.kind==='sign'){thump(600,.1,.2);if(range.phase==='results')range.pending=t.id;return;}
@@ -2022,7 +2066,7 @@ function tick(dt,frame){
  updateDeer(dt,feetNow.x,feetNow.z);updateGrass(feetNow.x,feetNow.z);
  scene.updateMatrixWorld();
  zoom+=(charge-zoom)*Math.min(1,dt*10);
- if(vr)vrPose();else desktopPose();if(vr)vrMenuStep();
+ if(vr)vrPose();else desktopPose();if(vr)vrMenuStep();pealStep();
  bow.updateMatrixWorld();stepArrows(dt);stepBits(dt);
  $('ret').classList.toggle('hit',elapsed<hitFlash);$('ret').style.visibility=replay.on?'hidden':'';
  (vr?head():camera).getWorldPosition(eyeNow);updateSky(dt,eyeNow);stepPops(dt,replay.on&&!vr?cine.position:eyeNow);
@@ -2103,6 +2147,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

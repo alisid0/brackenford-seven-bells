@@ -301,3 +301,5 @@ At the developer's request Gemini joined the creative work and the three models 
 **Decision, 22 November 2026:** the fire arrow is called **Kiln**. Still open: arrows in the air at Score Attack's buzzer, the Bonus Bell, and whether any of round 1 starts before the Trials playtest.
 
 **Decision, 22 November 2026:** in Score Attack an arrow loosed before the 180 seconds are up **counts** if it hits, however late it lands; only a release after the time is up is blocked. This goes into `Arcade-plan.md` when Arcade work begins. Still open: the Bonus Bell, and whether any of round 1 starts before the Trials playtest.
+
+**Decision, 22 November 2026:** Score Attack gets the **Bonus Bell**: when a slot's targets are all cleared with at least 1.5 seconds left, one bell appears, worth a flat 50, with no penalty for missing it. The main targets keep their fixed schedule and the bell uses a fixed place and none of the shared random numbers. This goes into `Arcade-plan.md` when Arcade work begins. Still open: whether any of round 1 starts before the Trials playtest.

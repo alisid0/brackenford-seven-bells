@@ -54,5 +54,5 @@ Each acts on one thing, reuses a system the game already has, and costs nothing 
 ## For the developer to decide
 1. ~~The fire arrow's name~~ **Decided 22 November 2026: Kiln** (ChatGPT's name; Gemini had proposed Singe).
 2. ~~Arrows in the air when Score Attack's 180 seconds run out~~ **Decided 22 November 2026: they count.** An arrow loosed before the 180 seconds are up scores if it hits, however late it lands; only a release after the time is up is blocked. (Gemini's rule; ChatGPT had proposed voiding them.)
-3. **A Bonus Bell in Score Attack** when a slot is cleared early (Gemini). ChatGPT objects that it breaks the fixed schedule that makes two players' runs comparable.
+3. ~~A Bonus Bell in Score Attack~~ **Decided 22 November 2026: add it.** Gemini's rule: when every target in a six-second slot is cleared with at least 1.5 seconds left, one Bonus Bell appears; a hit scores a flat 50 and a miss costs nothing. To answer ChatGPT's objection, the main targets keep their fixed schedule, and the bell must appear at a fixed place and draw nothing from the shared random sequence, so two players on the same seed still face the same run. Claude advised leaving it out until play showed dead time; the developer chose to include it.
 4. **Whether to start any of this before the Trials playtest.** All three models say Trials ships first.

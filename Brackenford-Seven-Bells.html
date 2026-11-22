@@ -80348,7 +80348,7 @@ const HIT_HARE={body:[-.02,-.11,.125,.15,.31],head:[.05,-.07,.115]};
 // body nose-up, swings a leg forward and lays an ear back.
 function standingPose(sp,dt){
  const B=sp.rig;sp.gait+=(sp.gaitTo-sp.gait)*Math.min(1,dt*8);
- sp.lowS+=((sp.mode==='hide'||sp.sunk?1:0)-sp.lowS)*Math.min(1,dt*6);   // how low it is keeping: 1 while it hides or is in tall grass
+ sp.lowS+=(((sp.mode==='hide'&&!sp.exposed)||sp.sunk?1:0)-sp.lowS)*Math.min(1,dt*6);   // how low it is keeping: 1 while it hides or is in tall grass
  const run=sp.mode==='run',w=Math.min(1,sp.gait/(run?1:.45)),t=elapsed+sp.seed,rear=sp.rear,low=sp.lowS,turn=sp.turn*sp.look;
  for(const n in B)B[n].rotation.set(0,0,0);
  // Moving, it takes its gait, carried low where the grass is tall. Standing, it crouches if it is keeping low, with
@@ -80456,6 +80456,7 @@ for(let k=0;k<9;k++){
  // a clump of tall grass that a spirit can sink into
  const g=new T.Group(),r=mulberry(300+k);scene.add(g);g.visible=false;
  for(let i=0;i<40;i++){const a=r()*6.28,d=Math.sqrt(r())*.8,h=.45+r()*.35,c=mesh(g,new T.ConeGeometry(.06,h,3),i%3?'#7d9a4a':'#a9ad62',V(Math.cos(a)*d,h/2,Math.sin(a)*d));c.rotation.set((r()-.5)*.3,r()*3,(r()-.5)*.3);}
+ const hit=new T.Mesh(new T.SphereGeometry(1,8,6));hit.visible=false;hit.scale.set(.85,.5,.85);hit.position.y=.42;hit.userData.target={kind:'grass',g};g.add(hit);g.userData.hit=hit;   // what a Kiln arrow strikes
  grassClumps.push(g);
 }
 function spiritPlace(sp,along,right){
@@ -80476,7 +80477,7 @@ function spiritShow(sp,alpha){
 }
 // a spirit as the stage begins, or put back as it was for a replay
 function spiritSet(sp,cfg){
- Object.assign(sp,{cfg,mode:cfg.t,value:SPIRIT[cfg.t],state:'in',t:0,live:true,done:false,up:true,seg:0,step:1,wait:cfg.t==='run'?1.2:1.6,sunk:0,rustle:1.5+Math.random()*2,swap:false,look:0,lookUntil:0,nextLook:elapsed+1+Math.random()*2,goal:null,pace:1,gait:0,gaitTo:0,phase:0,rear:0,fear:0,lowS:cfg.t==='hide'?1:0});
+ Object.assign(sp,{cfg,mode:cfg.t,value:SPIRIT[cfg.t],state:'in',t:0,live:true,done:false,up:true,seg:0,step:1,wait:cfg.t==='run'?1.2:1.6,sunk:0,rustle:1.5+Math.random()*2,swap:false,look:0,lookUntil:0,nextLook:elapsed+1+Math.random()*2,goal:null,pace:1,gait:0,gaitTo:0,phase:0,rear:0,fear:0,lowS:cfg.t==='hide'?1:0,exposed:false});
  sp.head.rotation.y=0;
  const at=spiritStart(cfg);spiritPlace(sp,at[0],at[1]);sp.base.visible=true;sp.root.position.set(0,0,0);sp.root.scale.setScalar(SPIRIT_SIZE);sp.root.rotation.set(0,0,0);
  if(cfg.path){const[x,z]=yardAt(cfg.path[1][0],cfg.path[1][1]);spiritFace(sp,x,z);}else sp.base.rotation.y=(cfg.area?Math.random()*6.28:0)+Math.atan2(YARD.x-sp.base.position.x,YARD.z-sp.base.position.z)+1.2;   // sitters sit side-on to the archer
@@ -80619,7 +80620,7 @@ function spiritStep(dt){
   sp.ears.forEach((e,i)=>{e.rotation.z=(i?-1:1)*.12+Math.sin(elapsed*3+i*2+sp.base.position.x)*.07;e.rotation.x=-.15+Math.sin(elapsed*1.7+i)*.05;});
   sp.mist.scale.setScalar(1+Math.sin(elapsed*1.3+sp.base.position.z)*.06);sp.mist.visible=false;
   if(sp.mode==='hide'){
-   sp.root.position.y=-sp.sink;sp.rustle-=dt;
+   sp.root.position.y=sp.exposed?0:-sp.sink;sp.rustle-=dt;
    if(sp.rustle<=0){sp.rustle=2.8+Math.random()*2;sp.shake=elapsed;sp.lookUntil=elapsed+1.5;sp.nextLook=elapsed+9;if(play)note(2400+Math.random()*600,.18,'triangle',.012,0,1500);}
    if(sp.clump)sp.clump.rotation.z=Math.exp(-5*(elapsed-(sp.shake||-9)))*Math.sin((elapsed-(sp.shake||0))*30)*.13;
   }
@@ -80658,11 +80659,12 @@ function rangeTargets(){
 }
 function setStage(i){
  const st=STAGES[i];Object.assign(range,{stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
+ quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
   const m=st.marks[k];r.base.visible=!!m;if(!m)return;
-  const[x,z]=yardAt(m[0],m[1]),h=.75+.72*m[2];Object.assign(r,{along:m[0],right:m[1],scale:m[2],slide:m[3]||null,pop:m[4]||null,up:true});
+  const[x,z]=yardAt(m[0],m[1]),h=.75+.72*m[2];Object.assign(r,{along:m[0],right:m[1],scale:m[2],slide:m[3]||null,pop:m[4]||null,up:true,lag:0,heldUntil:0,frosted:false});if(r.bracket)r.bracket.visible=false;
   r.base.position.set(x,groundAt(x,z),z);r.base.rotation.y=Math.atan2(YARD.x-x,YARD.z-z);r.root.position.y=h;r.root.scale.setScalar(m[2]);r.post.scale.y=h;r.post.position.y=h/2;r.tilt.rotation.x=0;
  });
  const wild=st.spirits||[];
@@ -80715,10 +80717,65 @@ function guideText(){
  if(range.hits<2)return'A hit. Hits in a row build a streak';
  return vr?'Let go just as you feel the pulse at full draw: a perfect release':'Let go just as the bar turns white: a perfect release';
 }
+// ---- Special arrows: Rime (frost), Gale and Kiln. The rules and every number are Gemini's (design/arrows-spec.md);
+// the cues are ChatGPT's (design/chatgpt-round-1.md). Off unless src/config.json sets "arrows", or the page is opened
+// with ?arrows=1 outside release mode. Nothing here draws a random number.
+//   Two charges a stage, shared by the three. A special shot spends a charge and a stage arrow, hit or miss.
+//   Rime  a hit on a sliding or pop-up target holds its timer for 1.8 s, once per target. Scores nothing.
+//   Gale  takes half the sideways wind; the ring or shade value it scores is capped at 60.
+//   Kiln  a hit on a clump of tall grass clears it for the stage. Scores nothing and never harms a shade.
+//   A Rime or Kiln shot that does its job leaves the streak alone; one that hits anything else breaks it.
+const ARROWS=!!CONFIG.arrows||(QUERY.get('arrows')==='1'&&!RELEASE);
+const ARROW_RULE={charges:2,hold:1.8,galeWind:.5,galeCap:60},ARROW_NAMES={std:'Standard',rime:'Rime',gale:'Gale',kiln:'Kiln'},ARROW_ORDER=['std','rime','gale','kiln'];
+const quiver={kind:'std',charges:0};
+function quiverPick(kind){
+ if(!ARROWS||!range.on||range.phase!=='play')return;
+ if(kind!=='std'&&quiver.charges<=0){say('No special arrows left',1.5);kind='std';}else say(kind==='std'?'Standard arrow':ARROW_NAMES[kind]+' arrow  ·  '+quiver.charges+' special left',1.5);
+ quiver.kind=kind;note(660,.08,'sine',.05);
+}
+function quiverStep(d){quiverPick(ARROW_ORDER[(ARROW_ORDER.indexOf(quiver.kind)+d+4)%4]);}
+const quiverText=()=>ARROWS&&range.phase==='play'?'      '+ARROW_NAMES[quiver.kind]+'  ·  '+quiver.charges+' special':'';
+// Gale's cue: a short cream trail with three plum bands behind the arrow
+function galeCue(o,on){
+ let t=o.userData.gale;
+ if(!t){if(!on)return;t=o.userData.gale=new T.Group();o.add(t);box(t,V(0,0,1.15),V(.035,.035,1),'#f6e6bd');for(let i=0;i<3;i++)box(t,V(0,0,.85+i*.3),V(.05,.05,.09),'#4A2943');}
+ t.visible=on;
+}
+// Rime's cue: a broad sky-blue bracket locked about the target for as long as it is held
+function rimeCue(t){
+ if(!t.bracket){const b=new T.Group();t.root.add(b);t.bracket=b;for(const s of[-1,1]){box(b,V(s*.68,0,0),V(.07,1.3,.05),'#8fd0ee');for(const y of[-1,1])box(b,V(s*.56,y*.615,0),V(.24,.07,.05),'#8fd0ee');}}
+ t.bracket.visible=true;
+}
+// Kiln's cue: three broad cream chevrons that rise from the cleared clump and shrink away
+const kilnMark=ARROWS?(()=>{const m=new T.Group();m.visible=false;scene.add(m);for(let i=0;i<3;i++)for(const s of[-1,1])box(m,V(s*.17,i*.3,0),V(.42,.09,.05),'#f6e6bd').rotation.z=-s*.6;return{g:m,t:-9,y:0};})():null;
+// a special arrow has done its job (ok) or failed to; it scores nothing either way, and only a failure breaks the streak
+function specialDone(q,ok,text,at,color){
+ q.done=true;if(q.path)q.path.push(q.o.position.clone());
+ if(!ok){if(range.streak>1)note(196,.25,'triangle',.08,0,130);range.streak=0;}
+ popup(text,at,color);
+ if(range.arrows<=0)range.endAt=Math.min(range.endAt||1e9,elapsed+.9);
+}
+// a Rime or Kiln arrow striking a target or a shade. Returns true when it has dealt with the hit; Gale and Standard go on to score.
+function specialHit(t,q){
+ if(q.kind!=='rime'&&q.kind!=='kiln')return false;
+ const at=q.o.position.clone().add(V(0,.5*(t.scale||1),0)),ring=t.kind==='range';
+ const ok=q.kind==='rime'&&ring&&!!(t.slide||t.pop)&&!t.frosted;
+ if(ok){t.frosted=true;t.heldUntil=elapsed+ARROW_RULE.hold;rimeCue(t);note(1568,.5,'sine',.08,0,1175);}
+ if(ring){t.kick=elapsed;thump(500,.15,.25);}
+ specialDone(q,ok,ok?'Held':'No effect',at,ok?'#9fd8f0':'#fff1c4');return true;
+}
+// a Kiln arrow striking a clump of tall grass: the clump is gone for the stage and whatever hid in it is in the open
+function kilnClear(t,q){
+ const c=t.g;c.visible=false;kilnMark.g.position.copy(c.position);kilnMark.g.rotation.y=Math.atan2(YARD.x-c.position.x,YARD.z-c.position.z);kilnMark.y=c.position.y;kilnMark.t=elapsed;
+ for(const sp of spirits)if(sp.clump===c){sp.clump=null;sp.exposed=true;if(!sp.bound){sp.hitMesh.position.set(0,.26,.02);sp.hitMesh.scale.setScalar(.3);}}
+ note(520,.3,'triangle',.08,0,260);specialDone(q,true,'Cleared',c.position.clone().add(V(0,1.1,0)),'#f6e6bd');
+}
 function rangeLoosed(q,perfect){
  if(!range.on)return;q.windy=true;
  if(range.phase!=='play')return;
  q.ranged=true;q.perfect=perfect;q.path=[q.o.position.clone()];range.arrows--;range.fired++;
+ q.kind='std';if(ARROWS&&quiver.kind!=='std'&&quiver.charges>0){q.kind=quiver.kind;if(--quiver.charges<=0)quiver.kind='std';}   // a special shot spends a charge as it leaves the string
+ galeCue(q.o,q.kind==='gale');
  if(guiding()&&range.hits===0&&range.arrows<=0)range.arrows=3;   // a learner who has not yet hit anything is never left without arrows
  q.final=range.arrows<=0;
  if(perfect)note(1320,.18,'sine',.07,0,1760);
@@ -80744,10 +80801,11 @@ function rangeEnded(q){
  if(range.arrows<=0)range.endAt=Math.min(range.endAt||1e9,elapsed+.9);
 }
 function rangeHit(t,q){
+ if(ARROWS&&q.ranged&&!q.done&&specialHit(t,q))return;
  const spirit=t.kind==='spirit';
  if(spirit){if(!t.live)return;spiritWake(t);}else{t.kick=elapsed;thump(500,.15,.25);note(124,.16,'triangle',.2,0,40);}
  if(!q.ranged||q.done)return;q.done=true;
- const at=q.o.position,local=t.root.worldToLocal(at.clone()),r=spirit?0:hyp(local.x,local.y),ring=spirit?t.value:r<.1?100:r<.23?80:r<.37?60:r<.5?40:20,dist=Math.round(q.origin.distanceTo(at));
+ const at=q.o.position,local=t.root.worldToLocal(at.clone()),r=spirit?0:hyp(local.x,local.y),ring=Math.min(q.kind==='gale'?ARROW_RULE.galeCap:1e9,spirit?t.value:r<.1?100:r<.23?80:r<.37?60:r<.5?40:20),dist=Math.round(q.origin.distanceTo(at));
  range.streak++;range.hits++;range.best=Math.max(range.best,range.streak);
  const pts=Math.round((ring+dist)*Math.min(2,1+.1*(range.streak-1))*(q.perfect?1.25:1));range.score+=pts;
  q.path.push(at.clone());const shot={path:q.path,pts,ring:spirit?100:ring,spirit,target:t,base:t.base.position.clone(),off:r*t.scale};
@@ -80871,7 +80929,7 @@ function rangeInfo(){
  if(range.phase==='results')return{title:'Stage '+(i+1)+'  ·  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars),
   text:'Score '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.best[i]||0))+'.  '+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
   mark:'★ '+R.stars.reduce((a,b)=>a+(b||0),0)+' of '+STAGES.length*3+coins('      Coins '+state.coins)+fpsText(),wind};
- return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak,mark:wind+(R.best[i]?'      best '+R.best[i]:'')+coins('      Coins '+state.coins)+fpsText(),wind};
+ return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak+quiverText(),mark:wind+(R.best[i]?'      best '+R.best[i]:'')+coins('      Coins '+state.coins)+fpsText(),wind};
 }
 function rangeStep(dt){
  const w=range.on?STAGES[range.stage].wind||[0,0]:[0,0];
@@ -80881,10 +80939,12 @@ function rangeStep(dt){
  if(range.phase==='replay')replayStep(dt);
  if(range.pending){const id=range.pending,i=range.stage;range.pending=null;if(range.phase==='results'){if(id==='next'&&rangeSigns.next.base.visible)setStage(i+1);else if(id==='back'&&i>0)setStage(i-1);else if(id==='again')setStage(i);}}
  const t=elapsed-range.t0;
+ if(kilnMark){const k=elapsed-kilnMark.t;kilnMark.g.visible=k<.8;if(k<.8){kilnMark.g.position.y=kilnMark.y+.5+k*1.4;kilnMark.g.scale.setScalar(1-k*.6);}}
  for(const r of rangeRounds){
   if(!r.base.visible)continue;
-  if(r.slide&&range.phase!=='replay'){const[x,z]=yardAt(r.along,r.right+r.slide[0]*Math.sin(t*r.slide[1]));r.base.position.x=x;r.base.position.z=z;}
-  if(r.pop)r.up=range.phase!=='play'||(t+r.pop[2])%(r.pop[0]+r.pop[1])<r.pop[0];
+  if(r.heldUntil>elapsed)r.lag=(r.lag||0)+dt;const tt=t-(r.lag||0);if(r.bracket)r.bracket.visible=r.heldUntil>elapsed;   // Rime: a held target's own clock stands still
+  if(r.slide&&range.phase!=='replay'){const[x,z]=yardAt(r.along,r.right+r.slide[0]*Math.sin(tt*r.slide[1]));r.base.position.x=x;r.base.position.z=z;}
+  if(r.pop)r.up=range.phase!=='play'||(tt+r.pop[2])%(r.pop[0]+r.pop[1])<r.pop[0];
   r.tilt.rotation.x=lerp(r.tilt.rotation.x,r.up?0:-1.5,Math.min(1,dt*9));
  }
  spiritStep(dt);
@@ -81104,6 +81164,7 @@ function stepBits(dt){
  }
 }
 function hit(t,q){
+ if(t.kind==='grass'){kilnClear(t,q);return;}
  if(t.kind==='range'||t.kind==='spirit'){rangeHit(t,q);return;}
  if(t.kind==='sign'){thump(600,.1,.2);if(range.phase==='results')range.pending=t.id;return;}
  const dist=Math.round(q.origin.distanceTo(q.o.position));t.kick=elapsed;
@@ -81128,7 +81189,7 @@ function hit(t,q){
 }
 function settle(q,dir,deep){
  q.jolt=clamp(q.velocity.length()/55,.3,1);q.stuck=true;q.stuckAt=elapsed;
- const u=q.o.userData;u.streak.visible=false;u.body.rotation.set(0,0,q.roll);if(deep)q.o.position.addScaledVector(dir,deep);
+ const u=q.o.userData;u.streak.visible=false;if(u.gale)u.gale.visible=false;u.body.rotation.set(0,0,q.roll);if(deep)q.o.position.addScaledVector(dir,deep);
 }
 function stepArrows(dt){
  for(let i=projectiles.length-1;i>=0;i--){
@@ -81136,10 +81197,11 @@ function stepArrows(dt){
   if(q.life>(q.stuck?50:14)){recycle(i);continue;}
   if(q.stuck){const t=elapsed-q.stuckAt;if(!q.flat&&t<1.2)u.body.rotation.x=q.jolt*.15*Math.exp(-6*t)*Math.sin(52*t);continue;}
   q.velocity.y-=GRAV*dt;
-  if(q.windy){q.velocity.x+=YARD.rx*range.wind*1.4*dt;q.velocity.z+=YARD.rz*range.wind*1.4*dt;}   // a crosswind pushes the arrow sideways all the way down the lane
+  if(q.windy){const push=range.wind*1.4*dt*(q.kind==='gale'?ARROW_RULE.galeWind:1);q.velocity.x+=YARD.rx*push;q.velocity.z+=YARD.rz*push;}   // a crosswind pushes the arrow sideways all the way down the lane
   const speed=q.velocity.length(),dir=tmpDir.copy(q.velocity).divideScalar(speed),distance=speed*dt,p=q.o.position;
   let contact=null;
   if(!q.spent){ray.set(p,dir);ray.far=distance+.01;contact=range.on?ray.intersectObjects(rangeMeshes,false).find(c=>{const t=c.object.userData.target;return!(t.tilt&&t.tilt.rotation.x<-.6);}):ray.intersectObjects(hitMeshes,false)[0];}   // a pop-up lying down cannot be hit
+  if(ARROWS&&q.kind==='kiln'&&!q.spent&&!q.done)for(const c of grassClumps)if(c.visible){const k=ray.intersectObject(c.userData.hit,false)[0];if(k&&(!contact||k.distance<=contact.distance))contact=k;}
   const limit=contact?contact.distance:distance;
   q.o.quaternion.setFromUnitVectors(FWD,dir);
   if(q.spent){q.roll+=dt*13;u.body.rotation.set(q.roll,0,0);}
@@ -81168,7 +81230,7 @@ function stepArrows(dt){
   if(!q.stuck&&contact){
    p.copy(contact.point);const t=contact.object.userData.target;hit(t,q);hitFlash=elapsed+.2;
    if(t.kind==='straw'||t.kind==='drill'||t.kind==='range'||t.kind==='sign'){burst(p,'#e6cd7c',10,.8);settle(q,dir,.09);if(t.id==='mover'||t.kind==='range')(t.tilt||t.base).attach(q.o);}   // an arrow in the sliding round rides along with it
-   else if(t.kind==='spirit'){u.streak.visible=false;q.spent=true;q.velocity.copy(dir).multiplyScalar(speed*.12);}
+   else if(t.kind==='spirit'||t.kind==='grass'){u.streak.visible=false;q.spent=true;q.velocity.copy(dir).multiplyScalar(speed*.12);}
    else if(t.kind==='lantern'){burst(p,'#ffb866',16,1.2);t.root.visible=false;}   // the arrow flies on through the paper
    else{
     // an arrow glances off the bronze and tumbles to the ground
@@ -81274,6 +81336,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyH'&&playing&&!e.repeat&&!charging){setHand(state.hand==='left'?'right':'left');say(state.hand==='left'?'Left-handed  ·  bow in the right hand':'Right-handed  ·  bow in the left hand',2.5);return;}
  if(range.on&&playing&&!charging){const step={BracketLeft:-1,PageUp:-1,BracketRight:1,PageDown:1}[e.code];if(step){e.preventDefault();stageGo(range.stage+step);return;}}
  if(replay.on&&playing&&(e.code==='Space'||e.code==='Enter')){range.skip=true;e.preventDefault();return;}
+ if(ARROWS&&range.on&&playing&&!e.repeat&&!charging){const k={Digit1:'std',Digit2:'rime',Digit3:'gale',Digit4:'kiln'}[e.code];if(k){quiverPick(k);return;}}
  if(range.on&&playing&&range.phase==='results'){const go={KeyN:'next',Enter:'next',KeyR:'again',KeyB:'back'}[e.code];if(go){range.pending=go;return;}}
  if(playing){keys.add(e.code);if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();}
 });
@@ -81318,7 +81381,7 @@ function vrStatus(){
  if(!bowHand)return bare?'Close a fist on the bow\nPoint a finger to walk':'Grip near the bow\nwith either hand';
  if(!state.shots)return bare?'Pinch the string\npull back and let go':state.draw==='one'?'Hold a trigger to draw\nlet go to loose':'Free hand to the string\nhold trigger, pull, let go';
  if(charging)return'Draw '+Math.round(charge*10)*10+'%'+String.fromCharCode(10)+(charge>=.95?'full draw':'pull further for more power');
- if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
+ if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+quiverText()+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
  if(state.lesson<5&&hyp(rig.position.x-YARD.x,rig.position.z-YARD.z)<80){const i=lessonInfo();return i.title.split('  ·  ')[1]+'\n'+(i.mark||'See the board');}
  if(state.lesson<5&&state.bells.size===0)return'Training yard\nfollow the gold needle';
  if(state.done)return'The vale is awake\n'+counts().split('\n').slice(1).join('\n');
@@ -81416,6 +81479,7 @@ function vrLocomotion(dt,frame){
    const mag=hyp(sx,sy);
    if(range.on){
     if(Math.abs(sx)>.7&&!h.turned&&!charging){h.turned=true;stageGo(range.stage+Math.sign(sx));}else if(Math.abs(sx)<.3)h.turned=false;
+    if(ARROWS){if(Math.abs(sy)>.7&&Math.abs(sx)<.4&&!h.picked&&!charging){h.picked=true;quiverStep(sy<0?1:-1);}else if(Math.abs(sy)<.3)h.picked=false;}   // up or down picks the arrow
    }
    if(mag>.18&&!range.on){
     const yaw=headYaw(),sp=(running?7.5:3.6)*Math.min(1,mag)*(charging?.5:1)*(groundAt(eye.x,eye.z)<-.4?.5:1)*dt/mag,s=Math.sin(yaw),c=Math.cos(yaw);
@@ -81548,7 +81612,7 @@ if(RELEASE){
  $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};
 </script></body></html>

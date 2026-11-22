@@ -1,0 +1,106 @@
+<!doctype html><meta charset="utf-8"><title>special arrows</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The special arrows (Rime, Gale, Kiln) against the acceptance cases in design/arrows-spec.md, with real arrows.
+// The game is opened with ?release=0&arrows=1; without the flag the arrows do not exist (the last check).
+// The spec counts the streak as a multiplier (1.0, 1.1, ...); the game counts hits in a row, so 1.4 there is 5 here
+// after the hit, and "resets to 1.0" is a count of 0.
+// ?save=1 also takes pictures of the three cues and posts them to the local relay (port 8767) for assets/renders.
+const errors=[];for(const k of["brackenford-seven-bells-v1","brackenford-trials-v1"])localStorage.removeItem(k);
+const Q=new URLSearchParams(location.search),page=Q.get("build")||"../Brackenford-Seven-Bells.html",save=Q.get("save");
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src=page+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,12))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function run(){
+ const w=await game("?release=0&arrows=1"),v=w.vale,T=v.T,r=v.range,q=v.quiver,S=v.spirits,R=n=>+n.toFixed(3),V=(x,y,z)=>new T.Vector3(x,y,z),out={flagOn:v.ARROWS,rule:v.ARROW_RULE};
+ const steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ const stage=name=>{const i=v.STAGES.findIndex(s=>s.name===name);if(i<0)throw new Error("no stage "+name);v.setStage(i);steps(50);return v.STAGES[i];};
+ // loose one full-power arrow of a kind so that it passes through a point; returns after it has landed
+ function fire(kind,to,perfect=false,wait=true){
+  v.quiverPick(kind);steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;
+  const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1,perfect);
+  if(wait)steps(Math.ceil((d/55+.3)*60));return d;
+ }
+ const centre=t=>t.root.getWorldPosition(V()),rounds=()=>v.rangeRounds.filter(t=>t.base.visible);
+ // where a moving target will be when an arrow loosed now reaches it
+ const lead=t=>{const a=centre(t);steps(1);const b=centre(t),d=eye().distanceTo(b),f=d/60+1/60;return b.clone().add(b.clone().sub(a).multiplyScalar(60*f));};
+ const far=()=>{const o=eye(),f=v.YARD;return V(o.x+f.rx*30,0,o.z+f.rz*30);};   // a point well off to one side: a certain miss
+ v.begin(false);steps(2);
+ if(!v.ARROWS)throw new Error("the arrows flag is off");
+
+ // 1. two shared charges; a special spends a charge and a stage arrow; at none left the choice goes back to Standard
+ {const st=stage("Horns in the grass"),a0=r.arrows,c0=q.charges;
+  fire("rime",far());fire("kiln",far());
+  out.case1={arrowsAtStart:a0,stageGives:st.arrows,chargesAtStart:c0,arrowsLeft:r.arrows,chargesLeft:q.charges,choice:q.kind,ok:c0===2&&a0-r.arrows===2&&q.charges===0&&q.kind==="std"};
+  fire("gale",far());out.case1.noChargeMeansStandard=q.kind==="std"&&q.charges===0;out.case1.ok=out.case1.ok&&out.case1.noChargeMeansStandard;}
+ // 2. a Gale that misses: one charge left, no score, streak broken
+ {stage("First marks");r.streak=4;const s0=r.score;fire("gale",far());
+  out.case2={charges:q.charges,scoreChange:r.score-s0,streak:r.streak,ok:q.charges===1&&r.score===s0&&r.streak===0};}
+ // 3. Rime on a slider with a perfect release: no score, streak kept, held for 1.8 s then moving again
+ {stage("Sliding mark");const t=rounds().find(x=>x.slide);r.streak=5;const s0=r.score;fire("rime",lead(t),true);
+  const p0=centre(t);let heldFor=0,maxDrift=0;for(let i=0;i<200&&t.heldUntil>0;i++){steps(1);const d=centre(t).distanceTo(p0);if(d<.002){heldFor=(i+1)/60;maxDrift=Math.max(maxDrift,d);}else break;}
+  steps(30);const after=centre(t).distanceTo(p0);
+  // (the watch above starts only once the arrow has landed and the test has caught up, so the full hold is read from the target's own stopped clock)
+  out.case3={frosted:!!t.frosted,scoreChange:r.score-s0,streak:r.streak,clockStoodStillFor:R(t.lag||0),seenStillFor:R(heldFor),driftWhileHeld:R(maxDrift),movesAgain:R(after),bracketShown:!!t.bracket,ok:!!t.frosted&&r.score===s0&&r.streak===5&&t.lag>1.75&&t.lag<1.85&&heldFor>1.2&&maxDrift<.002&&after>.05};
+  // 5a. a second Rime on the same target: no new hold, streak broken, charge spent
+  const held=t.heldUntil,c0=q.charges;fire("rime",lead(t));
+  out.case5={secondFrost:{heldUntilUnchanged:t.heldUntil===held,streak:r.streak,chargesSpent:c0-q.charges}};
+  // 9. Gale on a held target scores normally and does not end the hold
+  stage("Sliding mark");const t2=rounds().find(x=>x.slide);fire("rime",lead(t2));const until=t2.heldUntil,s1=r.score;r.streak=10;q.charges=1;
+  const d9=fire("gale",centre(t2)),got9=r.score-s1;
+  out.case9={held:until>0,scored:got9,holdUnchanged:t2.heldUntil===until,capApplies:got9<=Math.round((60+Math.round(d9)+1)*2),ok:until>0&&got9>0&&t2.heldUntil===until&&got9<=Math.round((60+Math.round(d9)+1)*2)};}
+ // 4. Rime on a pop-up while it is up: it stays up, and its timer stands still for 1.8 s
+ {stage("Pop-ups");let t=null;for(let i=0;i<600&&!t;i++){steps(1);t=rounds().find(x=>x.pop&&x.up&&x.tilt.rotation.x>-.1);}
+  fire("rime",centre(t));let upAll=true,n=0;while(t.heldUntil>0&&n<108){steps(1);n++;if(n<100&&!t.up)upAll=false;}
+  out.case4={frosted:!!t.frosted,timerStoodStillFor:R(t.lag||0),stayedUp:upAll,ok:!!t.frosted&&upAll&&t.lag>1.4&&t.lag<1.85};}
+ // 5b. Rime on a target that does not move, and on a shade: no effect, streak broken, the shade unharmed
+ {stage("First marks");const t=rounds()[0];r.streak=3;const s0=r.score;fire("rime",centre(t));
+  out.case5.staticRing={frosted:!!t.frosted,scoreChange:r.score-s0,streak:r.streak};
+  stage("First shade");steps(40);r.streak=3;fire("rime",S[0].hitMesh.getWorldPosition(V()));
+  out.case5.shade={stillThere:S[0].live&&S[0].state==="idle",streak:r.streak,score:r.score};
+  const c=out.case5;c.ok=c.secondFrost.heldUntilUnchanged&&c.secondFrost.streak===0&&c.secondFrost.chargesSpent===1&&!c.staticRing.frosted&&c.staticRing.scoreChange===0&&c.staticRing.streak===0&&c.shade.stillThere&&c.shade.streak===0&&c.shade.score===0;}
+ // 6. Gale takes half the sideways wind: two arrows loosed together, one of each kind
+ {stage("Crosswind");steps(30);const Y=v.YARD,side=p=>p.x*Y.rx+p.z*Y.rz,n0=v.projectiles.length;
+  fire("std",centre(rounds()[0]),false,false);fire("gale",centre(rounds()[0]),false,false);
+  const a=v.projectiles[n0],b=v.projectiles[n0+1],va=side(a.velocity),vb=side(b.velocity);steps(12);
+  const da=side(a.velocity)-va,db=side(b.velocity)-vb;
+  out.case6={wind:R(r.wind),standardPushed:R(da),galePushed:R(db),ratio:R(db/da),galeKind:b.kind,ok:b.kind==="gale"&&Math.abs(r.wind)>1&&Math.abs(db/da-.5)<.03};steps(90);}
+ // 7 and 8. Gale's score: the ring or shade value counts as 60 at most
+ {stage("First marks");const t=rounds()[0];r.streak=10;const s0=r.score,d=fire("gale",centre(t),true),got=r.score-s0,want=[Math.floor(d),Math.round(d),Math.ceil(d)].map(x=>Math.round((60+x)*2*1.25));
+  out.case7={bullseyeAtMetres:R(d),scored:got,expectedOneOf:want,ok:want.includes(got)};
+  stage("First marks");const t2=rounds()[0];r.streak=10;const s1=r.score,d2=fire("std",centre(t2),true),got2=r.score-s1;
+  out.case7.standardForComparison=got2;out.case7.ok=out.case7.ok&&got2>got;
+  stage("First shade");steps(40);r.streak=10;const s2=r.score,d3=fire("gale",S[0].hitMesh.getWorldPosition(V())),got3=r.score-s2,want3=[Math.floor(d3),Math.round(d3),Math.ceil(d3)].map(x=>Math.round((60+x)*2));
+  out.case8={shadeValue:S[0].value,scored:got3,expectedOneOf:want3,banished:S[0].state==="waking",streak:r.streak,ok:want3.includes(got3)&&S[0].state==="waking"&&r.streak===11};}
+ // 10. Kiln on a clump with a shade in it: the clump is gone, the shade unharmed and in the open, no score, streak kept
+ {stage("Horns in the grass");steps(60);const sp=S[0],clump=sp.clump;r.streak=5;const s0=r.score;
+  fire("kiln",clump.position.clone().add(V(0,.4,0)),true);steps(30);
+  out.case10={clumpGone:!clump.visible,shadeUnharmed:sp.live&&sp.state==="idle",inTheOpen:sp.exposed===true&&sp.clump===null,scoreChange:r.score-s0,streak:r.streak,ok:!clump.visible&&sp.live&&sp.state==="idle"&&sp.exposed===true&&r.score===s0&&r.streak===5};
+  // 11. a second Kiln at the cleared spot (now an exposed shade): unharmed, no score, streak broken, charge spent
+  const c0=q.charges;fire("kiln",sp.hitMesh.getWorldPosition(V()));
+  out.case11={shadeUnharmed:sp.live&&sp.state==="idle",scoreChange:r.score-s0,streak:r.streak,chargesSpent:c0-q.charges,ok:sp.live&&sp.state==="idle"&&r.score===s0&&r.streak===0&&c0-q.charges===1};
+  // and the follow-up: a Standard arrow banishes the exposed shade
+  r.streak=0;fire("std",sp.hitMesh.getWorldPosition(V()));out.case11.followUpBanishes=sp.state==="waking";out.case11.ok=out.case11.ok&&out.case11.followUpBanishes;
+  // Kiln on a ring does nothing
+  stage("First marks");r.streak=3;const s1=r.score;fire("kiln",centre(rounds()[0]));out.kilnOnRing={scoreChange:r.score-s1,streak:r.streak,ok:r.score===s1&&r.streak===0};}
+ // ---- pictures of the three cues, from the archer's place and from close by
+ if(save){
+  const put=async(name,url)=>{const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+  const from=(at,pos)=>{const c=v.camera,p0=c.position.clone(),q0=c.quaternion.clone();c.parent.updateMatrixWorld(true);c.position.copy(c.parent.worldToLocal(pos.clone()));c.lookAt(at);const url=v.shot();c.position.copy(p0);c.quaternion.copy(q0);return url;};
+  const toward=(at,far,up=.3)=>{const e=eye(),d=e.clone().sub(at).setY(0).normalize();return at.clone().addScaledVector(d,far).add(V(0,up,0));};
+  // Rime: the bracket about a held slider
+  {stage("Sliding mark");const t=rounds().find(x=>x.slide);fire("rime",lead(t));steps(10);await put("arrows-rime-player",v.shot());await put("arrows-rime-close",from(centre(t),toward(centre(t),5)));}
+  // Kiln: the chevrons over a cleared clump, a quarter of a second after it goes
+  {stage("Horns in the grass");steps(60);const c=S[0].clump,at=c.position.clone().add(V(0,.6,0));await put("arrows-kiln-before",from(at,toward(at,6,.8)));
+   fire("kiln",c.position.clone().add(V(0,.4,0)),false,false);let n=0;while(c.visible&&n++<120)steps(1);steps(14);await put("arrows-kiln-player",v.shot());await put("arrows-kiln-close",from(at,toward(at,6,.8)));steps(60);await put("arrows-kiln-after",from(at,toward(at,6,.8)));}
+  // Gale: the banded trail on an arrow in flight, seen from beside it
+  {stage("Crosswind");steps(30);const n0=v.projectiles.length;fire("gale",centre(rounds()[0]),false,false);steps(9);const a=v.projectiles[n0],p=a.o.position.clone(),Y=v.YARD;
+   await put("arrows-gale-close",from(p,p.clone().add(V(Y.rx*2.2,.25,Y.rz*2.2))));steps(90);}
+ }
+ out.allCasesPass=["case1","case2","case3","case4","case5","case6","case7","case8","case9","case10","case11","kilnOnRing"].every(k=>out[k].ok);
+ // ---- without the flag the arrows are not there: the release page, and a non-release page with no flag
+ for(const[name,query]of[["releasePage","?arrows=1"],["noFlag","?release=0"]]){
+  const w2=await game(query),v2=w2.vale;for(let i=0;i<2;i++)v2.tick(1/60);v2.begin(false);for(let i=0;i<60;i++)v2.tick(1/60);v2.quiverPick("rime");
+  out[name]={flag:v2.ARROWS,charges:v2.quiver.charges,choice:v2.quiver.kind,ok:v2.ARROWS===false&&v2.quiver.charges===0&&v2.quiver.kind==="std"};
+ }
+ out.errors=errors;return out;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,300)+JSON.stringify(errors));
+</script>

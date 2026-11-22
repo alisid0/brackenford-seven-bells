@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8"><title>new range layout</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The new range layout (?world=2, built to assets/concepts/world-2-layout-v2.jpg). Checks that the lane is level,
+// that the terraces carry the far targets and arrows still strike them, that no loose grass grows in the lane, and
+// that the layout is absent without the switch and on the release page. ?save=1 takes pictures for assets/renders.
+const Q=new URLSearchParams(location.search),save=Q.get("save"),errors=[];
+for(const k of["brackenford-seven-bells-v1","brackenford-trials-v1"])localStorage.removeItem(k);
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,10))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function run(){
+ const w=await game("?release=0&world=2"),v=w.vale,T=v.T,r=v.range,Y=v.YARD,L=v.LANE,R=n=>+n.toFixed(3),V=(x,y,z)=>new T.Vector3(x,y,z),out={on:v.WORLD2};
+ const steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ const at=(a,rt,y=0)=>V(Y.x+Y.ux*a+Y.rx*rt,L.base+y,Y.z+Y.uz*a+Y.rz*rt),ground=(a,rt)=>{const p=at(a,rt);return v.groundAt(p.x,p.z)-L.base;};
+ const stage=name=>{const i=v.STAGES.findIndex(s=>s.name===name);if(i<0)throw new Error("no stage "+name);v.setStage(i);steps(50);};
+ const rounds=()=>v.rangeRounds.filter(t=>t.base.visible),centre=t=>t.root.getWorldPosition(V());
+ function fire(to){steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));return d;}
+ v.begin(false);steps(2);
+ // the lane is level from the line to the creek, across its whole width
+ {let worst=0;for(let a=-2;a<=36;a+=2)for(const b of[-7.5,-4,0,4,7.5])worst=Math.max(worst,Math.abs(ground(a,b)));out.level={worstBump:R(worst),ok:worst<.02};}
+ // the terraces: 0.7 m at 41 m, then 1.4, 2.1 and 2.8 m
+ out.terraces={at40:R(ground(40,0)),at45:R(ground(45,0)),at55:R(ground(55,3)),at65:R(ground(65,-5)),at75:R(ground(75,6)),offTheLaneAt65:R(ground(65,12))};
+ out.terraces.ok=out.terraces.at40===0&&out.terraces.at45===.7&&out.terraces.at55===1.4&&out.terraces.at65===2.1&&out.terraces.at75===2.8&&Math.abs(out.terraces.offTheLaneAt65)<.3;
+ // far targets stand on their terrace, and an arrow aimed at one strikes it
+ {stage("The long lane");const t=rounds()[0],c=centre(t),a=v.laneAt(c.x,c.z)[0],s0=r.score,d=fire(c);
+  out.target60={along:R(a),standsOn:R(t.base.position.y-L.base-ground(a,v.laneAt(c.x,c.z)[1])),distance:R(d),scored:r.score-s0,ok:r.score>s0};}
+ {stage("Master of the line");const far=rounds().find(t=>v.laneAt(centre(t).x,centre(t).z)[0]>60),c=centre(far),a=v.laneAt(c.x,c.z);
+  out.target70={along:R(a[0]),right:R(a[1]),height:R(c.y-L.base),terrace:R(ground(a[0],0)),ok:c.y-L.base>ground(a[0],0)+.5};}
+ // a target at 35 m has lawn behind it, not the creek: the creek runs from 36.5 to 39.5 m
+ out.creek={at:L.creek,target35clear:35<L.creek-1.5};
+ // shades still behave on the levelled lane
+ {stage("Creepers");let moved=0;const sp=v.spirits.find(s=>s.base.visible),p0=sp.base.position.clone();for(let i=0;i<600;i++)steps(1);moved=sp.base.position.distanceTo(p0);
+  out.creeper={moved:R(moved),onTheGround:R(sp.base.position.y-L.base),ok:moved>2&&Math.abs(sp.base.position.y-L.base)<.05};}
+ if(save){
+  const put=async(name,url)=>{const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+  const from=(look,pos)=>{const c=v.camera,p0=c.position.clone(),q0=c.quaternion.clone();c.parent.updateMatrixWorld(true);c.position.copy(c.parent.worldToLocal(pos.clone()));c.lookAt(look);const url=v.shot();c.position.copy(p0);c.quaternion.copy(q0);return url;};
+  stage("Master of the line");await put("world2-player-far",v.shot());
+  stage("First marks");await put("world2-player-near",v.shot());
+  stage("Horns in the grass");steps(60);await put("world2-player-grass",v.shot());
+  await put("world2-above",from(at(36,0,0),at(-30,0,44)));await put("world2-side",from(at(40,2,1),at(24,30,10)));await put("world2-line",from(at(6,0,1),at(-9,-3,3.2)));
+ }
+ // without the switch, and on the release page, the layout is not there
+ for(const[name,query]of[["noSwitch","?release=0"],["releasePage","?world=2"]]){
+  const w2=await game(query),v2=w2.vale,p=V(v2.YARD.x+v2.YARD.ux*65,0,v2.YARD.z+v2.YARD.uz*65),q=V(v2.YARD.x+v2.YARD.ux*45,0,v2.YARD.z+v2.YARD.uz*45);
+  out[name]={on:v2.WORLD2,base:v2.LANE.base,ok:v2.WORLD2===false&&v2.LANE.base===0};
+ }
+ out.allOk=["level","terraces","target60","target70","creeper","noSwitch","releasePage"].every(k=>out[k].ok)&&out.creek.target35clear;
+ out.errors=errors;return out;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,300)+JSON.stringify(errors));
+</script>

@@ -67,12 +67,34 @@ function rawHeight(x,z){
  for(const s of SITES)if(s.id!=='isle')h=lerp(h,Math.max(h,3.5),smooth(gauss(x,z,s.x,s.z,26),.3,.8));
  return h+smooth(hyp(x,z),330,420)*70;
 }
+const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
+// ---- The new range layout, built to assets/concepts/world-2-layout-v2.jpg (ChatGPT's picture, with Gemini's
+// corrections). Never on in release mode; outside it, ?world=2 turns it on. With it off nothing below changes anything.
+//   The lane is 16 m wide and runs 76 m from the line. The ground is levelled under it. A creek crosses at 38 m.
+//   Beyond the creek the lane steps up in four terraces, so distance reads without shadows.
+const WORLD2=!RELEASE&&QUERY.get('world')==='2';
+const LANE={half:8,from:-3,to:76,creek:38,steps:[[41,.7],[52,1.4],[63,2.1],[74,2.8]],base:0};
+const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
+const inLane=(x,z)=>{const[a,b]=laneAt(x,z);return a>LANE.from&&a<LANE.to&&Math.abs(b)<LANE.half;};
+const laneRise=a=>{let h=0;for(const[at,up]of LANE.steps)if(a>=at)h=up;return h;};
+const yardBits=new T.Group();   // training-yard timber that stands in the lane; hidden while the new range is in use
 const W=N+1, H=new Float32Array(W*W);
 for(let j=0;j<W;j++)for(let i=0;i<W;i++)H[j*W+i]=rawHeight(-HALF+i*CELL,-HALF+j*CELL);
+if(WORLD2){
+ // level the ground under the lane and a little either side, wider where the creek crosses, easing back into the land around it
+ LANE.base=rawHeight(YARD.x,YARD.z);
+ for(let j=0;j<W;j++)for(let i=0;i<W;i++){
+  const[a,b]=laneAt(-HALF+i*CELL,-HALF+j*CELL);if(a<-24||a>100||Math.abs(b)>40)continue;
+  const flat=Math.abs(a-LANE.creek)<9?27:13,w=(1-smooth(Math.abs(b),flat,flat+9))*smooth(a,-20,-10)*(1-smooth(a,86,96));
+  H[j*W+i]=lerp(H[j*W+i],LANE.base,w);
+ }
+}
 function groundAt(x,z){
  const fx=clamp((x+HALF)/CELL,0,N-.0001),fz=clamp((z+HALF)/CELL,0,N-.0001),i=fx|0,j=fz|0,u=fx-i,v=fz-j,k=j*W+i;
  const a=H[k],b=H[k+1],c=H[k+W],d=H[k+W+1];
- return u+v<=1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v);
+ const h=u+v<=1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v);
+ if(WORLD2){const[al,rt]=laneAt(x,z);if(al>=LANE.steps[0][0]&&al<80&&Math.abs(rt)<8.5)return LANE.base+laneRise(al);}   // on a terrace
+ return h;
 }
 const slopeAt=(x,z)=>hyp(groundAt(x+1.5,z)-groundAt(x-1.5,z),groundAt(x,z+1.5)-groundAt(x,z-1.5))/3;
 const PATHS=SITES.map((s,k)=>{
@@ -117,7 +139,6 @@ const onPath=(x,z)=>pathMask[Math.round(clamp((z+HALF)/CELL,0,N))*W+Math.round(c
 
 // The training yard on the north-west side of the hamlet, kept clear of trees and rocks.
 // YARD is the shooting line; the lane runs along (ux,uz), and (rx,rz) is to an archer's right.
-const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
 const yardAt=(along,right)=>[YARD.x+YARD.ux*along+YARD.rx*right,YARD.z+YARD.uz*along+YARD.rz*right];
 const inYard=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z,a=dx*YARD.ux+dz*YARD.uz,b=dx*YARD.rx+dz*YARD.rz;return a>-12&&a<82&&b>-16&&b<12;};
 
@@ -230,7 +251,7 @@ function updateGrass(px,pz){
  if(hyp(px-grassX,pz-grassZ)<3)return;grassX=px;grassZ=pz;
  for(let i=0;i<tufts.length;i++){
   const t=tufts[i],x=t[0]+TILE*Math.round((px-t[0])/TILE),z=t[1]+TILE*Math.round((pz-t[1])/TILE),g=groundAt(x,z);
-  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)?0:t[2]);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
+  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)||(WORLD2&&inLane(x,z))?0:t[2]);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
  }
  grass.instanceMatrix.needsUpdate=true;
 }
@@ -346,8 +367,8 @@ const moverMid=yardAt(16,-7);
  const[mx,mz]=moverMid,gm=groundAt(mx,mz),mover=drillRound('mover','Sliding round',mx,mz,1.2,Math.atan2(-YARD.ux,-YARD.uz));mover.base.position.y=gm+1.5;
  stick(mover.base,V(0,.8,0),V(0,1.3,0),.04,timber);mover.flag=pennant(mover.base,0,1.3,'#c9d8d2');
  const ends=[yardAt(16,-11.5),yardAt(16,-2.5)];
- stick(scene,V(ends[0][0],gm+2.8,ends[0][1]),V(ends[1][0],gm+2.8,ends[1][1]),.07,timber);
- for(const[x,z]of ends)stick(scene,V(x,groundAt(x,z)-.4,z),V(x,gm+2.8,z),.08,timber);
+ scene.add(yardBits);stick(yardBits,V(ends[0][0],gm+2.8,ends[0][1]),V(ends[1][0],gm+2.8,ends[1][1]),.07,timber);
+ for(const[x,z]of ends)stick(yardBits,V(x,groundAt(x,z)-.4,z),V(x,gm+2.8,z),.08,timber);
  // the shooting line
  for(let b=-8;b<=8;b+=3.2){const[x,z]=yardAt(0,b),g=groundAt(x,z);stick(scene,V(x,g-.3,z),V(x,g+.55,z),.06,timber);}
  // low climbing wall, pegged on the side that looks toward +x
@@ -367,7 +388,36 @@ const moverMid=yardAt(16,-7);
  panels.push({x:tx+1.6,z:tz,nx:1,nz:0,w:1.6,y0:gt,y1:gt+H,in:.8});
  addCollider(tx,tz,1.7,gt+H);
 }
+// ---- the new range's lane, creek, terraces, rail, stall, footbridge and blossom trees (see WORLD2 above)
+if(WORLD2){
+ const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);
+ const P=(along,right,y=0)=>V(-right,y,along);   // a place given as metres along the lane, to the right, and up
+ const LAWN='#a6c55a',FACE='#7d9c41',WATER='#4a90d9',SAND='#d2c08a',ROCK='#9a968c',BLOSSOM='#F299B5';
+ // the lane: a lighter strip of mown grass from the line to the far end
+ box(R,P((LANE.from+LANE.to)/2,0,.02),V(LANE.half*2,.04,LANE.to-LANE.from),LAWN);
+ // the creek: a flat band of water with sandy banks and a few stones, crossing at 38 m
+ box(R,P(LANE.creek,0,.05),V(54,.06,3),WATER);
+ for(const s of[-1,1])box(R,P(LANE.creek+s*1.75,0,.04),V(54,.05,.5),SAND);
+ for(const[a,r,k]of[[36.4,-10.5,.5],[39.8,-13,.7],[36.2,10,.6],[39.9,12.2,.45],[36.5,-20,.8],[39.6,21,.7],[36.3,-25.5,.6],[39.7,25,.55]]){const m=mesh(R,new T.DodecahedronGeometry(k,0),ROCK,P(a,r,k*.4));m.rotation.set(a,r,0);m.scale.y=.7;}
+ // the terraces: each a solid step across the lane, lighter on top and darker on its face
+ let low=0;for(const[at,up]of LANE.steps){const len=80-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(17,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(17,tall,.06),FACE);low=up;}
+ // the rail at the shooting line, 0.85 m high as a starting height
+ for(const r of[-3,-1,1,3])stick(R,P(.9,r,-.3),P(.9,r,.95),.06,timber);
+ for(const y of[.85,.45])stick(R,P(.9,-3,y),P(.9,3,y),.045,timber);
+ // the stall, beside the line on the right (the climbing wall and tower already stand on the left)
+ if(typeof PROPS!=='undefined'){const stall=PROPS.marketStall(T);stall.position.copy(P(-2.5,11.5));stall.rotation.y=-Math.PI/2-.25;R.add(stall);}
+ // the footbridge over the creek, to the right of the lane and clear of it
+ {const b=new T.Group();b.position.copy(P(LANE.creek,13.5));R.add(b);
+  for(let i=-2;i<=2;i++){const p=box(b,V(0,.42-.07*i*i,i*.95),V(1.9,.1,1),'#b9824a');p.rotation.x=i*.14;}
+  for(const s of[-1,1]){for(const z of[-2.1,0,2.1])stick(b,V(s*.9,.1,z),V(s*.9,z?1:1.25,z),.05,timber);stick(b,V(s*.9,.95,-2.1),V(s*.9,1.2,0),.04,timber);stick(b,V(s*.9,1.2,0),V(s*.9,.95,2.1),.04,timber);}}
+ // two blossom trees, one each side in the middle distance, well clear of the lane and never behind a target
+ for(const[a,r,s]of[[31,-17.5,1],[45,17,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
+  stick(t,V(0,-.3,0),V(.15,2.6,0),.2,'#7a5a3c');stick(t,V(.1,1.9,0),V(-.9,3.1,.2),.1,'#7a5a3c');stick(t,V(.1,2.1,0),V(.9,3.2,-.3),.1,'#7a5a3c');
+  for(const[x,y,z,k]of[[0,3.9,0,1.5],[-1.2,3.4,.3,1.05],[1.2,3.5,-.4,1.1]])mesh(t,new T.IcosahedronGeometry(k,0),BLOSSOM,V(x,y,z));}
+}
 // the trainer's board beside the shooting line
+// with the new layout the board is a cream cloth banner with a plum border and plum lettering (cloth is for what is read)
+const BOARD=WORLD2?{cloth:'#f6e6bd',edge:'#4A2943',text:'#4A2943',mark:'#6D3362'}:{cloth:'#273c34',edge:'#bcaa7a',text:'#ffebbd',mark:'#f0c75a'};   // mark: the wind and best-score line (gold on the old board; plum on cloth, where gold is kept for rewards)
 const board=(()=>{
  const c=document.createElement('canvas');c.width=1024;c.height=640;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
  const[bx,bz]=yardAt(11,6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));
@@ -376,13 +426,13 @@ const board=(()=>{
  let shown='';
  return{set(key,info){
   if(key===shown)return;shown=key;const x=c.getContext('2d');
-  x.fillStyle='#273c34';x.fillRect(0,0,1024,640);x.strokeStyle='#bcaa7a';x.lineWidth=10;x.strokeRect(14,14,996,612);
-  x.textAlign='center';x.textBaseline='middle';x.fillStyle='#bcaa7a';x.font='40px Georgia';x.fillText(range.on?'THE RANGE':'TRAINING YARD',512,70);
-  x.fillStyle='#ffebbd';x.font='64px Georgia';x.fillText(info.title,512,160,960);
+  x.fillStyle=BOARD.cloth;x.fillRect(0,0,1024,640);x.strokeStyle=BOARD.edge;x.lineWidth=10;x.strokeRect(14,14,996,612);
+  x.textAlign='center';x.textBaseline='middle';x.fillStyle=BOARD.edge;x.font='40px Georgia';x.fillText(range.on?'THE RANGE':'TRAINING YARD',512,70);
+  x.fillStyle=BOARD.text;x.font='64px Georgia';x.fillText(info.title,512,160,960);
   x.font='52px Georgia';const words=info.text.split(' ');let line='',y=265;
   for(const w of words){if(x.measureText(line+' '+w).width>900&&line){x.fillText(line,512,y);y+=68;line=w;}else line=line?line+' '+w:w;}
   x.fillText(line,512,y);
-  if(info.mark){x.fillStyle='#f0c75a';x.font='52px Georgia';x.fillText(info.mark,512,560,960);}
+  if(info.mark){x.fillStyle=BOARD.mark;x.font='52px Georgia';x.fillText(info.mark,512,560,960);}
   tex.needsUpdate=true;
  }};
 })();
@@ -1190,7 +1240,7 @@ function rangeStep(dt){
 function setMode(m){
  if(RELEASE)m='range';
  state.mode=m;range.on=m==='range';
- for(const id in drills)drills[id].base.visible=!range.on;
+ for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!(WORLD2&&range.on);
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())rig.rotation.y=look.yaw;setStage(clamp(state.range.open,0,STAGES.length-1));}
  else{if(replay.on)endReplay();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
@@ -1851,6 +1901,6 @@ if(RELEASE){
  $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

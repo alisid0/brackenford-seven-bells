@@ -1,5 +1,5 @@
-// Props built in code from the approved concept pictures (assets/concepts). Not yet part of the game build:
-// src/build.mjs does not read this file. tests/props.html shows them and saves pictures to assets/renders.
+// Props built in code from the approved concept pictures (assets/concepts). The build carries this file; the game uses
+// the stall only in the new range layout (?world=2). tests/props.html shows them and saves pictures to assets/renders.
 // Every builder takes three.js (T) and returns a Group in metres, standing on y=0 unless noted, with its
 // attachment points listed in group.userData.
 (function(){

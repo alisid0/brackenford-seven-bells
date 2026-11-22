@@ -17,7 +17,7 @@ const config = JSON.parse(readFileSync(join(here, 'config.json'), 'utf8'));
 // from assets/staging and its timed movement (src/moves.js). Without it the normal build has neither.
 const newHare = process.argv.includes('--new-hare');
 if (newHare) { models['shade-hare-standing'] = JSON.parse(readFileSync(join(assets, 'staging', 'shade-hare-standing-rig-patched.json'), 'utf8')); config.newHare = true; }
-const game = 'const MODELS=' + JSON.stringify(models) + ';\nconst BUILD_CONFIG=' + JSON.stringify(config) + ';\n' + (newHare ? readFileSync(join(here, 'moves.js'), 'utf8') + '\n' : '') + readFileSync(join(here, 'game.js'), 'utf8');
+const game = 'const MODELS=' + JSON.stringify(models) + ';\nconst BUILD_CONFIG=' + JSON.stringify(config) + ';\n' + readFileSync(join(here, 'props.js'), 'utf8') + '\n' + (newHare ? readFileSync(join(here, 'moves.js'), 'utf8') + '\n' : '') + readFileSync(join(here, 'game.js'), 'utf8');   // props.js: code-built props (the stall), used only by the new range layout
 if (game.includes('</script')) throw new Error('game code must not contain a closing script tag');
 const shell = readFileSync(join(here, 'shell.html'), 'utf8');
 const out = shell.replace('/*__THREE__*/', () => three).replace('/*__GAME__*/', () => game);

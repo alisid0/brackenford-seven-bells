@@ -238,3 +238,13 @@ The developer's answer to ChatGPT's question: **a hidden hare stays hittable, as
 - **Normal build** re-tested three times with `tests/all.html`: two runs clean; one run had `spirits creep.hitInOpen` false, which then passed in four further runs of that page, so it looks chance-dependent (a moving creeper) but is not proven so.
 
 Not done: the 0.4 m and 0.35 m misses are single shots at one distance and one facing, not a sweep; the worst running drift is still untraced; nothing seen in a headset; ChatGPT has not seen these two changes.
+
+### ChatGPT's review of the hit area and crouch (commit `dfbe22a`)
+| Verdict | What it said |
+|---|---|
+| Approved | Keep the grounded crouch: both pictures read as above ground, and the grass breaks up the hiding hare's outline. Keep the 0.68 x 0.60 x 0.34 m hit area as a starting fit. Whether the hiding hare is too exposed has to be judged from the archer's place, not from the close side view. |
+| Change | The one-third reduction is provisional: fit the crouched area to the lowered head and body, reducing height first and trimming length or width only where the pose really changes, and check that a shot through the visible head still counts while it hides. Before replacement, test the edges of the hit area from the shooting line with repeatable shots just inside and just outside the visible head and body, near and far, broadside and facing the archer, including the crouch and an airborne moment. The current misses are too far out to test the boundary. |
+| Missing | A Quest playtest: can an archer find and hit a hiding hare, then follow it as it comes out? If cover needs tuning, move grass first. A repeatable baseline for the first hare: re-run the intermittent creep-hit check with a fixed seed or scripted path and shot; random pace is only a guess, and that result should be kept apart from the new hare's tests. The 58 mm running outlier: log paw, phase and movement state; it blocks replacement if it shows as a skid at gameplay distance. |
+| Question | Does "one-third smaller" mean every axis at two-thirds, or only some? All three leaves about 30% of the volume. **Answer: every axis is at two-thirds today**, so the area shrinks more than the body does. |
+
+None of this has been started.

@@ -2,15 +2,15 @@
 
 A test for the developer, written 22 November 2026 for the build at commit `522e651` on `release-prep`. It takes 35 to 45 minutes on a computer. Do not fix anything as you go; write down what happens.
 
-This build is **not** on the public site or the test site. It runs from this folder.
+The build is on the **test site** (deployed 22 November 2026; not indexed by search engines). The public site is unchanged.
 
 ## How to open it
 
-Double-click `Brackenford-Seven-Bells.html` in this folder, or, while Claude's local server is running, open:
+- The release, 17 stages: https://archery-range-test.vercel.app/?fps=1
+- All 29 stages with the special arrows: https://archery-range-test.vercel.app/?release=0&arrows=1
+- The release with the new hare: https://archery-range-test.vercel.app/new-hare.html?fps=1
 
-- The release, 17 stages: http://127.0.0.1:8766/Brackenford-Seven-Bells.html
-- All 29 stages with the special arrows: http://127.0.0.1:8766/Brackenford-Seven-Bells.html?release=0&arrows=1
-- The release with the new hare: http://127.0.0.1:8766/Brackenford-Seven-Bells-new-hare.html
+The same pages also run from this folder (double-click `Brackenford-Seven-Bells.html`).
 
 Use Chrome or Edge. On the title card press **Start over** once before you begin, so the counters start from nothing.
 
@@ -73,11 +73,21 @@ For each of the five, one line:
 
 Go back to the title card (Esc, or reload) and press **Copy playtest summary**. Paste what it copies into the chat with Claude. It holds counts only: tries, clears, retries, near misses, minutes. It is kept on your computer and sent nowhere.
 
-Then send your answers to the 16 questions, however rough.
+Then send your answers to the questions, however rough.
 
-## If you have the headset
+## Part 6: in the headset (about 30 minutes more)
 
-The Quest cannot open a file on this computer; it needs a web address. This build is not on the test site yet. Ask Claude to put it there and the same test can be run in the headset, where the questions that matter most are: can you read the "points to" line on the scoreboard and the bow plaque, how long before your arm tires, and does anything stutter.
+Open the first link in the Quest Browser and press **Enter VR**. The test site's progress is separate on each device, so the headset starts from nothing.
+
+Play the stages in order for 15 minutes, then chase three stars on two stages for 10 minutes. Stop when your arm tells you to and note the time.
+
+17. Can you read the "points to" line on the scoreboard to your right and on the plaque on the bow?
+18. How many minutes before your bow arm or your shoulders wanted a rest?
+19. Read the frames-per-second figure on the scoreboard on **The warren** and **Blighted meadow**. What was the lowest?
+20. Open the third link, enter VR, and look at the hare on **First shade**. Does it look right at full size, and is it fair to hit?
+21. Special arrows in VR (second link): push the left stick up or down to change arrow. Did you find it without being told? Could you read which arrow was chosen?
+
+Leave VR, go back to the title card and press **Copy playtest summary** in the Quest Browser if you can; if copying is awkward in the headset, just tell Claude roughly how many tries you made.
 
 ## Known before you start
 

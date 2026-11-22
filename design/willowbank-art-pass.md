@@ -60,6 +60,6 @@ It opened all six renders. Written down by Claude.
 
 **Where the glow goes:** locked gold `#F0C75A` on the restored bell's lip and the small centre of the bullseye; a few short cool highlights on the water's sun-facing edge. All flat and opaque. **Kept matte on purpose:** the silent bell, thorns, the targets' outer rings, banner trim, blossoms, broad water. Saturated ember `#E02E32` stays with the shades' eyes so they remain the strongest warm points.
 
-## Gemini's audit: waiting
+## Gemini's audit: skipped
 
-Gemini was asked to audit this pass against its plan (sightlines for all 29 stages, the old world's leftovers to hide, what stage 2 still lacks, and the sun and fog numbers for stage 3) as `design/willowbank-art-audit.md` on branch `gemini/willowbank-audit`. Its app stopped at an approval prompt whose text was hidden behind another window, so Claude did not approve it. The audit arrives once the developer answers that prompt in Antigravity. Stage 2 is not called done until it has been read.
+Gemini was asked to audit this pass; its app stopped at an approval prompt Claude could not read and did not approve. The developer then said to ignore the audit, since they will test the range themselves ("Ignore the audit I will be doing the test anyways", 22 November 2026). So the sightline check for the new shapes rests on the developer's own test and on `tests/world2.html`, which only checks the layout, not what stands behind each target.

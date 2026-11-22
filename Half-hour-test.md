@@ -93,6 +93,24 @@ Play the stages in order for 15 minutes, then chase three stars on two stages fo
 
 Leave VR, go back to the title card and press **Copy playtest summary** in the Quest Browser if you can; if copying is awkward in the headset, just tell Claude roughly how many tries you made.
 
+## Part 7: built after this sheet was written (about 10 minutes)
+
+These are **not on the test site**. They run on this computer only, while Claude's local server is up.
+
+**The bell and the ribbons:** http://127.0.0.1:8766/Brackenford-Seven-Bells.html
+
+22. Look left of the lane, about 25 m out, through the sliding target's timber frame: an iron bell on a forked frame, bound in thorns, with a crow on top. Did you notice it without being told? Shoot it: it should give a dull thud.
+23. Clear the first four stages (First marks, Stepping back, The drop, First shade). On the fourth result the thorns should break and the bell turn bronze. Did you see it happen? Shoot it: it should swing, ring, and throw three gold-and-cream chevrons.
+24. On each result there is now a ribbon line, for example "Ribbon: Clean Quiver (no misses)". Did it make you want another go? In Settings, Stages, a small diamond marks each stage's ribbon.
+
+**The first range rebuilt to its plan (stage 2 of the art work):** http://127.0.0.1:8766/Brackenford-Seven-Bells.html?world=2
+
+Colours and light are still the old ones on purpose; judge the shapes and where things stand.
+
+25. From the line: the lane, creek, terraces, bridge, blossom trees, village and watchtower, stall and jetty on the left, bell on the right. Does anything sit behind a target or pull your eye off it? Which stage?
+26. Play The drop, Three ranges and one hare stage here. Does anything about distance or aim feel different from the old range?
+27. What looks most unfinished?
+
 ## Known before you start
 
 - Star thresholds are the old ones (30, 60 and 95 percent). The harder three-star bar in the plan is not in this build.

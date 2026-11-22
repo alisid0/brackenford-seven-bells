@@ -1439,7 +1439,7 @@ function stepArrows(dt){
    // grass before whatever is in it: a clump struck on the way wins over anything behind it, and a shade reached first that is keeping low in an intact clump counts as that clump
    for(const c of grassClumps)if(c.visible){const k=ray.intersectObject(c.userData.hit,false)[0];if(k&&(!contact||k.distance<=contact.distance))contact=k;}
    const sp=contact&&contact.object.userData.target;
-   if(sp&&sp.kind==='spirit'){const b=sp.base.position,c=grassClumps.find(c=>c.visible&&hyp(c.position.x-b.x,c.position.z-b.z)<.85);if(c)contact={distance:contact.distance,point:contact.point,object:c.userData.hit};}
+   if(sp&&sp.kind==='spirit'&&!sp.bird){const b=sp.base.position,c=grassClumps.find(c=>c.visible&&hyp(c.position.x-b.x,c.position.z-b.z)<.85);if(c)contact={distance:contact.distance,point:contact.point,object:c.userData.hit};}
   }
   const limit=contact?contact.distance:distance;
   q.o.quaternion.setFromUnitVectors(FWD,dir);

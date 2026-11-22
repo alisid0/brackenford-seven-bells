@@ -303,3 +303,19 @@ At the developer's request Gemini joined the creative work and the three models 
 **Decision, 22 November 2026:** in Score Attack an arrow loosed before the 180 seconds are up **counts** if it hits, however late it lands; only a release after the time is up is blocked. This goes into `Arcade-plan.md` when Arcade work begins. Still open: the Bonus Bell, and whether any of round 1 starts before the Trials playtest.
 
 **Decision, 22 November 2026:** Score Attack gets the **Bonus Bell**: when a slot's targets are all cleared with at least 1.5 seconds left, one bell appears, worth a flat 50, with no penalty for missing it. The main targets keep their fixed schedule and the bell uses a fixed place and none of the shared random numbers. This goes into `Arcade-plan.md` when Arcade work begins. Still open: whether any of round 1 starts before the Trials playtest.
+
+## Special arrows built: Rime, Gale and Kiln (22 November 2026)
+The developer decided to start design round 1 now. The three arrows went through the agreed order of work: Gemini's spec, Claude's build, ChatGPT's cue review, Gemini's audit. Arcade is untouched.
+
+- **Where they are.** In the game code on `release-prep`, never on in release mode. Outside it, on when the page is opened with `?release=0&arrows=1` (or `src/config.json` sets `arrows`). Not deployed anywhere.
+- **Spec (Gemini, `design/arrows-spec.md`, pull request 2):** two charges a stage shared by the three; a special shot spends a charge and a stage arrow, hit or miss. Rime holds one sliding or pop-up target for 1.8 s, once per target, and scores nothing. Gale takes half the sideways wind and the ring or shade value it scores is capped at 60. Kiln clears one clump of tall grass for the stage, scores nothing and never harms a shade. A Rime or Kiln that does its job leaves the streak alone; one that hits anything else breaks it.
+- **Choosing an arrow (Claude's choice, the spec did not say):** keys 1 to 4 on desktop; the left stick pushed up or down in VR.
+- **Cues (ChatGPT), after its review:** Rime is a sky-blue bracket about the target for the 1.8 s, with the word "Held" for the first 0.4 s only. Kiln is three wide cream chevrons with a plum edge that rise 0.6 m in 0.65 s; the word "Cleared" moved to the message line so it no longer covers them. Gale is a 1 m cream trail with three plum bands. The scoreboard and bow plaque show a mark, the arrow's name and two pips for the charges; the arrow on the string carries a coloured band.
+- **Audit (Gemini, `design/arrows-audit.md`, pull request 3):** it failed two of its own cases and marked one untested, and it was right each time. All fixed:
+  - a pop-up that had begun to fold could still be struck for a moment, and Rime then held it down. Rime now needs the pop-up to be up.
+  - Kiln took whichever was nearer, the grass or the shade in it. Now grass comes first: a Kiln arrow that reaches a shade keeping low in an intact clump clears the clump.
+  - a creeper resting in a cleared clump stayed sunk. It now comes up.
+  - the flag could have been switched on in a release build through the config. It is now never on in release mode.
+  - the test for a 40 ring was missing, and two tests were too loose. Added and tightened.
+- **Tests.** `tests/arrows.html` runs the spec's cases with real arrows, 13 groups of checks, all passing; it also checks the arrows are absent on the release page and without the flag. `tests/all.html` on the normal build passes. `tests/newhare.html` still passes.
+- **Known and not done:** a Gale bullseye does not get the gold burst or the best-shot replay, because its value is capped below 100 (Gemini noted it; left as is). Nothing has been seen in a headset: ChatGPT asks for all three cues to be checked at 15 m and 30 m on a Quest, and whether Gale's trail reads from behind the arrow. Gemini has not re-audited the fixes. The charge numbers are a first guess to be tuned in play.

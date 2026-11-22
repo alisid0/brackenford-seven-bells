@@ -499,7 +499,7 @@ for(const[id,text,right]of[['back','◀  BACK',-3.6],['again','AGAIN',0],['next'
 const sock=(()=>{const[x,z]=yardAt(5,-4.6),g=groundAt(x,z),root=new T.Group();root.position.set(x,g,z);scene.add(root);stick(root,V(0,-.3,0),V(0,3.3,0),.05,timber);return pennant(root,0,3.25,'#e8743b');})();
 // numbers that rise from a hit
 const pops=[];
-function popup(text,pos,color){
+function popup(text,pos,color,life=1.4){
  let s=pops.find(p=>p.life<=0);
  if(!s){
   if(pops.length>=8)s=pops[0];
@@ -509,7 +509,7 @@ function popup(text,pos,color){
   }
  }
  const g=s.c.getContext('2d');g.clearRect(0,0,512,128);g.font='600 84px Georgia';g.textAlign='center';g.textBaseline='middle';g.lineWidth=12;g.strokeStyle='#1e2926';g.strokeText(text,256,68,500);g.fillStyle=color;g.fillText(text,256,68,500);s.tex.needsUpdate=true;
- s.sp.position.copy(pos);s.life=1.4;s.sp.visible=true;
+ s.sp.position.copy(pos);s.life=life;s.sp.visible=true;
 }
 function stepPops(dt,eye){
  for(const s of pops){
@@ -941,14 +941,14 @@ function guideText(){
  return vr?'Let go just as you feel the pulse at full draw: a perfect release':'Let go just as the bar turns white: a perfect release';
 }
 // ---- Special arrows: Rime (frost), Gale and Kiln. The rules and every number are Gemini's (design/arrows-spec.md);
-// the cues are ChatGPT's (design/chatgpt-round-1.md). Off unless src/config.json sets "arrows", or the page is opened
-// with ?arrows=1 outside release mode. Nothing here draws a random number.
+// the cues are ChatGPT's (design/chatgpt-round-1.md). Never on in release mode. Outside it, on when src/config.json sets
+// "arrows" or the page is opened with ?arrows=1. Nothing here draws a random number.
 //   Two charges a stage, shared by the three. A special shot spends a charge and a stage arrow, hit or miss.
 //   Rime  a hit on a sliding or pop-up target holds its timer for 1.8 s, once per target. Scores nothing.
 //   Gale  takes half the sideways wind; the ring or shade value it scores is capped at 60.
 //   Kiln  a hit on a clump of tall grass clears it for the stage. Scores nothing and never harms a shade.
 //   A Rime or Kiln shot that does its job leaves the streak alone; one that hits anything else breaks it.
-const ARROWS=!!CONFIG.arrows||(QUERY.get('arrows')==='1'&&!RELEASE);
+const ARROWS=!RELEASE&&(!!CONFIG.arrows||QUERY.get('arrows')==='1');
 const ARROW_RULE={charges:2,hold:1.8,galeWind:.5,galeCap:60},ARROW_NAMES={std:'Standard',rime:'Rime',gale:'Gale',kiln:'Kiln'},ARROW_ORDER=['std','rime','gale','kiln'];
 const quiver={kind:'std',charges:0};
 function quiverPick(kind){
@@ -956,8 +956,14 @@ function quiverPick(kind){
  if(kind!=='std'&&quiver.charges<=0){say('No special arrows left',1.5);kind='std';}else say(kind==='std'?'Standard arrow':ARROW_NAMES[kind]+' arrow  ·  '+quiver.charges+' special left',1.5);
  quiver.kind=kind;note(660,.08,'sine',.05);
 }
+const QUIVER_BAND={rime:'#8fd0ee',gale:'#4A2943',kiln:'#f6e6bd'};
+function quiverMark(){
+ let b=preview.userData.band;if(!b){if(quiver.kind==='std')return;b=preview.userData.band=mesh(preview.userData.body,new T.CylinderGeometry(.021,.021,.09,6),'#8fd0ee',V(0,0,.45));b.rotation.x=Math.PI/2;}
+ b.visible=quiver.kind!=='std'&&range.phase==='play';if(b.visible)b.material=material(QUIVER_BAND[quiver.kind]);
+}
 function quiverStep(d){quiverPick(ARROW_ORDER[(ARROW_ORDER.indexOf(quiver.kind)+d+4)%4]);}
-const quiverText=()=>ARROWS&&range.phase==='play'?'      '+ARROW_NAMES[quiver.kind]+'  ·  '+quiver.charges+' special':'';
+const ARROW_MARKS={std:'',rime:'[ ]  ',gale:'≈  ',kiln:'^^^  '};
+const quiverText=()=>ARROWS&&range.phase==='play'?'      '+ARROW_MARKS[quiver.kind]+ARROW_NAMES[quiver.kind]+'  '+'●'.repeat(quiver.charges)+'○'.repeat(ARROW_RULE.charges-quiver.charges):'';
 // Gale's cue: a short cream trail with three plum bands behind the arrow
 function galeCue(o,on){
  let t=o.userData.gale;
@@ -966,32 +972,36 @@ function galeCue(o,on){
 }
 // Rime's cue: a broad sky-blue bracket locked about the target for as long as it is held
 function rimeCue(t){
- if(!t.bracket){const b=new T.Group();t.root.add(b);t.bracket=b;for(const s of[-1,1]){box(b,V(s*.68,0,0),V(.07,1.3,.05),'#8fd0ee');for(const y of[-1,1])box(b,V(s*.56,y*.615,0),V(.24,.07,.05),'#8fd0ee');}}
+ if(!t.bracket){const b=new T.Group();t.root.add(b);t.bracket=b;const D=1.2,w=.08*D,out=D/2+.05*D+w/2;for(const s of[-1,1]){box(b,V(s*out,0,0),V(w,2*out+w,.05),'#8fd0ee');for(const y of[-1,1])box(b,V(s*(out-.15),y*out,0),V(.3+w,w,.05),'#8fd0ee');}}   // stroke 8% of the face's width, 5% clear of its rim
  t.bracket.visible=true;
 }
 // Kiln's cue: three broad cream chevrons that rise from the cleared clump and shrink away
-const kilnMark=ARROWS?(()=>{const m=new T.Group();m.visible=false;scene.add(m);for(let i=0;i<3;i++)for(const s of[-1,1])box(m,V(s*.17,i*.3,0),V(.42,.09,.05),'#f6e6bd').rotation.z=-s*.6;return{g:m,t:-9,y:0};})():null;
+const kilnMark=ARROWS?(()=>{const m=new T.Group();m.visible=false;scene.add(m);for(let i=0;i<3;i++)for(const s of[-1,1]){box(m,V(s*.29,i*.34,-.02),V(.84,.19,.03),'#4A2943').rotation.z=-s*.6;box(m,V(s*.29,i*.34,0),V(.78,.13,.05),'#f6e6bd').rotation.z=-s*.6;}return{g:m,t:-9,y:0};})():null;   // about 80% of a clump's width, cream on a thin plum edge
 // a special arrow has done its job (ok) or failed to; it scores nothing either way, and only a failure breaks the streak
-function specialDone(q,ok,text,at,color){
+function specialDone(q,ok,text,at,color,life){
  q.done=true;if(q.path)q.path.push(q.o.position.clone());
  if(!ok){if(range.streak>1)note(196,.25,'triangle',.08,0,130);range.streak=0;}
- popup(text,at,color);
+ if(at)popup(text,at,color,life);else say(text,1.6);
  if(range.arrows<=0)range.endAt=Math.min(range.endAt||1e9,elapsed+.9);
 }
 // a Rime or Kiln arrow striking a target or a shade. Returns true when it has dealt with the hit; Gale and Standard go on to score.
 function specialHit(t,q){
  if(q.kind!=='rime'&&q.kind!=='kiln')return false;
  const at=q.o.position.clone().add(V(0,.5*(t.scale||1),0)),ring=t.kind==='range';
- const ok=q.kind==='rime'&&ring&&!!(t.slide||t.pop)&&!t.frosted;
+ const ok=q.kind==='rime'&&ring&&!!(t.slide||t.pop)&&!t.frosted&&(!t.pop||t.up);   // a pop-up already folding cannot be held (it would only be held down)
  if(ok){t.frosted=true;t.heldUntil=elapsed+ARROW_RULE.hold;rimeCue(t);note(1568,.5,'sine',.08,0,1175);}
  if(ring){t.kick=elapsed;thump(500,.15,.25);}
- specialDone(q,ok,ok?'Held':'No effect',at,ok?'#9fd8f0':'#fff1c4');return true;
+ specialDone(q,ok,ok?'Held':'No effect',ok?at.add(V(0,.35*(t.scale||1),0)):at,ok?'#9fd8f0':'#fff1c4',ok?.4:1.4);return true;   // the word stays 0.4 s; the bracket carries the rest of the hold
 }
 // a Kiln arrow striking a clump of tall grass: the clump is gone for the stage and whatever hid in it is in the open
 function kilnClear(t,q){
  const c=t.g;c.visible=false;kilnMark.g.position.copy(c.position);kilnMark.g.rotation.y=Math.atan2(YARD.x-c.position.x,YARD.z-c.position.z);kilnMark.y=c.position.y;kilnMark.t=elapsed;
- for(const sp of spirits)if(sp.clump===c){sp.clump=null;sp.exposed=true;if(!sp.bound){sp.hitMesh.position.set(0,.26,.02);sp.hitMesh.scale.setScalar(.3);}}
- note(520,.3,'triangle',.08,0,260);specialDone(q,true,'Cleared',c.position.clone().add(V(0,1.1,0)),'#f6e6bd');
+ for(const sp of spirits){
+  const here=sp.clump===c||(sp.base.visible&&!sp.bird&&hyp(sp.base.position.x-c.position.x,sp.base.position.z-c.position.z)<.85);if(!here)continue;
+  if(sp.clump===c){sp.clump=null;sp.exposed=true;}
+  sp.sunk=0;if(!sp.bound){sp.hitMesh.position.set(0,.26,.02);sp.hitMesh.scale.setScalar(.3);}   // a creeper resting there comes up out of it as well
+ }
+ note(520,.3,'triangle',.08,0,260);specialDone(q,true,'Cleared',null);   // the word goes to the message line, so the chevrons and the shade stay in view
 }
 function rangeLoosed(q,perfect){
  if(!range.on)return;q.windy=true;
@@ -1162,7 +1172,8 @@ function rangeStep(dt){
  if(range.phase==='replay')replayStep(dt);
  if(range.pending){const id=range.pending,i=range.stage;range.pending=null;if(range.phase==='results'){if(id==='next'&&rangeSigns.next.base.visible)setStage(i+1);else if(id==='back'&&i>0)setStage(i-1);else if(id==='again')setStage(i);}}
  const t=elapsed-range.t0;
- if(kilnMark){const k=elapsed-kilnMark.t;kilnMark.g.visible=k<.8;if(k<.8){kilnMark.g.position.y=kilnMark.y+.5+k*1.4;kilnMark.g.scale.setScalar(1-k*.6);}}
+ if(kilnMark){const k=elapsed-kilnMark.t;kilnMark.g.visible=k<.65;if(k<.65){kilnMark.g.position.y=kilnMark.y+.45+k/.65*.6;kilnMark.g.scale.setScalar(k<.5?1:1-(k-.5)/.15*.7);}}   // rises 0.6 m in 0.65 s, shrinking only in the last 0.15 s
+ if(ARROWS&&preview)quiverMark();
  for(const r of rangeRounds){
   if(!r.base.visible)continue;
   if(r.heldUntil>elapsed)r.lag=(r.lag||0)+dt;const tt=t-(r.lag||0);if(r.bracket)r.bracket.visible=r.heldUntil>elapsed;   // Rime: a held target's own clock stands still
@@ -1424,7 +1435,12 @@ function stepArrows(dt){
   const speed=q.velocity.length(),dir=tmpDir.copy(q.velocity).divideScalar(speed),distance=speed*dt,p=q.o.position;
   let contact=null;
   if(!q.spent){ray.set(p,dir);ray.far=distance+.01;contact=range.on?ray.intersectObjects(rangeMeshes,false).find(c=>{const t=c.object.userData.target;return!(t.tilt&&t.tilt.rotation.x<-.6);}):ray.intersectObjects(hitMeshes,false)[0];}   // a pop-up lying down cannot be hit
-  if(ARROWS&&q.kind==='kiln'&&!q.spent&&!q.done)for(const c of grassClumps)if(c.visible){const k=ray.intersectObject(c.userData.hit,false)[0];if(k&&(!contact||k.distance<=contact.distance))contact=k;}
+  if(ARROWS&&q.kind==='kiln'&&!q.spent&&!q.done){
+   // grass before whatever is in it: a clump struck on the way wins over anything behind it, and a shade reached first that is keeping low in an intact clump counts as that clump
+   for(const c of grassClumps)if(c.visible){const k=ray.intersectObject(c.userData.hit,false)[0];if(k&&(!contact||k.distance<=contact.distance))contact=k;}
+   const sp=contact&&contact.object.userData.target;
+   if(sp&&sp.kind==='spirit'){const b=sp.base.position,c=grassClumps.find(c=>c.visible&&hyp(c.position.x-b.x,c.position.z-b.z)<.85);if(c)contact={distance:contact.distance,point:contact.point,object:c.userData.hit};}
+  }
   const limit=contact?contact.distance:distance;
   q.o.quaternion.setFromUnitVectors(FWD,dir);
   if(q.spent){q.roll+=dt*13;u.body.rotation.set(q.roll,0,0);}

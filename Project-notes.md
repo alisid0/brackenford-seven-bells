@@ -336,3 +336,18 @@ At the developer's request ChatGPT drew three pictures of the same place and Gem
 - **For the developer:** whether the pink blossom trees stay (Gemini: keep two or three in the middle distance, away from the line and from behind targets); whether the arrowhead in picture 3 goes grey; and whether `world-2-layout-v2.jpg` is the plan to build to. Rebuilding the game's world to it would be a large change and has not been started.
 - **Not checked:** Gemini says pink blossom trees match the style sheet; Claude has not verified that.
 - Also merged: Gemini's second audit of the arrows (pull request 5), which found one small fault, now fixed: a Kiln arrow striking a winged shade flying over a grass clump no longer clears the clump.
+
+### Art direction for the world, decided by ChatGPT (22 November 2026)
+The developer saw the three pictures, called it a good design, and left the open questions of look to ChatGPT. Its decisions, which now stand as the art direction:
+
+| Question | Decision |
+|---|---|
+| Pink blossom trees | Keep **two**, one on each side in the middle distance, outside the 18 m tree-free strip and never behind a target. Blossom pink **`#F299B5`** joins the palette. No loose petals in the lane |
+| The arrowhead | Neutral grey. Banner red stays on cloth; ember red stays for shades and danger |
+| The shooting rail | 0.85 m as a starting height; settled only after a seated draw is tried on a Quest |
+| Which picture rules when they disagree | `world-2-layout-v2.jpg` for placement and distances; `world-3-overall-look.jpg` for the look the player sees and what props are made of; `world-1-background.jpg` for the mood of the landscape |
+| A rule for building | Flat ground colours and terrace faces show depth, not shadows. Tall grass in or beside the lane is only ever real cover for shades, so a player can tell what Kiln can clear |
+
+**Standing preference from the developer:** on questions of how the game looks, ChatGPT decides.
+
+Still not started: rebuilding the game's world to these pictures.

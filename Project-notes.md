@@ -362,3 +362,20 @@ The developer said to build the world to the pictures now. A first version is in
 - **Tests.** `tests/world2.html`: the lane is level, the terraces are at their heights, an arrow strikes the 60 m target, every stage's targets stand in the lane and none on a terrace edge or in the creek, shades still creep on the ground, and the layout is absent without the switch and on the release page. All pass. `tests/all.html` on the normal build passes; `tests/arrows.html` passes.
 - **Missing or different from the pictures:** no jetty, no path to it, and no village or watchtower at the far end (the game's own lake, hamlet and paths are where they were); the stall is on the right of the line because the training yard's climbing wall and tower stand on the left, and those two are still visible; the sky, fog and the colours of the land outside the lane are the game's old ones; the pennant is still the old orange, not red and cream; nothing checks that no grass grows in the lane other than by eye.
 - **Not seen in a headset.** ChatGPT and Gemini both ask for the rail height, the far targets and the grass clumps to be judged on a Quest.
+
+## Step 1 of the new order of work: the aerial view (22 November 2026)
+The developer corrected the process (see "Order of work" in `Team.md`): pictures first, building last. Step 1 was done by all three.
+
+| Who | What | Where |
+|---|---|---|
+| Gemini | The plan in metres: every item's position and size, rules for what may never block a target, and a check that all 29 stages fit | `design/world-plan.md` (pull request 7) |
+| ChatGPT | The aerial view drawn from that plan | `assets/concepts/aerial-v1.jpg` |
+| Gemini | A row-by-row check of the drawing against the plan: 12 of 16 items match, 4 are drawn loosely, none is wrong | `design/aerial-check.md` (pull request 8) |
+| Claude | Read the drawing against the plan; agrees with Gemini's check | here |
+
+- **Drawn loosely, so the plan's numbers govern:** the stall and the scoreboard touch the lane's edge in the picture (the plan puts them 10.5 m left and 10.2 m right, clear of it); the left blossom tree sits nearer 27 m than 31 m; the skyline is cropped a little high.
+- **ChatGPT's one change to the plan:** blend the ends of the terraces into the meadow, keeping their heights, so the rise reads as land.
+- **Verdicts:** no redraw needed; ready for step 2, the player's-eye views for the stages.
+- **Waiting on the developer:** approval of the aerial view before step 2 starts, and which stages should get a player's-eye picture.
+
+The layout Claude built into the game behind `?world=2` predates this plan and differs from it (stall on the right, no jetty, path or village). It is left as it is until step 3.

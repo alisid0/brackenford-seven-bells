@@ -53,6 +53,6 @@ Each acts on one thing, reuses a system the game already has, and costs nothing 
 
 ## For the developer to decide
 1. ~~The fire arrow's name~~ **Decided 22 November 2026: Kiln** (ChatGPT's name; Gemini had proposed Singe).
-2. **Arrows in the air when Score Attack's 180 seconds run out:** count them if they were loosed in time (Gemini, and Claude agrees) or void them (ChatGPT).
+2. ~~Arrows in the air when Score Attack's 180 seconds run out~~ **Decided 22 November 2026: they count.** An arrow loosed before the 180 seconds are up scores if it hits, however late it lands; only a release after the time is up is blocked. (Gemini's rule; ChatGPT had proposed voiding them.)
 3. **A Bonus Bell in Score Attack** when a slot is cleared early (Gemini). ChatGPT objects that it breaks the fixed schedule that makes two players' runs comparable.
 4. **Whether to start any of this before the Trials playtest.** All three models say Trials ships first.

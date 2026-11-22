@@ -299,3 +299,5 @@ At the developer's request Gemini joined the creative work and the three models 
 - **Not done:** nothing in this round is built or tested. One thing to know about the screen: another window covered part of Gemini's reply in Antigravity, so Claude asked Gemini to save that reply as a file and read it from git.
 
 **Decision, 22 November 2026:** the fire arrow is called **Kiln**. Still open: arrows in the air at Score Attack's buzzer, the Bonus Bell, and whether any of round 1 starts before the Trials playtest.
+
+**Decision, 22 November 2026:** in Score Attack an arrow loosed before the 180 seconds are up **counts** if it hits, however late it lands; only a release after the time is up is blocked. This goes into `Arcade-plan.md` when Arcade work begins. Still open: the Bonus Bell, and whether any of round 1 starts before the Trials playtest.

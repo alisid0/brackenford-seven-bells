@@ -32,6 +32,16 @@ const wait=setInterval(async()=>{
  await shot("h8-belfry-silent",T=>PROPS.belfry(T,{state:"silent"}),1254,1254,[.25,.12,1],.62);
  await shot("h8-belfry-restored",T=>PROPS.belfry(T,{state:"restored"}),1254,1254,[.25,.12,1],.62);
  await shot("h8-belfry-rung",T=>{const b=PROPS.belfry(T,{state:"restored"});b.userData.bell.rotation.z=.42;return b;},1254,1254,[.25,.12,1],.62);
+ await shot("w1-hut-0",T=>PROPS.hut(T,{variant:0}),1254,1254,[-.55,.32,1],.60);
+ await shot("w1-hut-1",T=>PROPS.hut(T,{variant:1}),1254,1254,[-.55,.32,1],.60);
+ await shot("w1-hut-2",T=>PROPS.hut(T,{variant:2}),1254,1254,[.65,.32,1],.60);
+ await shot("w1-watchtower",PROPS.watchtower,1254,1254,[-.6,.22,1],.58);
+ await shot("w1-footbridge",PROPS.footbridge,1254,1254,[1,.42,.65],.60);
+ await shot("w1-jetty",PROPS.jetty,1254,1254,[-.85,.42,.75],.60);
+ await shot("w1-wind-pennant",PROPS.windPennant,1254,1254,[1,.15,.4],.58);
+ await shot("w1-blossom-tree",PROPS.blossomTree,1254,1254,[-.55,.25,1],.60);
+ await shot("w1-rail",PROPS.rail,1254,1254,[-.45,.32,1],.60);
+ await shot("w1-deck",PROPS.deck,1254,1254,[-.6,.75,1],.62);
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);
 </script>

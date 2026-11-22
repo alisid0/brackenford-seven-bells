@@ -29,7 +29,7 @@ All 29 stages are kept in the game. The release plays 17 of them, in the order s
 | 21 | First shade | 5 | none | sitting hare at 14 m, returns after 4 s | 4 |
 | 22 | The warren | 7 | none | sitting hare at 12 m, returns after 6 s; sitting hare at 18 m, returns after 6 s; sitting hare at 24 m, returns after 6 s; sitting hare at 30 m, returns after 6 s | 7 |
 | 23 | Horns in the grass | 7 | none | hare hidden in grass at 13 m; hare hidden in grass at 19 m; hare hidden in grass at 25 m | 10 |
-| 24 | Creepers | 8 | none | creeping hare between 15, 15, 15 m; creeping hare between 23, 23, 23 m | 14 |
+| 24 | Creepers | 8 | none | creeping hare at 15 m, from 5.5 m left to 5.5 m right; creeping hare at 23 m, from 5 m right to 4.5 m left | 14 |
 | 25 | Bolt | 9 | none | running hare roaming 13-19 m; running hare roaming 20-28 m; running hare roaming 12-24 m | held back |
 | 26 | On the post | 7 | none | perched flyer at 14 m, returns after 5 s; perched flyer at 20 m, returns after 5 s; perched flyer at 27 m, returns after 5 s | 12 |
 | 27 | Flush | 8 | none | flyer hidden in a bush at 13 m; flyer hidden in a bush at 18 m; flyer hidden in a bush at 24 m | 16 |

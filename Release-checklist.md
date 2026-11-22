@@ -1,4 +1,4 @@
-# Archer's Realm: The Range — release checklist
+# Bow & Shadow — release checklist
 
 Known-good build: git tag `known-good-2026-11-21` (commit `a1e717d`), which is what the public URL serves.
 Work happens on the `release-prep` branch and is shown on a Vercel preview address. The public URL changes only when every "must" below is ticked.

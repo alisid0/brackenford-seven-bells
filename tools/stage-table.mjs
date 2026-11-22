@@ -10,7 +10,10 @@ const config = JSON.parse(readFileSync(join(root, 'src', 'config.json'), 'utf8')
 const wind = w => !w ? 'none' : (w[0] ? `${Math.abs(w[0])} ${w[0] > 0 ? 'right' : 'left'}` : 'calm') + (w[1] ? `, gusts to ${w[1]}` : '');
 const mark = m => `${m[0]} m${m[1] ? `, ${Math.abs(m[1])} m ${m[1] > 0 ? 'right' : 'left'}` : ''}, size ${m[2]}${m[3] ? ', sliding' : ''}${m[4] ? `, pop-up (${m[4][0]} s up)` : ''}`;
 const kind = { sit: 'sitting hare', hide: 'hare hidden in grass', creep: 'creeping hare', run: 'running hare', perch: 'perched flyer', flush: 'flyer hidden in a bush', cross: 'crossing flyer' };
-const shade = s => kind[s.t] + (s.at ? ` at ${s.at[0]} m` : s.lane ? ` over ${s.lane} m` : s.area ? ` roaming ${s.area[0]}-${s.area[1]} m` : s.path ? ` between ${s.path.map(p => p[0]).join(', ')} m` : '') + (s.back ? `, returns after ${s.back} s` : '');
+const side = r => r ? `${Math.abs(r)} m ${r > 0 ? 'right' : 'left'}` : 'the middle';
+// a path is a list of [distance, sideways] points; when the distance never changes, say it once and give the sideways sweep
+const path = p => p.every(q => q[0] === p[0][0]) ? ` at ${p[0][0]} m, from ${side(p[0][1])} to ${side(p[p.length - 1][1])}` : ` through ${p.map(q => `${q[0]} m (${side(q[1])})`).join(', ')}`;
+const shade = s => kind[s.t] + (s.at ? ` at ${s.at[0]} m` : s.lane ? ` over ${s.lane} m` : s.area ? ` roaming ${s.area[0]}-${s.area[1]} m` : s.path ? path(s.path) : '') + (s.back ? `, returns after ${s.back} s` : '');
 const row = (s, i) => `| ${i + 1} | ${s.name} | ${s.arrows} | ${wind(s.wind)} | ${[...s.marks.map(mark), ...(s.spirits || []).map(shade)].join('; ')} | ${config.order.includes(i + 1) ? config.order.indexOf(i + 1) + 1 : 'held back'} |`;
 const out = `# Stages
 

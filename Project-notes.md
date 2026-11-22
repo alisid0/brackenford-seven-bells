@@ -273,3 +273,17 @@ Real arrows 5 cm inside and 5 cm outside the edge (left, right and over the top)
 
 ### ChatGPT's review of the follow-ups (commit `666120a`)
 **Approved, with no changes before the Quest playtest.** Keep the two bone-following hit shapes, and keep ears, legs and tail outside the hit area for the trial; watch in play for misses a player would reasonably expect to score, especially on the ears when they are the clearest thing above the grass. The earlier follow-ups are resolved for this trial. Keep the hit set-up fixed so the playtest can show whether it feels fair. On Quest, from the shooting line: can players find a hidden hare, land shots on the visible head or body, and follow a bolt; include a few high-arc shots at the far end.
+
+### Gemini's first completed task: consistency check of the release documents (22 November 2026)
+Run by the developer in the Antigravity app from a message Claude wrote. Gemini cloned the public repository read-only and changed nothing. Claude checked every finding against the files before acting.
+
+| Gemini's finding | Checked | Action |
+|---|---|---|
+| `Release-checklist.md` line 1 still titled "Archer's Realm: The Range" | True, a left-over working title | Retitled "Bow & Shadow — release checklist" |
+| `README.md` names the folder `BrackenfordSevenBells/` | True, and deliberate (a folder name) | None |
+| `Release-page-text.md` states Quest VR, one-handed draw, left-handed play and VR controls flatly in five places, while no Quest check has been run | Partly true. The draft already said, further down, to call VR "supported" only if the Quest checks pass. But the sentences themselves could be copied out unqualified | Added a section at the top saying every VR sentence is unconfirmed, and gave each one two wordings: if the checks pass, and if VR ships as experimental |
+| `Stages.md` line 32: "creeping hare between 15, 15, 15 m" | True. The table writer listed only each path point's distance and left out the sideways sweep | Fixed `tools/stage-table.mjs`; the row now reads "creeping hare at 15 m, from 5.5 m left to 5.5 m right" |
+| Stage count and stage names and order (checks A and B) | Gemini found nothing wrong | None |
+| Unsure: whether `assets/screens` exists; sub-steps 4a, 9a, 9b in the test sheet | `assets/screens` exists with five pictures; the sub-steps are deliberate | None |
+
+No finding was wrong. One (the VR wording) overlooked a caveat already in the file, but the point behind it was fair.

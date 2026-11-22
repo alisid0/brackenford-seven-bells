@@ -287,3 +287,13 @@ Run by the developer in the Antigravity app from a message Claude wrote. Gemini 
 | Unsure: whether `assets/screens` exists; sub-steps 4a, 9a, 9b in the test sheet | `assets/screens` exists with five pictures; the sub-steps are deliberate | None |
 
 No finding was wrong. One (the VR wording) overlooked a caveat already in the file, but the point behind it was fair.
+
+## A team of three, and design round 1 (22 November 2026)
+At the developer's request Gemini joined the creative work and the three models agreed roles. The agreement and the round's outcome are in `Team.md`; each model's own proposal is in `design/`.
+
+- **How they talked.** Claude typed to Gemini directly in the Antigravity app (the developer granted control of that app) and to ChatGPT in the browser pane. Each wrote a proposal without seeing the others', then read them and answered one settlement proposal.
+- **Gemini's contribution on GitHub.** It created the branch `gemini/design-round-1`, wrote and committed `design/gemini-round-1.md` and its reply under its own author name, and pushed only that branch. Claude checked the commits (two files added, nothing else changed), opened [alisid0/brackenford-seven-bells#1](https://github.com/alisid0/brackenford-seven-bells/pull/1) and merged it into `release-prep`.
+- **Roles, accepted by all three.** Gemini: rules, numbers, interaction specs and audits. ChatGPT: art direction and the visual cue of every mechanic. Claude: code, tests, performance, repository and merges. The developer decides.
+- **Agreed for a first prototype after Trials ships:** three single-target arrows (frost, wind, fire), as charges per run, behind one flag. Score Attack before Endless. The plain mixed-reality Window before anything more.
+- **Left for the developer:** the fire arrow's name (Kiln or Singe); whether arrows in the air at Score Attack's buzzer count; whether Score Attack gets a Bonus Bell; and whether any of this starts before the Trials playtest.
+- **Not done:** nothing in this round is built or tested. One thing to know about the screen: another window covered part of Gemini's reply in Antigravity, so Claude asked Gemini to save that reply as a file and read it from git.

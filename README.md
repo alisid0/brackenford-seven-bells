@@ -10,6 +10,8 @@ A fantasy archery game for the browser and for VR headsets, set in the world of 
 | File | What it is |
 |---|---|
 | [Project-notes.md](Project-notes.md) | Current status, every agreed decision, standing rules, open questions |
+| [Team.md](Team.md) | Who owns what between Claude, ChatGPT and Gemini, how each contributes, and what design round 1 agreed |
+| [design/](design) | Each model's own proposal for design round 1 |
 | [ChatGPT-instructions.md](ChatGPT-instructions.md) | How ChatGPT works on this project |
 | [Release-checklist.md](Release-checklist.md) | What must pass before the public release |
 | [Day-1-test-sheet.md](Day-1-test-sheet.md) | The developer's playtest script |

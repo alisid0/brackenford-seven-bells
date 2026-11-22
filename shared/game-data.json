@@ -1,0 +1,1156 @@
+{
+ "note": "Written by tools/export-data.mjs from src/game.js. Do not edit by hand; change the web game and run the tool.",
+ "units": "metres, seconds; along = down the lane from the shooting line, right = to the archer's right",
+ "title": "Bow & Shadow",
+ "releaseOrder": [
+  1,
+  2,
+  3,
+  21,
+  6,
+  8,
+  22,
+  4,
+  10,
+  23,
+  7,
+  26,
+  14,
+  24,
+  16,
+  27,
+  29
+ ],
+ "bow": {
+  "arrowSpeed": 62,
+  "gravity": 7,
+  "note": "full-draw launch speed in m/s and the game's own gravity in m/s2 (not 9.81); wind pushes sideways at 1.4 x wind m/s2"
+ },
+ "target": {
+  "centreHeight": "0.75 + 0.72 * size",
+  "outerDiameter": "1.36 * size"
+ },
+ "scoring": {
+  "rings": [
+   {
+    "within": 0.1,
+    "points": 100
+   },
+   {
+    "within": 0.23,
+    "points": 80
+   },
+   {
+    "within": 0.37,
+    "points": 60
+   },
+   {
+    "within": 0.5,
+    "points": 40
+   },
+   {
+    "within": 9,
+    "points": 20
+   }
+  ],
+  "ringsNote": "distance from the centre in target units (multiply by its size for metres); copied by hand from rangeHit in src/game.js, as are the bow numbers above",
+  "points": "round((ring + distance to the archer in m) x streak bonus x perfect release)",
+  "starAt": [
+   0.3,
+   0.6,
+   0.95
+  ],
+  "shadeValue": {
+   "sit": 100,
+   "hide": 160,
+   "creep": 200,
+   "run": 240,
+   "perch": 160,
+   "flush": 300,
+   "cross": 300
+  },
+  "streakBonus": "x min(2, 1 + 0.1 * (streak - 1))",
+  "perfectRelease": 1.25
+ },
+ "lane": {
+  "half": 8,
+  "from": -3,
+  "to": 76,
+  "creek": 38,
+  "steps": [
+   [
+    43,
+    0.7
+   ],
+   [
+    53,
+    1.4
+   ],
+   [
+    63,
+    2.1
+   ],
+   [
+    72,
+    2.8
+   ]
+  ],
+  "base": 0
+ },
+ "place": {
+  "name": "Willowbank Range",
+  "practiceBell": {
+   "along": 22,
+   "right": 12.5,
+   "tone": 523
+  }
+ },
+ "arrows": {
+  "charges": 2,
+  "hold": 1.8,
+  "galeWind": 0.5,
+  "galeCap": 60
+ },
+ "ribbons": {
+  "First marks": [
+   "clean"
+  ],
+  "Stepping back": [
+   "dead",
+   3
+  ],
+  "The drop": [
+   "clean"
+  ],
+  "Three ranges": [
+   "dead",
+   3
+  ],
+  "The long lane": [
+   "clean"
+  ],
+  "A breeze": [
+   "clean"
+  ],
+  "Crosswind": [
+   "pure"
+  ],
+  "Sliding mark": [
+   "dead",
+   3
+  ],
+  "Slide and breeze": [
+   "pure"
+  ],
+  "Pop-ups": [
+   "pure"
+  ],
+  "Far and small": [
+   "dead",
+   3
+  ],
+  "Gusts": [
+   "dead",
+   3
+  ],
+  "Quick marks": [
+   "pure"
+  ],
+  "Crossing pair": [
+   "clean"
+  ],
+  "Long wind": [
+   "pure"
+  ],
+  "The gauntlet": [
+   "dead",
+   4
+  ],
+  "Small bull": [
+   "clean"
+  ],
+  "Storm lane": [
+   "pure"
+  ],
+  "Far slider": [
+   "dead",
+   3
+  ],
+  "Master of the line": [
+   "pure"
+  ],
+  "First shade": [
+   "clean"
+  ],
+  "The warren": [
+   "swift",
+   22
+  ],
+  "Horns in the grass": [
+   "pure"
+  ],
+  "Creepers": [
+   "clean"
+  ],
+  "Bolt": [
+   "swift",
+   25
+  ],
+  "On the post": [
+   "clean"
+  ],
+  "Flush": [
+   "swift",
+   24
+  ],
+  "Flight line": [
+   "pure"
+  ],
+  "Blighted meadow": [
+   "swift",
+   32
+  ]
+ },
+ "bellWatch": {
+  "seconds": 180,
+  "again": [
+   1.2,
+   2.8
+  ],
+  "share": 0.65,
+  "reach": 1.3,
+  "scatter": 9,
+  "bonus": 100,
+  "quiet": 10
+ },
+ "stages": [
+  {
+   "id": 1,
+   "name": "First marks",
+   "arrows": 5,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 10,
+     "right": 0,
+     "size": 1.2,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 2,
+   "name": "Stepping back",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 15,
+     "right": -2.5,
+     "size": 1.2,
+     "slide": null,
+     "pop": null
+    },
+    {
+     "along": 20,
+     "right": 2.5,
+     "size": 1.2,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 3,
+   "name": "The drop",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 30,
+     "right": 0,
+     "size": 1.4,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 4,
+   "name": "Three ranges",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 15,
+     "right": -4,
+     "size": 1.1,
+     "slide": null,
+     "pop": null
+    },
+    {
+     "along": 30,
+     "right": 0,
+     "size": 1.4,
+     "slide": null,
+     "pop": null
+    },
+    {
+     "along": 45,
+     "right": 4,
+     "size": 1.8,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 5,
+   "name": "The long lane",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 60,
+     "right": 0,
+     "size": 2.4,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 6,
+   "name": "A breeze",
+   "arrows": 6,
+   "wind": [
+    3,
+    0
+   ],
+   "targets": [
+    {
+     "along": 20,
+     "right": 0,
+     "size": 1.2,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 7,
+   "name": "Crosswind",
+   "arrows": 6,
+   "wind": [
+    -5,
+    0
+   ],
+   "targets": [
+    {
+     "along": 30,
+     "right": 0,
+     "size": 1.5,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 8,
+   "name": "Sliding mark",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 15,
+     "right": 0,
+     "size": 1.2,
+     "slide": {
+      "reach": 3,
+      "rate": 0.9
+     },
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 9,
+   "name": "Slide and breeze",
+   "arrows": 6,
+   "wind": [
+    3,
+    0
+   ],
+   "targets": [
+    {
+     "along": 25,
+     "right": 0,
+     "size": 1.4,
+     "slide": {
+      "reach": 3.5,
+      "rate": 0.8
+     },
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 10,
+   "name": "Pop-ups",
+   "arrows": 8,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 14,
+     "right": -4,
+     "size": 1.1,
+     "slide": null,
+     "pop": {
+      "up": 3,
+      "down": 2,
+      "offset": 0
+     }
+    },
+    {
+     "along": 18,
+     "right": 0,
+     "size": 1.2,
+     "slide": null,
+     "pop": {
+      "up": 3,
+      "down": 2,
+      "offset": 1.7
+     }
+    },
+    {
+     "along": 22,
+     "right": 4,
+     "size": 1.3,
+     "slide": null,
+     "pop": {
+      "up": 3,
+      "down": 2,
+      "offset": 3.3
+     }
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 11,
+   "name": "Far and small",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 40,
+     "right": 0,
+     "size": 1.1,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 12,
+   "name": "Gusts",
+   "arrows": 6,
+   "wind": [
+    0,
+    6
+   ],
+   "targets": [
+    {
+     "along": 35,
+     "right": 0,
+     "size": 1.6,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 13,
+   "name": "Quick marks",
+   "arrows": 8,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 12,
+     "right": -3,
+     "size": 1,
+     "slide": null,
+     "pop": {
+      "up": 1.8,
+      "down": 1.6,
+      "offset": 0
+     }
+    },
+    {
+     "along": 16,
+     "right": 3,
+     "size": 1,
+     "slide": null,
+     "pop": {
+      "up": 1.8,
+      "down": 1.6,
+      "offset": 1.1
+     }
+    },
+    {
+     "along": 20,
+     "right": 0,
+     "size": 1.1,
+     "slide": null,
+     "pop": {
+      "up": 1.8,
+      "down": 1.6,
+      "offset": 2.2
+     }
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 14,
+   "name": "Crossing pair",
+   "arrows": 8,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 18,
+     "right": 0,
+     "size": 1.2,
+     "slide": {
+      "reach": 3.5,
+      "rate": 1
+     },
+     "pop": null
+    },
+    {
+     "along": 26,
+     "right": 0,
+     "size": 1.4,
+     "slide": {
+      "reach": 4,
+      "rate": -0.8
+     },
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 15,
+   "name": "Long wind",
+   "arrows": 6,
+   "wind": [
+    5,
+    0
+   ],
+   "targets": [
+    {
+     "along": 60,
+     "right": 0,
+     "size": 2.4,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 16,
+   "name": "The gauntlet",
+   "arrows": 9,
+   "wind": [
+    2,
+    0
+   ],
+   "targets": [
+    {
+     "along": 15,
+     "right": -4.5,
+     "size": 1.1,
+     "slide": null,
+     "pop": null
+    },
+    {
+     "along": 24,
+     "right": 0,
+     "size": 1.3,
+     "slide": {
+      "reach": 3,
+      "rate": 0.9
+     },
+     "pop": null
+    },
+    {
+     "along": 32,
+     "right": 4,
+     "size": 1.5,
+     "slide": null,
+     "pop": {
+      "up": 2.5,
+      "down": 2,
+      "offset": 0
+     }
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 17,
+   "name": "Small bull",
+   "arrows": 6,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 20,
+     "right": 0,
+     "size": 0.65,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 18,
+   "name": "Storm lane",
+   "arrows": 7,
+   "wind": [
+    2,
+    7
+   ],
+   "targets": [
+    {
+     "along": 45,
+     "right": 0,
+     "size": 1.9,
+     "slide": null,
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 19,
+   "name": "Far slider",
+   "arrows": 7,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [
+    {
+     "along": 50,
+     "right": 0,
+     "size": 2.1,
+     "slide": {
+      "reach": 4,
+      "rate": 0.6
+     },
+     "pop": null
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 20,
+   "name": "Master of the line",
+   "arrows": 8,
+   "wind": [
+    -3,
+    5
+   ],
+   "targets": [
+    {
+     "along": 70,
+     "right": 0,
+     "size": 2.6,
+     "slide": {
+      "reach": 4,
+      "rate": 0.5
+     },
+     "pop": null
+    },
+    {
+     "along": 35,
+     "right": -5,
+     "size": 1.3,
+     "slide": null,
+     "pop": {
+      "up": 2.5,
+      "down": 2,
+      "offset": 0
+     }
+    }
+   ],
+   "shades": [],
+   "grass": []
+  },
+  {
+   "id": 21,
+   "name": "First shade",
+   "arrows": 5,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "sit",
+     "at": [
+      14,
+      0
+     ],
+     "alt": [
+      17,
+      3
+     ],
+     "back": 4
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 22,
+   "name": "The warren",
+   "arrows": 7,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "sit",
+     "at": [
+      12,
+      -3
+     ],
+     "alt": [
+      14,
+      -5
+     ],
+     "back": 6
+    },
+    {
+     "t": "sit",
+     "at": [
+      18,
+      2
+     ],
+     "alt": [
+      20,
+      4.5
+     ],
+     "back": 6
+    },
+    {
+     "t": "sit",
+     "at": [
+      24,
+      -1.5
+     ],
+     "alt": [
+      26,
+      -4
+     ],
+     "back": 6
+    },
+    {
+     "t": "sit",
+     "at": [
+      30,
+      4
+     ],
+     "alt": [
+      32,
+      1.5
+     ],
+     "back": 6
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 23,
+   "name": "Horns in the grass",
+   "arrows": 7,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "hide",
+     "at": [
+      13,
+      -3.5
+     ]
+    },
+    {
+     "t": "hide",
+     "at": [
+      19,
+      1.5
+     ]
+    },
+    {
+     "t": "hide",
+     "at": [
+      25,
+      4.5
+     ]
+    }
+   ],
+   "grass": [
+    [
+     16,
+     -1
+    ],
+    [
+     22,
+     -4
+    ],
+    [
+     28,
+     1
+    ]
+   ]
+  },
+  {
+   "id": 24,
+   "name": "Creepers",
+   "arrows": 8,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "creep",
+     "path": [
+      [
+       15,
+       -5.5
+      ],
+      [
+       15,
+       0
+      ],
+      [
+       15,
+       5.5
+      ]
+     ]
+    },
+    {
+     "t": "creep",
+     "path": [
+      [
+       23,
+       5
+      ],
+      [
+       23,
+       0.5
+      ],
+      [
+       23,
+       -4.5
+      ]
+     ]
+    }
+   ],
+   "grass": [
+    [
+     15,
+     -5.5
+    ],
+    [
+     15,
+     0
+    ],
+    [
+     15,
+     5.5
+    ],
+    [
+     23,
+     5
+    ],
+    [
+     23,
+     0.5
+    ],
+    [
+     23,
+     -4.5
+    ]
+   ]
+  },
+  {
+   "id": 25,
+   "name": "Bolt",
+   "arrows": 9,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "run",
+     "area": [
+      13,
+      19,
+      -7,
+      7
+     ]
+    },
+    {
+     "t": "run",
+     "area": [
+      20,
+      28,
+      -7,
+      7
+     ]
+    },
+    {
+     "t": "run",
+     "area": [
+      12,
+      24,
+      -6,
+      6
+     ]
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 26,
+   "name": "On the post",
+   "arrows": 7,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "perch",
+     "at": [
+      14,
+      -4,
+      2.2
+     ],
+     "back": 5
+    },
+    {
+     "t": "perch",
+     "at": [
+      20,
+      2.5,
+      2.9
+     ],
+     "back": 5
+    },
+    {
+     "t": "perch",
+     "at": [
+      27,
+      5,
+      3.5
+     ],
+     "back": 5
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 27,
+   "name": "Flush",
+   "arrows": 8,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "flush",
+     "at": [
+      13,
+      -4
+     ]
+    },
+    {
+     "t": "flush",
+     "at": [
+      18,
+      3.5
+     ]
+    },
+    {
+     "t": "flush",
+     "at": [
+      24,
+      -1
+     ]
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 28,
+   "name": "Flight line",
+   "arrows": 10,
+   "wind": [
+    3,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "cross",
+     "lane": 15
+    },
+    {
+     "t": "cross",
+     "lane": 21
+    },
+    {
+     "t": "cross",
+     "lane": 27
+    }
+   ],
+   "grass": []
+  },
+  {
+   "id": 29,
+   "name": "Blighted meadow",
+   "arrows": 10,
+   "wind": [
+    0,
+    0
+   ],
+   "targets": [],
+   "shades": [
+    {
+     "t": "sit",
+     "at": [
+      13,
+      -4
+     ],
+     "alt": [
+      15,
+      -6
+     ],
+     "back": 5
+    },
+    {
+     "t": "hide",
+     "at": [
+      19,
+      4
+     ]
+    },
+    {
+     "t": "run",
+     "area": [
+      20,
+      27,
+      -6,
+      6
+     ]
+    },
+    {
+     "t": "perch",
+     "at": [
+      16,
+      1,
+      2.6
+     ],
+     "back": 5
+    },
+    {
+     "t": "cross",
+     "lane": 24
+    }
+   ],
+   "grass": []
+  }
+ ]
+}

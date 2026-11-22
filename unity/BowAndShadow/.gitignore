@@ -1,0 +1,11 @@
+# Unity makes these again by itself
+/Library/
+/Temp/
+/Logs/
+/UserSettings/
+/obj/
+/Builds/
+*.csproj
+*.sln
+*.slnx
+/.vscode/

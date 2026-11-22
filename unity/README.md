@@ -31,3 +31,16 @@ Nothing here has run on a headset.
 ## What a real run taught, so far
 
 The first Windows build drew nothing, the second drew everything magenta. A material made at run time from a shader found by name is not packed into a build. The fix is `Assets/Resources/Flat.mat`, a real material in the project. Compiling in the editor did not show either fault; running the build did.
+
+## An older Unity project is also in this repository
+
+`BrackenfordSevenBells/` at the top of the repository is an earlier Unity prototype ("The Seven Bells", first recorded 21 November 2026), from before the web game became the main line. Claude started `unity/BowAndShadow` without knowing it was there; Gemini's `design/unity-plan.md` pointed it out. It is the same Unity version and already has what the new project lacks:
+
+- the headset packages at versions this Unity accepted: OpenXR 1.18.0, XR Plug-in Management 4.7.0, XR Hands 1.7.3, Input System 1.20.1, with their settings under `Assets/XR`;
+- two shaders, `BrackenfordLit` and `BrackenfordGlow`.
+
+It does not read the shared numbers and its game code (about 1,300 lines) is the old roaming game. The sensible course is to keep `unity/BowAndShadow` as the project and bring those package versions, XR settings and shaders across from the old one, rather than run two. Not done yet; nothing in the old folder has been changed.
+
+## Gemini's plan
+
+`design/unity-plan.md`: Unity 6 with URP, OpenXR and Meta's OpenXR package, the XR Interaction Toolkit, and glTFast to import `assets/glb/*.glb`; one shared data folder for both versions; the browser build as the fast daily lab, Unity brought up to date at each finished stage; first milestone a Willowbank Bell Watch slice on a Quest, with a decision gate: does it hold 72 frames a second and feel materially better than the browser? It differs from today's project in two ways to settle: it wants URP (the project is on the built-in pipeline), and it wants the numbers split into several JSON files (today there is one).

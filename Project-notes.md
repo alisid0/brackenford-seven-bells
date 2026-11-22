@@ -319,3 +319,20 @@ The developer decided to start design round 1 now. The three arrows went through
   - the test for a 40 ring was missing, and two tests were too loose. Added and tightened.
 - **Tests.** `tests/arrows.html` runs the spec's cases with real arrows, 13 groups of checks, all passing; it also checks the arrows are absent on the release page and without the flag. `tests/all.html` on the normal build passes. `tests/newhare.html` still passes.
 - **Known and not done:** a Gale bullseye does not get the gold burst or the best-shot replay, because its value is capped below 100 (Gemini noted it; left as is). Nothing has been seen in a headset: ChatGPT asks for all three cues to be checked at 15 m and 30 m on a Quest, and whether Gale's trail reads from behind the arrow. Gemini has not re-audited the fixes. The charge numbers are a first guess to be tuned in play.
+
+## World concept pictures: background, layout and overall look (22 November 2026)
+At the developer's request ChatGPT drew three pictures of the same place and Gemini commented on them. They are concepts: nothing in the game's world has changed.
+
+| File in `assets/concepts/` | What it is | State |
+|---|---|---|
+| `world-1-background.jpg` | The view from the shooting line: meadow lane, lake and jetty, creek and footbridge, village and watchtower, plum hills | Drawn. It alone has pink blossom trees, which are not in the approved palette |
+| `world-2-layout.jpg` | The range seen from above, first version | **Superseded.** Claude's brief was wrong: the lane was too short and narrow, and the creek sat at 35 m where two stages stand a target |
+| `world-2-layout-v2.jpg` | The range seen from above, corrected | Drawn to Gemini's corrections. Not yet approved by the developer |
+| `world-3-overall-look.jpg` | A moment of play: bow in hand, two targets, a shade in the grass, the cloth-banner scoreboard with three gold stars | Drawn |
+
+- **Gemini's comments** (`design/world-comments.md`, pull request 4), checked by Claude against `Stages.md` and found right on the facts: stages put targets as far as 60 and 70 m and as far as 7 m either side; two stages stand a target at 35 m; the first layout's creek and lane did not allow for that. It also asked for terraces instead of cast shadows (shadows are off on a Quest), for the only tall grass in the lane to be the clumps shades hide in (so a Kiln arrow is not wasted on decoration), and for the pennant to stand clear of the scoreboard.
+- **The corrected layout** has a lane 75 m by 16 m, the creek at about 38 m with a terrace behind it, terraces stepping up beyond, targets at about 10, 20, 30, 50 and 70 m, two rows of three grass clumps at about 15 and 23 m, the cream cloth scoreboard, and the pennant on the far side of the lane.
+- **ChatGPT's replies to Gemini:** it agrees with the layout changes; it would not fix the rail at 0.85 m until seated draw clearance is checked on a Quest; and it reads the arrowhead in picture 3 as banner red rather than ember, though grey would be cleaner.
+- **For the developer:** whether the pink blossom trees stay (Gemini: keep two or three in the middle distance, away from the line and from behind targets); whether the arrowhead in picture 3 goes grey; and whether `world-2-layout-v2.jpg` is the plan to build to. Rebuilding the game's world to it would be a large change and has not been started.
+- **Not checked:** Gemini says pink blossom trees match the style sheet; Claude has not verified that.
+- Also merged: Gemini's second audit of the arrows (pull request 5), which found one small fault, now fixed: a Kiln arrow striking a winged shade flying over a grass clump no longer clears the clump.

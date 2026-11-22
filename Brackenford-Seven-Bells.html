@@ -80397,15 +80397,21 @@ if(WORLD2){
  {const j=new T.Group();j.position.copy(P(14,-16.5));j.rotation.y=Math.PI/2;R.add(j);for(let i=0;i<6;i++)box(j,V(0,.35,-2.1+i*.85),V(2.4,.08,.78),i%2?'#a5632f':'#b9763a');for(const s of[-1,1])for(const z of[-2.3,0,2.3])stick(j,V(s*1.1,-1.2,z),V(s*1.1,.75,z),.07,timber);}
  // the village on its rise at the far right: three round huts and the watchtower (world-plan: 82 to 98 m out, 18 to 38 m right)
  for(const[a,r,k]of[[84,20,1],[89,26,1.15],[95,21,.95]]){const h=new T.Group(),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);R.add(h);
-  mesh(h,new T.CylinderGeometry(3,3,2.4,8),'#f1e2bd',V(0,1.2,0));mesh(h,new T.ConeGeometry(3.7,2.6,8),'#c99a4e',V(0,3.7,0));box(h,V(0,1,-2.98),V(.9,1.9,.1),'#7a5a3c');}
+  mesh(h,new T.CylinderGeometry(3,3,2.3,8),'#f1e2bd',V(0,1.15,0));
+  mesh(h,new T.CylinderGeometry(2.3,4.3,1.1,8),'#b98a42',V(0,2.75,0));mesh(h,new T.ConeGeometry(2.5,1.5,8),'#d4a85a',V(0,4.05,0));   // lower band wide and darker, upper band lighter
+  box(h,V(0,.95,-2.75),V(1.3,1.9,.5),'#5e4630');box(h,V(0,1.98,-2.98),V(1.6,.16,.22),'#7a5a3c');for(const s of[-1,1])box(h,V(s*.72,.95,-2.98),V(.16,1.9,.22),'#7a5a3c');}
  {const t=new T.Group(),p=P(90,34),[wx,wz]=yardAt(90,34);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);
-  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.6,-.5,sz*1.6),V(sx*1.2,7.2,sz*1.2),.14,'#7a5a3c');
-  box(t,V(0,7.2,0),V(3.2,.2,3.2),'#a5632f');for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.4,7.2,sz*1.4),V(sx*1.4,9.1,sz*1.4),.1,'#7a5a3c');
-  mesh(t,new T.ConeGeometry(2.8,1.6,4),'#b3202f',V(0,9.9,0)).rotation.y=Math.PI/4;for(const y of[2.4,4.8])for(const sx of[-1,1])stick(t,V(sx*1.5,y-1.6,-1.5),V(sx*1.3,y+.6,1.4),.07,'#8a6038');}
+  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.9,-.5,sz*1.9),V(sx*1.45,7.1,sz*1.45),.26,'#7a5a3c',5);
+  for(const s of[-1,1])for(const[y0,y1]of[[.4,3.4],[3.7,6.7]]){stick(t,V(-1.8,y0,s*1.75),V(1.6,y1,s*1.6),.11,'#8a6038',4);stick(t,V(1.8,y0,s*1.75),V(-1.6,y1,s*1.6),.11,'#8a6038',4);}   // X-braces, front and back
+  box(t,V(0,7.2,0),V(4.4,.28,4.4),'#a5632f');   // the gallery's deck, wider than the legs
+  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.95,7.3,sz*1.95),V(sx*1.95,9.5,sz*1.95),.16,'#7a5a3c',5);
+  for(const s of[-1,1]){box(t,V(0,8.25,s*1.95),V(3.9,.14,.14),'#8a6038');box(t,V(s*1.95,8.25,0),V(.14,.14,3.9),'#8a6038');}   // a low rail under the roof
+  mesh(t,new T.ConeGeometry(3.6,1.9,4),'#b3202f',V(0,10.4,0)).rotation.y=Math.PI/4;}
  // the footbridge over the creek, to the right of the lane and clear of it
  {const b=new T.Group();b.position.copy(P(LANE.creek,13.5));R.add(b);
-  for(let i=-2;i<=2;i++){const p=box(b,V(0,.42-.07*i*i,i*.95),V(1.9,.1,1),'#b9824a');p.rotation.x=i*.14;}
-  for(const s of[-1,1]){for(const z of[-2.1,0,2.1])stick(b,V(s*.9,.1,z),V(s*.9,z?1:1.25,z),.05,timber);stick(b,V(s*.9,.95,-2.1),V(s*.9,1.2,0),.04,timber);stick(b,V(s*.9,1.2,0),V(s*.9,.95,2.1),.04,timber);}}
+  for(let i=-2;i<=2;i++){const p=box(b,V(0,.62-.1*i*i,i*.95),V(2,.16,1.02),i%2?'#b9824a':'#a5632f');p.rotation.x=i*.2;}   // a deck with a clear crown
+  for(const s of[-1,1]){for(const z of[-2.2,0,2.2])stick(b,V(s*.95,0,z),V(s*.95,z?1.15:1.55,z),.1,timber,5);stick(b,V(s*.95,1.1,-2.2),V(s*.95,1.5,0),.085,timber,5);stick(b,V(s*.95,1.5,0),V(s*.95,1.1,2.2),.085,timber,5);}
+  for(const z of[-2.55,2.55])box(b,V(0,.12,z),V(2.6,.5,.7),'#9a968c');}   // stone abutments at both ends
  // two blossom trees, one each side in the middle distance, well clear of the lane and never behind a target
  for(const[a,r,s]of[[31,-17.5,1],[46,17,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
   stick(t,V(0,-.3,0),V(.15,2.6,0),.2,'#7a5a3c');stick(t,V(.1,1.9,0),V(-.9,3.1,.2),.1,'#7a5a3c');stick(t,V(.1,2.1,0),V(.9,3.2,-.3),.1,'#7a5a3c');

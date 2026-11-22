@@ -39,7 +39,7 @@ async function run(){
   stage("Master of the line");await put("world2-player-far",v.shot());
   stage("First marks");await put("world2-player-near",v.shot());
   stage("Horns in the grass");steps(60);await put("world2-player-grass",v.shot());
-  await put("world2-above",from(at(36,0,0),at(-30,0,44)));await put("world2-side",from(at(40,2,1),at(24,30,10)));await put("world2-line",from(at(6,0,1),at(-9,-3,3.2)));
+  await put("world2-above",from(at(36,0,0),at(-30,0,44)));await put("world2-side",from(at(40,2,1),at(24,30,10)));await put("world2-line",from(at(6,0,1),at(-9,-3,3.2)));await put("world2-village",from(at(90,27,5),at(64,10,9)));await put("world2-bridge",from(at(38,13.5,.8),at(31,22,3)));await put("world2-bell",from(at(22,12.5,1.8),at(8,5,2.2)));
  }
  // without the switch, and on the release page, the layout is not there
  for(const[name,query]of[["noSwitch","?release=0"],["releasePage","?world=0"]]){

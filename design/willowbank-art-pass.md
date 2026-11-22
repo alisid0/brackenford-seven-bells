@@ -32,3 +32,30 @@ Renders: `assets/renders/world2-player-near.jpg`, `-player-far.jpg`, `-above.jpg
 - **Assets are simple code-built shapes.** Huts, tower, jetty and bridge are first versions for ChatGPT to judge, not finished models.
 - **The stand is not raised** and there is no channel under it.
 - Nothing here has been seen in a headset or played by a person.
+
+## ChatGPT's review of the first renders (22 November 2026)
+
+It opened all six renders. Written down by Claude.
+
+**Stage 2, shapes to fix first (all three now done; renders `world2-village.jpg`, `world2-bridge.jpg`):**
+
+| Asset | Its note | What was changed |
+|---|---|---|
+| Watchtower | The red cap reads but the legs are too slender to give the skyline character | Thick posts, X-braces front and back, a gallery deck wider than the legs with a low rail under the roof |
+| Huts | Should read as buildings from the line | A low roof with a deep overhang in two bands of thatch; a recessed timber doorway with a frame |
+| Footbridge | From the side it looked like a flat plank with wire rails | A crowned deck, thick posts with one solid handrail a side, stone abutments at both ends |
+
+**Stage 3, its starting values (not applied; stage 3 has not started):**
+
+| Element | Setting |
+|---|---|
+| Sky | Zenith `#7798BD`, horizon `#E4B7AA` |
+| Clouds | Faces cream `#F6E6BD`, undersides `#D8BAC2` |
+| Sun | Warm peach `#FFD1A0`, strength 1.25, 22 degrees up, 45 degrees to the left of the shooting direction |
+| Fill | Cool `#BCC8E0`, strength 0.65, so shaded timber and plum shapes stay readable |
+| Haze | Dusty mauve `#BBAAB9`; begins at 110 m, complete at 650 m, replacing the grey-green band |
+| Meadow outside the lane | Base `#91A454`, lit `#A5B662`, shaded `#788D48`. The scattered dark spikes become sparse short grass close to the ground colour; tall shapes are kept for cover that matters to play |
+| Hills | Three layers: near `#788950`, middle `#89748F`, far plum ridge `#A28AA5`, the farthest the lightest |
+| Water | Lake `#527F9A`, creek `#648FA7`, sun-facing edge `#9ABBC4` as a few broken opaque shapes |
+
+**Where the glow goes:** locked gold `#F0C75A` on the restored bell's lip and the small centre of the bullseye; a few short cool highlights on the water's sun-facing edge. All flat and opaque. **Kept matte on purpose:** the silent bell, thorns, the targets' outer rings, banner trim, blossoms, broad water. Saturated ember `#E02E32` stays with the shades' eyes so they remain the strongest warm points.

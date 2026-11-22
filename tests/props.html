@@ -29,6 +29,9 @@ const wait=setInterval(async()=>{
  await shot("a4-thornwood-bow-code",PROPS.thornwoodBow,1024,1536,[1,0,0],.54);
  await shot("a4-thornwood-bow-code-detail",PROPS.thornwoodBow,1024,1536,[1,.15,.8],.54);
  await shot("a4-thornwood-bow-code-tip",PROPS.thornwoodBow,1254,1254,[1,.1,.55],.07,null,[0,.66,0]);
+ await shot("h8-belfry-silent",T=>PROPS.belfry(T,{state:"silent"}),1254,1254,[.25,.12,1],.62);
+ await shot("h8-belfry-restored",T=>PROPS.belfry(T,{state:"restored"}),1254,1254,[.25,.12,1],.62);
+ await shot("h8-belfry-rung",T=>{const b=PROPS.belfry(T,{state:"restored"});b.userData.bell.rotation.z=.42;return b;},1254,1254,[.25,.12,1],.62);
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);
 </script>

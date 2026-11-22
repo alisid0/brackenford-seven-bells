@@ -109,9 +109,12 @@ function belfry(T,opt={}){
  const lip=add(bell,new T.CylinderGeometry(.332,.332,.08,8,1,true),GOLD,0,-.83,0,true);
  // silent: two thorn vines across the bell, half the iron left showing, with broad tips breaking the outline
  const thorns=new T.Group();bell.add(thorns);
- for(const[y,r,tilt,turn]of[[-.42,.235,.42,0],[-.66,.3,-.36,1.3]]){
+ const bands=[];
+ for(const[y,r,tilt,turn]of[[-.42,.235,.42,0],[-.66,.3,-.36,1.3],[-.54,.27,.1,2.4]]){
+  const band=new T.Group();thorns.add(band);bands.push(band);const thornsAll=thorns;{const thorns=band;void thornsAll;
   const vine=add(thorns,new T.TorusGeometry(r,.028,5,10),PLUM,0,y,0);vine.rotation.set(Math.PI/2+tilt,0,turn);
   for(let i=0;i<5;i++){const a=i/5*Math.PI*2+turn,t=add(thorns,new T.ConeGeometry(.03,.13,4),PLUM_L,Math.cos(a)*(r+.05),y+Math.sin(a)*Math.sin(tilt)*r,Math.sin(a)*(r+.05)*Math.cos(tilt));t.rotation.set(0,-a,-Math.PI/2);}
+  }
  }
  // silent: low thorn tangles at the foot of each post
  const brambles=new T.Group();g.add(brambles);
@@ -129,9 +132,11 @@ function belfry(T,opt={}){
  {const sh=new T.Shape();sh.moveTo(-.11,0);sh.lineTo(.11,0);sh.lineTo(.11,-.16);sh.lineTo(0,-.07);sh.lineTo(-.11,-.16);sh.closePath();add(tied,new T.ShapeGeometry(sh),HEM,.72,.95,.128,true);}
  {const pts=[[.8,2.0],[1.15,1.82],[1.5,1.96],[1.85,1.74],[2.15,1.84]];for(let i=0;i<pts.length-1;i++){const a=V(pts[i][0],pts[i][1],0),b=V(pts[i+1][0],pts[i+1][1],.02*i),d=b.clone().sub(a),m=box(loose,d.length()+.02,.22-.03*i,.02,CREAM,(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2);m.rotation.z=Math.atan2(d.y,d.x);const h=box(loose,d.length()+.02,.05,.022,HEM,(a.x+b.x)/2,(a.y+b.y)/2-.085+.012*i,(a.z+b.z)/2);h.rotation.z=m.rotation.z;}}
  function set(state){
-  const on=state==='restored';body.material=kit(T).mat(on?BRONZE:IRON,true);lip.visible=on;thorns.visible=!on;brambles.visible=!on;crow.visible=!on;tied.visible=!on;loose.visible=on;g.userData.state=on?'restored':'silent';
+  const on=state==='restored';body.material=kit(T).mat(on?BRONZE:IRON,true);lip.visible=on;thorns.visible=!on;bands.forEach((b,i)=>b.visible=i<2);brambles.visible=!on;crow.visible=!on;tied.visible=!on;loose.visible=on;g.userData.state=on?'restored':'silent';
  }
- g.userData={name:'H8 Forked belfry',width:2.2,height:3.2,bell,set,points:{strike:V(0,1.72,0),lip:V(0,1.37,0),perch:V(-1.1,3.2,0)},forward:'+z',note:'the bell swings about z at userData.bell; set("silent") or set("restored")'};
+ // Bell Watch: n thorn bands (0 to 3) on the bell as it is, whatever its state
+ function bind(n){thorns.visible=n>0||g.userData.state==='silent';bands.forEach((b,i)=>b.visible=n>0?i<n:i<2);g.userData.bound=n;}
+ g.userData={name:'H8 Forked belfry',width:2.2,height:3.2,bell,set,bind,bound:0,points:{strike:V(0,1.72,0),lip:V(0,1.37,0),perch:V(-1.1,3.2,0)},forward:'+z',note:'the bell swings about z at userData.bell; set("silent") or set("restored")'};
  set(opt.state==='restored'?'restored':'silent');
  return g;
 }

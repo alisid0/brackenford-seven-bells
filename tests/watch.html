@@ -16,6 +16,15 @@ async function run(){
   // banish sitters as they come; arrows never run down
   let banished=0;for(let n=0;n<6;n++){const s=sitter();if(!s){steps(120);continue;}const h0=r.hits;fire(s.hitMesh.getWorldPosition(V()));if(r.hits>h0)banished++;steps(30);}
   o.shooting={banished,score:r.score,arrows:r.arrows,fired:r.fired,stillPlaying:r.phase==="play"};
+  // shades make for the bell: one that reaches its foot binds it; an arrow into the bell frees it; a miss costs nothing
+  {const b=v.peal.root,goers=()=>live().filter(x=>x.cfg.toBell),[fx,fz]=v.yardAt(...v.watchFoot());let seen=goers().length;for(let i=0;i<900&&!goers().length;i++)steps(1);seen=Math.max(seen,goers().length);
+   const before1=b.userData.bound;b.userData.bind(0);   // some may have arrived on their own already; start the count from a clear bell
+   const g1=goers()[0];g1.base.position.set(fx,g1.base.position.y,fz);steps(2);const after1=b.userData.bound,gone=!g1.live;
+   for(let k=0;k<4;k++){for(let i=0;i<900&&!goers().length;i++)steps(1);const g=goers()[0];if(g){g.base.position.set(fx,g.base.position.y,fz);steps(2);}}
+   const capped=b.userData.bound,streak0=r.streak,score0=r.score;
+   fire(v.peal.mesh.getWorldPosition(V()));steps(5);
+   o.bell={arrivedByThemselves:before1,goersSeen:seen,after1,gone,capped,afterRing:b.userData.bound,rings:r.rings,streakKept:r.streak===streak0,scoreSame:r.score===score0,arrows:r.arrows,state:b.userData.state};
+   const st=r.streak;steps(1);const e=eye(),c=v.peal.mesh.getWorldPosition(V());v.loose(e,V(c.x-e.x,0,c.z-e.z).normalize().multiplyScalar(-1).add(V(0,.3,0)).normalize(),1);steps(240);o.miss={before:st,after:r.streak};}
   steps(360);o.refilled={shades:live().length};
   // to the end of the run
   for(let i=0;i<12000&&r.phase==="play";i++)steps(1);steps(10);
@@ -30,10 +39,13 @@ async function run(){
  o.checks={
   onTheMenu:o.button===true,
   starts:o.start.stage===-1&&o.start.name==="Bell Watch"&&o.start.phase==="play"&&o.start.secondsLeft>=178&&o.start.shades>=5&&o.start.stagesCount===17&&/^Bell Watch/.test(o.start.title),
-  carefree:o.shooting.banished>=2&&o.shooting.score>0&&o.shooting.arrows===9999&&o.shooting.fired>=2&&o.shooting.stillPlaying,
+  carefree:o.shooting.banished>=1&&o.shooting.score>0&&o.shooting.arrows===9999&&o.shooting.fired>=1&&o.shooting.stillPlaying,
   refills:o.refilled.shades>=5,
   ends:o.end.phase==="results"&&o.end.newBest===true&&o.end.savedBest===o.end.score&&o.end.runs===1&&o.end.next===false&&o.end.again===true&&o.end.shadesLeft===0&&/Bell|Score/.test(o.end.board),
   keptApart:o.end.starsSaved===0&&o.end.namedHasWatch===false,
+  bellBinds:o.bell.goersSeen>=1&&o.bell.after1===1&&o.bell.gone===true&&o.bell.capped===3&&o.bell.state==="restored",
+  bellFrees:o.bell.afterRing===0&&o.bell.rings===1&&o.bell.streakKept&&o.bell.scoreSame&&o.bell.arrows===9999,
+  missIsFree:o.miss.before>=1&&o.miss.after===o.miss.before,
   again:o.again.phase==="play"&&o.again.score===0&&o.again.secondsLeft>=178&&o.again.best.includes(String(o.end.score)),
   stagesIntact:o.stageAfter.stage===0&&o.stageAfter.name==="First marks"&&o.stageAfter.arrows===5&&/^Stage 1 of 17/.test(o.stageAfter.title),
   off:o.off.WATCH===false&&o.off.button===false&&o.off.same,

@@ -28,15 +28,29 @@ Switch `watch` in `src/config.json` (on), or `?watch=1` / `?watch=0`. On the men
 | A best score, kept apart from the stages' stars and saves | Built |
 | AGAIN at the end; no stars, no "points to", no failing | Built |
 
+## Built: shades come for the bell (second cut, same day)
+
+| Thing | State |
+|---|---|
+| About two hares in three set out from somewhere in the lane and make for the foot of the belfry, running or creeping | Built |
+| A hare that arrives snaps a thorn band onto the bell and is gone; three bands at most | Built |
+| An arrow into the bell rings it, throws off every band and scatters the hares within 9 m of it. It is not a miss and scores nothing | Built |
+| A miss leaves the streak alone | Built |
+| The last ten seconds: nothing new sets out | Built |
+| A bell that is unbound when the run ends rings out for +100 | Built (Claude's addition: a reward for a clear bell in place of any penalty for a bound one) |
+
+Binding costs the player nothing, as ChatGPT asked.
+
 ## Not built yet
 
-- **Shades that come for the bell.** Today they appear and behave as they do in the stages; none makes for the bell, and the bell is never bound. This is the heart of the idea and the next thing to build.
-- **Waves that grow**, and new kinds of shade arriving as a run goes on.
-- **The bell going quiet** when shades reach it, and ringing it to recover.
+- **Pacing is untuned.** In the automated run, hares reached the bell and put three bands on it within the first stretch of a run. Whether that feels lively or relentless needs a person playing it; the numbers are in `WATCH_BELL` and `WATCH_RULE`.
+- **Crows do not go for the bell;** they perch and cross as before.
+- **Reading the threat:** a hare heading for the bell looks like any running or creeping hare. The "ears toward the bell" tell, the broad curve, and the rearing at the foot are not built.
+- **Waves that grow**, the calm first ten seconds, and the shade ram.
+- **The end cloth** with Score and Best; the streak ribbons at 5, 10 and 20; per-hit feedback for snap and long shots.
 - **An endless variant**, and a run per place once the other places exist.
-- **Hares hidden in grass and crows flushed from bushes** are left out of the run for now.
-- Feel: per-hit feedback, the end-of-run moment, music.
-- Nothing has been played by a person or seen in a headset. The three-minute length and the seven-at-a-time count are first guesses.
+- On today's range the bell stands to the left, outside the lane, so hares leave the lane to reach it.
+- Nothing has been played by a person or seen in a headset.
 
 ## How it should feel (ChatGPT, 22 November 2026)
 
@@ -74,7 +88,7 @@ Written down by Claude. Its summary: "a high-score arcade run with a bell worth 
 
 **Refused:** bell health, harm to the player, limited arrows, score penalties, attack screams, gore, flashes, camera shake, and anything arriving from behind. Three thorn bands is the busiest the bell ever looks.
 
-**Where today's build differs from this:** a miss still breaks the streak (the stages' rule); shades do not go for the bell; nothing binds it; spawning does not stop for the last ten seconds; there is no end cloth, only the scoreboard and the AGAIN sign.
+**Where today's build still differs from this:** crows do not bind the bell; no tells before a hare sets out; no build and crest in the pacing; no end cloth, only the scoreboard and the AGAIN sign; no streak ribbons.
 
 ## Open for the other two models
 

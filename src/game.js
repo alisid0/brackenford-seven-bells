@@ -585,9 +585,17 @@ const STAGES=RELEASE&&CONFIG.order.length?CONFIG.order.map(n=>ALL_STAGES[n-1]):A
 const WATCH=QUERY.has('watch')?QUERY.get('watch')==='1':!!CONFIG.watch;
 const WATCH_RULE={seconds:180,again:[1.2,2.8]};   // length of a run; how long before a banished shade's place is filled
 const watchRand=(a,b)=>a+Math.random()*(b-a);
+// Shades come for the bell. Most hares set out from somewhere in the lane and make for the foot of the belfry, running
+// or creeping. One that arrives snaps a thorn band onto the bell (three at most) and is gone; another sets out in its
+// place. An arrow into the bell rings it, throws every band off and scatters the hares close to it. Binding costs the
+// player nothing; a bell that is unbound when the run ends rings out for a bonus. Crows do not go for the bell yet.
+const WATCH_BELL={share:.65,reach:1.3,scatter:9,bonus:100,quiet:10};   // share of hares that go for the bell; arrival and scatter distances in metres; end bonus; seconds at the end with no new shades
+const watchFoot=()=>[PEAL_AT[0]-.4,PEAL_AT[1]+(PEAL_AT[1]<0?1.3:-1.3)];   // the lane-side foot of the belfry, in lane metres
+const watchGoing=()=>PEAL&&!!peal.root;
 // where and how the next hare or winged shade appears
 function watchCfg(bird,k){
  if(bird)return{t:'cross',lane:Math.round(watchRand(15,27))};   // a winged one crosses; the one perched at the start keeps its post
+ if(watchGoing()&&Math.random()<WATCH_BELL.share){const from=[Math.round(watchRand(11,30)),+watchRand(-6,6).toFixed(1)];return{t:Math.random()<.55?'run':'creep',path:[from,watchFoot()],toBell:true};}
  const kind=Math.random();
  if(kind<.45)return{t:'sit',at:[Math.round(watchRand(11,30)),+watchRand(-6,6).toFixed(1)]};
  if(kind<.8)return{t:'run',area:[12,28,-6.5,6.5]};
@@ -600,6 +608,17 @@ function watchStage(){
 function watchStart(){if(!WATCH)return;if(!range.on)setMode('range');if(replay.on)endReplay();setStage(-1);}
 function watchStep(dt){
  if(!range.on||range.phase!=='play'||!STAGES[range.stage].watch)return;
+ const left=(range.endAt||0)-elapsed;
+ if(watchGoing()){const[fx,fz]=yardAt(...watchFoot());
+  for(const sp of spirits){
+   if(!sp.cfg||!sp.cfg.toBell||!sp.live||!sp.base.visible)continue;
+   if(hyp(sp.base.position.x-fx,sp.base.position.z-fz)<WATCH_BELL.reach){   // it has reached the bell
+    const b=peal.root,n=Math.min(3,(b.userData.bound|0)+1);b.userData.bind(n);range.bound=(range.bound|0)+1;
+    b.userData.bell.getWorldPosition(peal.at);burst(peal.at,'#4A2943',8,.7);note(147,.3,'triangle',.12,0,110);
+    sp.live=false;sp.base.visible=false;sp.state='off';sp.due=0;rangeTargets();
+   }
+  }}
+ if(left<WATCH_BELL.quiet)return;   // the last seconds: nothing new sets out
  for(const sp of spirits){
   if(!sp.cfg||sp.state!=='off')continue;
   if(!sp.due)sp.due=elapsed+watchRand(WATCH_RULE.again[0],WATCH_RULE.again[1]);
@@ -1048,7 +1067,8 @@ function setStage(i){
  const st=STAGES[i];Object.assign(range,{gap:'',gain:0,perfectHits:0,specialUsed:0,ribbon:'',stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
  quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
  if(PEAL){pealBuild();if(state.range.bell1&&!peal.rung)pealRing(true);}
- if(st.watch){range.endAt=elapsed+WATCH_RULE.seconds;for(const sp of spirits)sp.due=0;}
+ if(peal.root){peal.root.userData.set(st.watch||state.range.bell1?'restored':'silent');peal.root.userData.bind(0);}
+ if(st.watch){range.endAt=elapsed+WATCH_RULE.seconds;range.bound=0;range.rings=0;for(const sp of spirits)sp.due=0;}
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
@@ -1196,7 +1216,7 @@ function rangeEnded(q){
  q.path.push(q.o.position.clone());rangeNear(q);
  if(q.near&&(!range.closest||q.near.off<range.closest.off))range.closest={path:q.path,miss:true,...q.near};
  if(q.final&&q.near&&q.near.off<=4)range.lastShot={path:q.path,miss:true,...q.near};   // a final arrow that only just missed is still shown
- if(range.streak>1)note(196,.25,'triangle',.08,0,130);range.streak=0;spiritStartle(q.o.position);birdsHear(q);
+ if(!STAGES[range.stage].watch){if(range.streak>1)note(196,.25,'triangle',.08,0,130);range.streak=0;}spiritStartle(q.o.position);birdsHear(q);
  if(range.arrows<=0)range.endAt=Math.min(range.endAt||1e9,elapsed+.9);
 }
 function rangeHit(t,q){
@@ -1230,6 +1250,7 @@ function rangeResults(){
   if(rb&&stars){const had=!!(R.ribbon&&R.ribbon[i]),won=rb.won({fired:range.fired,hits:range.hits,perfectHits:range.perfectHits,specialUsed:range.specialUsed,sec:elapsed-range.t0});
    if(won&&!had){(R.ribbon||(R.ribbon=[]))[i]=1;range.ribbon='◆ Ribbon earned: '+rb.name;}else range.ribbon=had?'◆ '+rb.name:'◇ Ribbon: '+rb.name+' ('+rb.goal+')';}}
  range.earned=Math.round(range.score/20)+Math.max(0,stars-(R.stars[i]||0))*25;state.coins+=range.earned;
+ if(watching&&peal.root){range.clear=!(peal.root.userData.bound|0);if(range.clear){range.score+=WATCH_BELL.bonus;pealRing(false);}range.newBest=range.score>before;range.gain=REPLAY&&range.newBest&&before?range.score-before:0;}
  if(watching){if(range.newBest)R.watchBest=range.score;range.stars=0;range.earned=0;R.best[-1]=Math.max(before,range.score);R.runs=(R.runs|0)+1;save();range.shot=null;showResults();return;}
  if(range.newBest)R.best[i]=range.score;R.stars[i]=Math.max(R.stars[i]||0,stars);if(stars&&R.open<i+1)R.open=Math.min(STAGES.length-1,i+1);
  // one replay at most. Up close: the best bullseye, or failing that the final arrow, hit or near miss.
@@ -1268,6 +1289,13 @@ function pealUnbind(){
  say('Practice Bell unbound  ·  shoot the bell to ring it, or shoot NEXT',7);
 }
 function pealHit(q){
+ if(range.on&&STAGES[range.stage].watch){   // Bell Watch: the arrow is not a miss; it rings the bell, throws off the bands and scatters the hares near it
+  q.done=true;if(!peal.root)return;const b=peal.root,had=b.userData.bound|0;pealRing(false);b.userData.bind(0);range.rings=(range.rings|0)+1;
+  if(had){peal.at.y-=.5;burst(peal.at,'#4A2943',6*had,1);const[fx,fz]=yardAt(...watchFoot());
+   for(const sp of spirits)if(sp.cfg&&sp.cfg.toBell&&sp.live&&hyp(sp.base.position.x-fx,sp.base.position.z-fz)<WATCH_BELL.scatter){burst(sp.base.position.clone().add(V(0,.4,0)),'#3b2444',8,1);sp.live=false;sp.base.visible=false;sp.state='off';sp.due=0;}
+   rangeTargets();say('Bell rung clear',1.6);}
+  return;
+ }
  rangeEnded(q);if(!peal.root)return;
  if(!state.range.bell1){note(110,.3,'triangle',.18,0,90);thump(300,.12,.2);return;}   // still bound: a dull thud
  const first=!peal.rung;pealRing(false);if(first)say('Practice Bell restored',4);
@@ -1376,7 +1404,7 @@ function fpsStep(now){
 function rangeInfo(){
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(st.watch){const left=Math.max(0,Math.ceil((range.endAt||0)-elapsed)),clock=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
-  return range.phase==='results'?{title:'Bell Watch  ·  '+range.score,text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.watchBest||0))+'.  Shades banished '+range.hits+', longest streak '+range.best+'.  Shoot AGAIN for another run.',mark:'Best '+(R.watchBest||0)+fpsText(),wind}
+  return range.phase==='results'?{title:'Bell Watch  ·  '+range.score,text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.watchBest||0))+'.  Shades banished '+range.hits+', longest streak '+range.best+'.'+(range.clear?'  Bell clear at the end: +'+WATCH_BELL.bonus+'.':peal.root?'  The bell ended bound.':'')+'  Shoot AGAIN for another run.',mark:'Best '+(R.watchBest||0)+fpsText(),wind}
    :{title:'Bell Watch  ·  '+clock,text:'Score '+range.score+'      Streak '+range.streak+'      Banished '+range.hits+quiverText(),mark:'Best '+(R.watchBest||0)+'      arrows never run out'+fpsText(),wind};}
  if(range.phase==='results')return{title:'Stage '+(i+1)+'  ·  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars),
   text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.best[i]||0))+'.  '+(range.gap?range.gap+'.  ':'')+(range.ribbon?range.ribbon+'.  ':'')+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
@@ -2206,6 +2234,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

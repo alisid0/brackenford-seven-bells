@@ -111,6 +111,18 @@ Colours and light are still the old ones on purpose; judge the shapes and where 
 26. Play The drop, Three ranges and one hare stage here. Does anything about distance or aim feel different from the old range?
 27. What looks most unfinished?
 
+## Part 8: Bell Watch and the shade ram (about 10 minutes)
+
+On the test site, press **Bell Watch** on the first cloth. Three minutes; arrows never run out; nothing can be lost. Play it twice.
+
+28. In the first run, did you understand what the hares were doing at the bell, and that an arrow into the bell clears the thorns, without being told?
+29. Did the three minutes feel lively, relentless or slow? Was there a stretch where you had nothing to shoot, or too much?
+30. About 25 seconds in, a ram appears far down the lane, paws the ground and then walks to the bell on the left. Did you notice it arrive? Does it read as a ram at that distance?
+31. Did you get to shoot it while it stood, or only once it walked? Was 300 points worth turning away from the hares for?
+32. When a ram reached the bell and bound it, did that feel like a setback you wanted to fix, or like nothing much?
+33. Does the ram's walk look right, or does anything slide, bend oddly or look crouched?
+34. Did you want a third run? What was your best score?
+
 ## Known before you start
 
 - Star thresholds are the old ones (30, 60 and 95 percent). The harder three-star bar in the plan is not in this build.

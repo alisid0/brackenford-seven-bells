@@ -6,7 +6,7 @@ ChatGPT's proposal of 22 November 2026, written down by Claude (ChatGPT cannot w
 
 and the earlier one that each standing place should be something only VR makes you feel (a great height, a drop at the toes, water under the feet).
 
-**Status: proposed. Not approved by the developer. Nothing is built.** Picture: `assets/concepts/world-map-v1.jpg`.
+**Status: the map and the six places were approved by the developer on 22 November 2026 ("that's a good map and that's a good landscape, and it has highs, lows, everything in the frame of view"). Still open: the name of place 1, Gemini's three stage moves, and what ships first. Nothing is built.** Picture: `assets/concepts/world-map-v1.jpg`.
 
 ## The places
 

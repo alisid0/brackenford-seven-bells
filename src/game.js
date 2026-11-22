@@ -611,6 +611,10 @@ function watchStep(dt){
    }
   }}
  if(left<WATCH_BELL.quiet)return;   // the last seconds: nothing new sets out
+ if(ram&&watchGoing()&&ram.state==='off'&&left>RAM_RULE.least){   // one ram at a time, and none so late that it could not arrive
+  if(!ram.due)ram.due=elapsed+watchRand(...RAM_RULE.again);
+  if(elapsed>=ram.due){ram.due=0;ramSet();}
+ }
  for(const sp of spirits){
   if(!sp.cfg||sp.state!=='off')continue;
   if(!sp.due)sp.due=elapsed+watchRand(WATCH_RULE.again[0],WATCH_RULE.again[1]);
@@ -848,6 +852,116 @@ for(let k=0;k<5;k++){
   hitHead.userData.target=sp;sp.hitHead=hitHead;sp.meshes.push(hitHead);
  }
 }
+// ---- The shade ram (D3): the one big deliberate shot in Bell Watch (design/bell-watch.md). One switch: "ram" in
+// src/config.json, or ?ram=1 / ?ram=0. Off, or in a build without the model: nothing of it exists.
+//   It appears far down the lane, stands and paws the ground for a few seconds with its eyes flaring, then walks
+//   straight for the bell, slow and heavy, head down. One arrow banishes it. If it gets there it rears, comes down on
+//   the post and puts all three thorn bands on the bell at once. It never harms the player and costs no points.
+//   Tripo's model (assets/staging/shade-ram-rig-turned.json), one unit tall with its horns; drawn so its shoulder is
+//   1.1 m up. It faces +z; +x is its left. Its file keeps Tripo's colours, so it is recoloured here as the hare is.
+const RAM_ON=(QUERY.has('ram')?QUERY.get('ram')==='1':!!CONFIG.ram)&&typeof MODELS!=='undefined'&&!!MODELS['shade-ram'];
+// first, again: seconds before the first ram and between rams; from: where it appears [metres along the lane, most it
+// may stand to either side]; stand: seconds it paws before it charges; speed in m/s; reach: how near the bell's foot it
+// rears; value: points for banishing it; size: metres per model unit; stride: metres covered by one cycle of its legs
+const RAM_RULE={first:[20,30],again:[30,45],from:[34,3],stand:4,speed:2.6,reach:1.6,value:300,size:1.77,stride:1.5,least:20};
+const RAM_RIG=RAM_ON?(()=>{
+ const m=MODELS['shade-ram'],bytes=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0)),g=modelGeometry({p:m.p,c:m.c},m.unit),c=bytes(m.c),si=bytes(m.si),sw=bytes(m.sw),w=new Float32Array(sw.length);
+ for(let i=0;i<w.length;i+=4){const sum=sw[i]+sw[i+1]+sw[i+2]+sw[i+3]||1;for(let k=0;k<4;k++)w[i+k]=sw[i+k]/sum;}
+ g.setAttribute('skinIndex',new T.Uint16BufferAttribute(Uint16Array.from(si),4));g.setAttribute('skinWeight',new T.BufferAttribute(w,4));
+ const lum=f=>c[f*3]*.3+c[f*3+1]*.45+c[f*3+2]*.25,red=f=>c[f*3]>178&&c[f*3+1]<90&&c[f*3+2]<90,faces=c.length/3,col=g.attributes.color,pos=g.attributes.position;let lo=1e9,hi=-1e9,rx=0,rn=0;
+ for(let f=0;f<faces;f++)if(red(f)){rx+=pos.getX(f*3);rn++;}else{lo=Math.min(lo,lum(f));hi=Math.max(hi,lum(f));}
+ rx/=rn||1;   // the head is turned in the file, so the two eyes are told apart by which side of their own middle they lie
+ const plum=new T.Color('#4A2943'),light=new T.Color('#6D3362'),ember=new T.Color('#E02E32'),k=new T.Color(),eyes=[[0,0,0,0],[0,0,0,0]];
+ for(let f=0;f<faces;f++){
+  if(red(f)){k.copy(ember);for(let v=0;v<3;v++){const i=f*3+v,e=eyes[pos.getX(i)<rx?0:1];e[0]+=pos.getX(i);e[1]+=pos.getY(i);e[2]+=pos.getZ(i);e[3]++;}}else k.copy(plum).lerp(light,(lum(f)-lo)/(hi-lo||1));
+  for(let v=0;v<3;v++)col.setXYZ(f*3+v,k.r,k.g,k.b);
+ }
+ const head=m.bones.find(b=>b.name==='Head_1').head;
+ return{geo:g,bones:m.bones,rootY:m.bones[0].head[1],eyes:eyes.filter(e=>e[3]).map(e=>V(e[0]/e[3]-head[0],e[1]/e[3]-head[1],e[2]/e[3]-head[2]))};
+})():null;
+// The ram's whole animation, written out by hand, as one pose: each named bone and how far it is turned about x, y, z.
+//   cyc   how far it has walked, in cycles of its legs     go    0 standing .. 1 charging
+//   paw   0..1, scraping the ground with its left forefoot     rear  0..1, risen on its hind legs     t  the clock
+// About x, a positive turn swings a leg back, drops the head and lifts the tail. Tripo hung the legs unevenly: the
+// right hind leg and both forelegs turn from the top, the left hind leg only from the joint below its hip.
+const RAM_LEGS=[['Spine_1','bone_29',0,1],['bone_23','bone_25',.5,1],['0_Right_Limb_1','0_Right_Limb_3',0,1],['0_Left_Limb_0','0_Left_Limb_2',.5,1.5]];   // top bone, bending bone, place in the cycle, how much more it must turn
+function ramPoseOf(s){
+ const P={},add=(n,x=0,y=0,z=0)=>{const r=P[n]||(P[n]=[0,0,0]);r[0]+=x;r[1]+=y;r[2]+=z;};
+ const go=s.go||0,paw=s.paw||0,rear=s.rear||0,t=s.t||0,ph=(s.cyc||0)*Math.PI*2;
+ add('Head_0',0,-.35);add('Head_1',0,-.35);                                        // Tripo modelled the head turned to its left: bring it straight
+ add('Spine_0',Math.sin(t*1.7)*.012);                                              // breathing
+ // head: carried low in the charge, nodding as it paws, chin tucked so the horns lead when it rears
+ add('Head_0',.26*go+paw*(.2+.1*Math.sin(t*2.6))+.3*rear);add('Head_1',.1*go+.1*paw+.25*rear);
+ add('bone_1',.35*go+.5*rear+Math.sin(t*3.1)*.08,0,Math.sin(t*2.3)*.12);           // tail
+ // a heavy trot: opposite corners move together; a leg bends as it swings forward and is straight while it bears weight
+ RAM_LEGS.forEach(([top,bend,at,more],i)=>{
+  const a=ph+at*Math.PI*2,fold=Math.max(0,Math.cos(a))*go;
+  add(top,(-Math.sin(a)*.42*go-fold*.2)*more);add(bend,fold*(i<2?.75:.6));
+ });
+ // pawing: the left forefoot lifts, reaches and drags back, over and over
+ {const a=t*5.2;add('Spine_1',paw*(-.32-.26*Math.cos(a)));add('bone_29',paw*(.5+.42*Math.sin(a)));}
+ // rearing: the whole forehand swings up about the hips; the right hind leg turns back by the same amount to stay
+ // planted (the left one does not hang from the hips), and the forelegs fold under the chest
+ add('0_Right_Limb_0',-.7*rear);add('0_Right_Limb_1',.7*rear);
+ for(const[top,bend]of RAM_LEGS.slice(0,2)){add(top,-.55*rear);add(bend,1.1*rear);}
+ P._lift=Math.sin(ph*2)*.012*go;
+ return P;
+}
+const ram=RAM_RIG?(()=>{
+ const base=new T.Group(),tilt=new T.Group(),root=new T.Group();scene.add(base);base.add(tilt);tilt.add(root);base.visible=false;root.scale.setScalar(RAM_RULE.size);
+ const glow=new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,emissive:'#5a0f24',emissiveIntensity:.3,flatShading:true,roughness:.8,transparent:true});
+ const leaf=new T.MeshBasicMaterial({transparent:true,opacity:0}),ember=new T.MeshBasicMaterial({color:0xff3b1f,transparent:true}),flare=new T.MeshBasicMaterial({color:0xff5a2a,transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending});
+ const made=rigInstance(glow,RAM_RIG),rig=made.by,flares=[];root.add(made.mesh);
+ for(const e of RAM_RIG.eyes){mesh(rig.Head_1,new T.SphereGeometry(.02,6,5),ember,e);flares.push(mesh(rig.Head_1,new T.SphereGeometry(.045,8,6),flare,e));}
+ const mist=new T.Mesh(new T.SphereGeometry(.01,4,3),new T.MeshBasicMaterial({transparent:true,opacity:0}));mist.visible=false;root.add(mist);   // no smoke; kept so it shares the hares' code
+ // what an arrow strikes: one rounded shape about its body and one about its head and horns, each fixed to a bone
+ // (in the game: body about 1.3 m long, 0.65 m deep and wide; head and horns about 0.7 m across)
+ const hitMesh=new T.Mesh(new T.SphereGeometry(1,8,6));hitMesh.visible=false;rig.Spine_0.add(hitMesh);hitMesh.position.set(0,-.06,-.15);hitMesh.scale.set(.19,.19,.37);
+ const hitHead=new T.Mesh(hitMesh.geometry);hitHead.visible=false;rig.Head_1.add(hitHead);hitHead.position.set(.04,.08,.1);hitHead.scale.setScalar(.2);
+ const sp={kind:'spirit',ram:true,rig,base,tilt,root,glow,glow0:.3,leaf,ember,flare,flares,mist,hitMesh,hitHead,meshes:[hitMesh,hitHead],scale:RAM_RULE.size,value:RAM_RULE.value,up:true,live:false,done:true,state:'off',t:0,cyc:0,go:0,paw:0,rear:0,due:0,struck:false,cfg:null};
+ hitMesh.userData.target=sp;hitHead.userData.target=sp;return sp;
+})():null;
+function ramOff(){if(!ram)return;ram.base.visible=false;ram.live=false;ram.state='off';ram.due=0;}
+// it appears: far down the lane, facing the bell
+function ramSet(right=(Math.random()*2-1)*RAM_RULE.from[1]){
+ const sp=ram;if(!sp)return;Object.assign(sp,{state:'in',t:0,live:true,done:false,cyc:0,go:0,paw:0,rear:0,struck:false});
+ spiritPlace(sp,RAM_RULE.from[0],right);const[fx,fz]=yardAt(...watchFoot());spiritFace(sp,fx,fz);
+ sp.base.visible=true;sp.root.position.set(0,0,0);sp.root.scale.setScalar(RAM_RULE.size);sp.glow.emissiveIntensity=sp.glow0;spiritShow(sp,0);rangeTargets();
+}
+function ramStep(dt){
+ const sp=ram;if(!sp||!sp.base.visible)return;sp.t+=dt;
+ const play=range.phase==='play',ease=(k,to,rate)=>{sp[k]+=(to-sp[k])*Math.min(1,dt*rate);};
+ if(sp.state==='in'){spiritShow(sp,Math.min(1,sp.t/.8));if(sp.t>=.8){sp.state='stand';sp.t=0;note(98,.9,'sawtooth',.045,0,73);}}
+ else if(sp.state==='stand'){ease('paw',1,4);if(play&&sp.t>=RAM_RULE.stand){sp.state='charge';sp.t=0;note(110,.5,'sawtooth',.04,0,82);}}
+ else if(sp.state==='charge'){
+  ease('paw',0,6);ease('go',1,2.5);
+  if(play){
+   const[tx,tz]=yardAt(...watchFoot()),b=sp.base.position,dx=tx-b.x,dz=tz-b.z,d=hyp(dx,dz),step=RAM_RULE.speed*sp.go*dt;spiritFace(sp,tx,tz);
+   if(d<=RAM_RULE.reach){sp.state='rear';sp.t=0;}
+   else{b.x+=dx/d*step;b.z+=dz/d*step;b.y=groundAt(b.x,b.z);sp.cyc+=step/RAM_RULE.stride;sp.along=(b.x-YARD.x)*YARD.ux+(b.z-YARD.z)*YARD.uz;sp.right=(b.x-YARD.x)*YARD.rx+(b.z-YARD.z)*YARD.rz;}
+  }
+ }
+ else if(sp.state==='rear'){
+  // up for most of a second, then down on the post: that is when the bands go on
+  ease('go',0,8);const u=sp.t;sp.rear=u<.75?Math.sin(Math.min(1,u/.55)*Math.PI/2):Math.max(0,1-(u-.75)/.18);
+  if(u>=.93&&!sp.struck){
+   sp.struck=true;sp.live=false;rangeTargets();
+   if(peal.root){const b=peal.root;if((b.userData.bound|0)<3){b.userData.bind(3);range.bound=(range.bound|0)+1;}b.userData.bell.getWorldPosition(peal.at);burst(peal.at,'#4A2943',16,1);}
+   thump(90,.3,.3);note(110,.45,'triangle',.14,0,70);
+  }
+  if(u>=1.5){sp.state='leave';sp.t=0;}
+ }
+ else if(sp.state==='leave'){spiritShow(sp,Math.max(0,1-sp.t/.6));if(sp.t>=.6)ramOff();}
+ else if(sp.state==='waking'){
+  // banished: it rears, flares and is gone
+  const u=sp.t/.9;sp.rear=Math.min(1,sp.t/.35);ease('go',0,8);ease('paw',0,8);sp.root.scale.setScalar(RAM_RULE.size*(1+u*.25));sp.glow.emissiveIntensity=sp.glow0+u*2;spiritShow(sp,Math.max(0,1-u*u));
+  if(u>=1){sp.root.scale.setScalar(RAM_RULE.size);sp.glow.emissiveIntensity=sp.glow0;ramOff();}
+ }
+ const hot=sp.state==='stand'||sp.state==='charge'?.5+.25*Math.sin(elapsed*7):.2;sp.flare.opacity=hot*sp.ember.opacity;for(const f of sp.flares)f.scale.setScalar(1+hot);
+ const B=sp.rig,P=ramPoseOf({cyc:sp.cyc,go:sp.go,paw:sp.paw,rear:sp.rear,t:elapsed});
+ for(const n in B)B[n].rotation.set(0,0,0);for(const n in P)if(n[0]!=='_'&&B[n])B[n].rotation.set(P[n][0],P[n][1],P[n][2]);
+ B.Root.position.y=RAM_RIG.rootY+(P._lift||0);
+}
 for(let k=0;k<9;k++){
  // a clump of tall grass that a spirit can sink into
  const g=new T.Group(),r=mulberry(300+k);scene.add(g);g.visible=false;
@@ -1051,6 +1165,7 @@ function spiritStep(dt){
 function rangeTargets(){
  rangeMeshes=[];for(const r of rangeRounds)if(r.base.visible)rangeMeshes.push(...r.meshes);
  for(const sp of spirits)if(sp.live&&sp.base.visible){rangeMeshes.push(sp.hitMesh);if(sp.hitHead)rangeMeshes.push(sp.hitHead);}
+ if(ram&&ram.live&&ram.base.visible)rangeMeshes.push(...ram.meshes);
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
  if(peal.mesh)rangeMeshes.push(peal.mesh);
 }
@@ -1060,7 +1175,7 @@ function setStage(i){
  quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
  if(PEAL){pealBuild();if(state.range.bell1&&!peal.rung)pealRing(true);}
  if(peal.root){peal.root.userData.set(st.watch||state.range.bell1?'restored':'silent');peal.root.userData.bind(0);}
- if(st.watch){range.endAt=elapsed+WATCH_RULE.seconds;range.bound=0;range.rings=0;for(const sp of spirits)sp.due=0;}
+ ramOff();if(st.watch){range.endAt=elapsed+WATCH_RULE.seconds;range.bound=0;range.rings=0;for(const sp of spirits)sp.due=0;if(ram)ram.due=elapsed+watchRand(...RAM_RULE.first);}
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
@@ -1300,7 +1415,7 @@ function pealStep(){
 function showResults(){
  const i=range.stage,stars=range.stars,R=state.range;range.phase='results';stageList();
  rangeSigns.again.base.visible=true;rangeSigns.next.base.visible=i<STAGES.length-1&&R.open>i&&!STAGES[i].watch;rangeSigns.back.base.visible=i>0;rangeTargets();
- if(STAGES[i].watch){for(const sp of spirits){sp.base.visible=false;sp.live=false;sp.state='off';}rangeTargets();[523,659,784].forEach((f,k)=>note(f,.45,'sine',.1,k*.13));say('Bell Watch  ·  '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.watchBest||0))+'  ·  shoot AGAIN',6);return;}
+ if(STAGES[i].watch){for(const sp of spirits){sp.base.visible=false;sp.live=false;sp.state='off';}ramOff();rangeTargets();[523,659,784].forEach((f,k)=>note(f,.45,'sine',.1,k*.13));say('Bell Watch  ·  '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.watchBest||0))+'  ·  shoot AGAIN',6);return;}
  if(stars)[523,659,784,1047].slice(0,stars+1).forEach((f,k)=>note(f,.45,'sine',.1,k*.13));else note(196,.5,'triangle',.1,0,147);
  say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars)+(range.gap?'  ·  '+range.gap:''):'Not enough  ·  '+(range.gap?range.gap+'  ·  ':'')+'shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
  if(PEAL&&stars&&!R.bell1&&pealCleared())pealUnbind();
@@ -1420,7 +1535,7 @@ function rangeStep(dt){
   if(r.pop)r.up=range.phase!=='play'||(tt+r.pop[2])%(r.pop[0]+r.pop[1])<r.pop[0];
   r.tilt.rotation.x=lerp(r.tilt.rotation.x,r.up?0:-1.5,Math.min(1,dt*9));
  }
- spiritStep(dt);
+ spiritStep(dt);ramStep(dt);
  guide.set(guideText());
  if(range.phase==='play'&&range.endAt&&elapsed>=range.endAt)rangeResults();
  const info=rangeInfo(),key=info.title+info.text+info.mark;
@@ -1432,7 +1547,7 @@ function setMode(m){
  for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!((WORLD2||PEAL)&&range.on);if(WORLD2)for(const t of targets){if(t.beacon)t.beacon.visible=!range.on&&!t.hit;if(t.kind==='lantern')t.root.visible=!range.on&&!t.hit;if(t.kind==='straw')t.root.parent.visible=!range.on;}   // on the new range the bells' beams, the lanterns and the roaming straw rounds are hidden while shooting
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())rig.rotation.y=look.yaw;setStage(clamp(state.range.open,0,STAGES.length-1));}
- else{if(replay.on)endReplay();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
+ else{if(replay.on)endReplay();ramOff();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
  $('modeRange').classList.toggle('quiet',!range.on);$('modeRoam').classList.toggle('quiet',range.on);$('play').textContent=range.on?'Step up to the line':'Enter the vale';
  $('compass').style.visibility=$('map').style.visibility=range.on?'hidden':'';
  $('hint').textContent=range.on?'Hold left mouse to draw, release to loose · let go early, or roll the mouse wheel while drawing, for a softer shot · let go just as the draw completes for a perfect release · [ and ] change stage · after a stage shoot a sign, or press N next, R again, B back':'WASD to walk · Shift to run · Space to jump · hold left mouse to draw, release to loose · M for the map';
@@ -2226,6 +2341,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

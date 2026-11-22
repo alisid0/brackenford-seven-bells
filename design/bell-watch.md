@@ -46,7 +46,13 @@ Binding costs the player nothing, as ChatGPT asked.
 - **Pacing is untuned.** In the automated run, hares reached the bell and put three bands on it within the first stretch of a run. Whether that feels lively or relentless needs a person playing it; the numbers are in `WATCH_BELL` and `WATCH_RULE`.
 - **Crows do not go for the bell;** they perch and cross as before.
 - **Reading the threat:** a hare heading for the bell looks like any running or creeping hare. The "ears toward the bell" tell, the broad curve, and the rearing at the foot are not built.
-- **Waves that grow**, the calm first ten seconds, and the shade ram.
+- **Waves that grow** and the calm first ten seconds.
+
+## The shade ram (built, switch `ram`)
+
+One at a time. The first appears 20 to 30 seconds into a run, later ones 30 to 45 seconds after the last has gone, and none in the last 20 seconds. It appears 34 m down the lane, up to 3 m to either side, facing the bell. It stands and paws the ground for 4 seconds with its eyes flaring, then walks straight for the foot of the belfry at 2.6 m/s with its head down: about seven seconds on today's range. One arrow anywhere on its body, head or horns banishes it for 300 points plus the usual distance and streak. If it arrives it rears, comes down on the post and puts all three thorn bands on the bell at once; an arrow into the bell throws them off as before. It never harms the player and takes no points.
+
+All of these numbers are Claude's first guesses, in `RAM_RULE` in `src/game.js`, for Gemini to check and a person to feel. `tests/ram.html` covers the behaviour; `tests/creatures.html?only=ram` draws its three moves.
 - **The end cloth** with Score and Best; the streak ribbons at 5, 10 and 20; per-hit feedback for snap and long shots.
 - **An endless variant**, and a run per place once the other places exist.
 - On today's range the bell stands to the left, outside the lane, so hares leave the lane to reach it.

@@ -89,7 +89,7 @@ const wait=setInterval(async()=>{
   return{sheet,cycle,show,missing,bones:m.bones,info:{faces:m.faces,bones:m.bones.length}};
  }
 
- if(only!=="crow"){
+ if(only!=="crow"&&only!=="ram"){
   // The hare faces -z in its file; x is left-right. About x, a positive turn swings a leg forward and tips an ear back.
   const pairs=[["0_Right_Limb_0","0_Left_Limb_0"],["0_Right_Limb_1","0_Left_Limb_1"],["0_Right_Limb_2","0_Left_Limb_2"],["1_Right_Limb_0","bone_18"],["1_Right_Limb_1","bone_19"],["1_Right_Limb_2","bone_20"],["1_Right_Limb_3","bone_21"],["Head_2","Ear2_0"],["Head_3","Ear2_1"],["Head_4","Ear2_2"]];
   const B=h=>both(pairs,0,h);
@@ -123,7 +123,7 @@ const wait=setInterval(async()=>{
   report.push({hare:hare.info,missing:[...hare.missing],bound:{stride:bound.stride,period:bound.period}});
   if(play)hare.show(bound,play);
  }
- if(only!=="hare"){
+ if(only!=="hare"&&only!=="ram"){
   // The crow faces -x in its file and its wings lie along z. About x, a negative turn raises the +z wing; the wing's
   // hand (bone_7) hangs down at rest and a negative turn about x opens it out level. About z, a positive turn swings
   // a leg back and tips the whole bird nose-down.
@@ -142,6 +142,21 @@ const wait=setInterval(async()=>{
   await crow.sheet("d2-crow-cycle-flap-fold",crow.cycle(P,["wings up","wings down","wings up","wings down","fold"],9),V);
   await crow.sheet("d2-crow-poses",["rest","wings level","glide","fold"].map(k=>({label:k,pose:P[k]})),V.map(v=>({...v,half:1.1,at:v.name==="above"?[0,0,0]:[0,.75,0]})));
   report.push({crow:crow.info,missing:[...crow.missing]});
+ }
+ if(!only||only==="ram"){
+  // The ram (turned by tools/turn-ram.mjs) faces +z; x is left-right, +x its left.
+  const ram=await build("shade-ram-rig-turned.json");
+  const at=[0,.5,0],V=[{name:"left side",from:[1,0,0],half:.75,at},{name:"front",from:[0,0,1],half:.75,at},{name:"above",from:[0,1,0],up:[0,0,1],half:.75,at:[0,0,0]},{name:"front quarter",from:[.8,.3,1],half:.75,at}];
+  // ?poses=<pose>;<pose> draws a sheet of loose poses for trying bones out: "rest", or a pose written as JSON
+  if(Q.get("poses"))await ram.sheet(Q.get("sheet")||"d3-ram-probe",Q.get("poses").split(";").map(k=>({label:k,pose:k==="rest"?{}:JSON.parse(k)})),V);
+  // its three moves, taken from the game's own pose (ramPoseOf in src/game.js), so what is drawn here is what plays
+  const pose=w.vale&&w.vale.ramPoseOf,S=[V[0],V[3]];
+  if(pose){
+   await ram.sheet("d3-ram-stand",[{label:"as Tripo made it",pose:{}},{label:"standing",pose:pose({})},...[0,.3,.6,.9].map(t=>({label:"pawing t "+t,pose:pose({paw:1,t})}))],[V[0],V[1],V[3]]);
+   await ram.sheet("d3-ram-charge",Array.from({length:8},(_,i)=>({label:"charge "+(i/8).toFixed(2),pose:pose({go:1,cyc:i/8})})),S);
+   await ram.sheet("d3-ram-rear",[0,.35,.7,1].map(r=>({label:"rear "+r,pose:pose({rear:r})})),S);
+  }
+  report.push({ram:ram.info,missing:[...ram.missing]});
  }
  document.getElementById("out").textContent="RESULT "+JSON.stringify(report);
 },200);

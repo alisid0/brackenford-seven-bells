@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>the shade ram</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The shade ram in Bell Watch: it appears on its own schedule far down the lane, stands and paws, walks straight for
+// the bell, is banished by one arrow, and if it arrives puts all three bands on the bell at once. With the switch off
+// nothing of it exists.   ?save=1 posts pictures to the local relay (port 8767) so they land in assets/renders
+const errors=[],KEY="brackenford-trials-v1",save=new URLSearchParams(location.search).get("save");
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function run(){
+ const o={};
+ {wipe();const w=await game("?watch=1&ram=1"),v=w.vale,T=v.T,r=v.range,m=v.ram,R=v.RAM_RULE,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));};
+  const until=(test,most)=>{let n=0;while(!test()&&n<most){steps(1);n++;}return n/60;};
+  const[fx,fz]=v.yardAt(...v.watchFoot()),toFoot=()=>Math.hypot(m.base.position.x-fx,m.base.position.z-fz);
+  const put=async(name,url)=>{if(!save)return;const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+  const from=(look,pos)=>{const c=v.camera,p0=c.position.clone(),q0=c.quaternion.clone();c.parent.updateMatrixWorld(true);c.position.copy(c.parent.worldToLocal(pos.clone()));c.lookAt(look);const url=v.shot();c.position.copy(p0);c.quaternion.copy(q0);return url;};
+  const at=()=>m.base.position.clone().add(V(0,1,0)),near=()=>{const p=at(),e=eye(),d=V(e.x-p.x,0,e.z-p.z).normalize();return p.clone().add(d.multiplyScalar(4.5)).add(V(-d.z*2.5,.6,d.x*2.5));};
+  v.begin(false);steps(2);v.watchStart();steps(30);
+  o.start={on:v.RAM_ON,built:!!m,hidden:!m.base.visible,dueIn:+(m.due-v.elapsed).toFixed(1)};
+  // it comes by itself
+  const came=until(()=>m.base.visible,60*35);steps(70);
+  o.arrives={afterSeconds:+came.toFixed(1),state:m.state,along:Math.round(m.along),right:+m.right.toFixed(1),live:m.live,canBeHit:v.rangeMeshes?undefined:undefined};
+  const p0=m.base.position.clone();steps(120);
+  o.stands={state:m.state,moved:+m.base.position.distanceTo(p0).toFixed(2),pawing:+m.paw.toFixed(2),shoulder:+(m.rig.Spine_0.getWorldPosition(V()).y-m.base.position.y).toFixed(2),tall:+(m.rig.Head_3.getWorldPosition(V()).y-m.base.position.y).toFixed(2)};
+  await put("d3-ram-game-stand",from(at(),near()));await put("d3-ram-game-stand-player",v.shot());
+  // then it walks straight for the bell
+  until(()=>m.state==="charge",60*6);steps(150);const d0=toFoot(),y0=m.base.position.clone();steps(120);const d1=toFoot();
+  o.charges={state:m.state,metresPerSecond:+((d0-d1)/2).toFixed(2),straight:+((d0-d1)/m.base.position.distanceTo(y0)).toFixed(2),head:+m.go.toFixed(2)};
+  await put("d3-ram-game-charge",from(at(),near()));await put("d3-ram-game-charge-player",v.shot());
+  // one arrow banishes it (it is walking, so the test aims where it will be)
+  const s0=r.score,h0=r.hits;{const hp=m.hitMesh.getWorldPosition(V()),way=V(fx-m.base.position.x,0,fz-m.base.position.z).normalize();fire(hp.add(way.multiplyScalar(R.speed*(hp.distanceTo(eye())/60+.03))));}const shotState=m.state,gain=r.score-s0;steps(80);
+  o.banished={hits:r.hits-h0,gain,stateAfterHit:shotState,goneAfter:!m.base.visible,state:m.state};steps(5);o.banished.nextIn=+(m.due-v.elapsed).toFixed(1);
+  // one that is left alone reaches the bell: it rears, and all three bands go on at once
+  const b=v.peal.root;v.ramSet(0);steps(60);m.state="charge";m.go=1;until(()=>m.state==="rear",60*20);b.userData.bind(0);const sc=r.score;steps(30);
+  o.rears={state:m.state,risen:+m.rear.toFixed(2),distance:+toFoot().toFixed(2),boundBefore:b.userData.bound};
+  await put("d3-ram-game-rear",from(at(),near()));
+  until(()=>m.struck,120);o.strikes={bound:b.userData.bound,canStillBeHit:m.live,scoreSame:r.score===sc};
+  await put("d3-ram-game-struck-player",v.shot());
+  steps(150);o.leaves={gone:!m.base.visible,state:m.state};
+  // an arrow into the bell throws the bands off, as before
+  fire(v.peal.mesh.getWorldPosition(V()));steps(5);o.freed={bound:b.userData.bound};
+  // the run ends with no ram left standing, and a stage has none
+  v.ramSet(0);steps(30);for(let i=0;i<12000&&r.phase==="play";i++)steps(1);steps(10);o.end={phase:r.phase,ram:m.base.visible};
+  v.setStage(0);steps(2400);o.stage={ram:m.base.visible,state:m.state};}
+ {wipe();const w=await game("?watch=1&ram=0"),v=w.vale;v.begin(false);v.tick(1/60);v.watchStart();for(let i=0;i<60*45;i++)v.tick(1/60);
+  o.off={on:v.RAM_ON,built:!!v.ram,phase:v.range.phase};}
+ wipe();
+ o.checks={
+  built:o.start.on===true&&o.start.built&&o.start.hidden&&o.start.dueIn>=19&&o.start.dueIn<=30,
+  arrives:o.arrives.afterSeconds>=18&&o.arrives.afterSeconds<=31&&o.arrives.state==="stand"&&o.arrives.along===34&&Math.abs(o.arrives.right)<=3&&o.arrives.live,
+  stands:o.stands.state==="stand"&&o.stands.moved<.01&&o.stands.pawing>.8&&o.stands.shoulder>.95&&o.stands.shoulder<1.25,
+  charges:o.charges.state==="charge"&&Math.abs(o.charges.metresPerSecond-2.6)<.2&&o.charges.straight>.98,
+  oneArrow:o.banished.hits===1&&o.banished.gain>=300&&o.banished.stateAfterHit==="waking"&&o.banished.goneAfter&&o.banished.nextIn>=29&&o.banished.nextIn<=45,
+  rears:o.rears.state==="rear"&&o.rears.risen>.6&&o.rears.distance<=1.7&&o.rears.boundBefore===0,
+  bindsAll:o.strikes.bound===3&&o.strikes.canStillBeHit===false&&o.strikes.scoreSame&&o.leaves.gone,
+  bellFrees:o.freed.bound===0,
+  tidy:o.end.phase==="results"&&o.end.ram===false&&o.stage.ram===false,
+  off:o.off.on===false&&o.off.built===false&&o.off.phase==="play",
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

@@ -7,7 +7,7 @@ const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-sev
 function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,8))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
 async function run(){
  const o={};
- {wipe();const w=await game("?watch=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ {wipe();const w=await game("?watch=1&ram=0"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
   const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));};
   const live=()=>v.spirits.filter(s=>s.cfg&&s.live&&s.base.visible),force=cfg=>{const h=v.spirits.find(x=>!x.bird&&x.cfg);h.cfg=cfg;h.set(h,cfg);h.due=0;v.rangeTargets();steps(45);return h;},   // which shades appear is chance; the test places its own
   sitter=()=>force({t:"sit",at:[14,2]});

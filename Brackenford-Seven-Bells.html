@@ -80189,9 +80189,9 @@ function playtest(){
   stages:Object.fromEntries(st.map(([n,s])=>[n,{tries:s.tries,abandoned:s.tries-s.done,clears:s.clears,retriesAfterClear:s.again,bestStars:s.stars}]))};
 }
 const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',mode:'range',range:{open:0,best:[],stars:[]}};
-try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[]};
+try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[],named:s.range.named&&typeof s.range.named==='object'?s.range.named:null};
  state.coins=typeof s.coins==='number'?Math.max(0,s.coins|0):state.range.stars.reduce((a,b)=>a+(b||0)*25,0)+Math.round(state.range.best.reduce((a,b)=>a+(b||0),0)/20);}}catch{}
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({bells:[...state.bells],marks:[...state.marks],lanterns:[...state.lanterns],shots:state.shots,longest:state.longest,pos:state.pos,done:state.done,lesson:state.lesson,coins:state.coins,hand:state.hand,draw:state.draw,mode:state.mode,range:state.range}));}catch{}}
+function save(){try{rangeNames();localStorage.setItem(SAVE,JSON.stringify({bells:[...state.bells],marks:[...state.marks],lanterns:[...state.lanterns],shots:state.shots,longest:state.longest,pos:state.pos,done:state.done,lesson:state.lesson,coins:state.coins,hand:state.hand,draw:state.draw,mode:state.mode,range:state.range}));}catch{}}
 
 // ---------------------------------------------------------------- hamlet, shrines, targets
 const bronze='#ae783e', timber='#825435', cream='#e5c67e', red='#ae493d', stone='#9a968a', gold='#f0c75a';
@@ -80455,6 +80455,18 @@ const ALL_STAGES=[
  {name:'Blighted meadow',arrows:10,marks:[],spirits:[{t:'sit',at:[13,-4],alt:[15,-6],back:5},{t:'hide',at:[19,4]},{t:'run',area:[20,27,-6,6]},{t:'perch',at:[16,1,2.6],back:5},{t:'cross',lane:24}]}];
 // The release plays a chosen few of these in its own order (stage numbers, from one); every stage stays here, none is deleted.
 const STAGES=RELEASE&&CONFIG.order.length?CONFIG.order.map(n=>ALL_STAGES[n-1]):ALL_STAGES;
+// stars and bests by stage name, for the save file (see the note where the save is read)
+function rangeNames(){
+ const R=state.range,named=R.named&&typeof R.named==='object'?R.named:{};
+ STAGES.forEach((st,i)=>{if(R.stars[i]||R.best[i])named[st.name]={s:R.stars[i]||0,b:R.best[i]||0};});   // stages not in today's list keep what they had
+ R.named=named;
+}
+// put a save that carries names back in today's order; the next stage to open is the first without a star
+(function rangeFromNames(){
+ const R=state.range;if(!R.named)return;
+ R.stars=STAGES.map(st=>R.named[st.name]?R.named[st.name].s|0:0);R.best=STAGES.map(st=>R.named[st.name]?R.named[st.name].b|0:0);
+ let open=0;while(open<STAGES.length-1&&R.stars[open]>0)open++;R.open=open;
+})();
 const coins=text=>RELEASE?'':text;   // coins are earned but not shown until there is something to spend them on
 const range={on:false,stage:0,phase:'idle',arrows:0,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,earned:0,wind:0,endAt:0,t0:0,ideal:1,pending:null,last:''};
 const rangeRounds=[],rangeSigns={};let rangeMeshes=[];
@@ -81968,7 +81980,7 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};
 </script></body></html>

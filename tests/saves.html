@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>saves by stage name</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// Stars and bests are saved by stage name as well as by position, so changing the order of the stages cannot move
+// them onto the wrong stage. Checks an old save (no names), a save whose order no longer matches, a stage that is
+// not in today's list, and a fresh start.
+const errors=[],KEY="brackenford-trials-v1";
+const base=r=>({bells:[],marks:[],lanterns:[],shots:40,longest:30,pos:null,done:false,lesson:0,coins:0,hand:"right",draw:"two",mode:"range",range:r});
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,6))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function load(save){localStorage.removeItem(KEY);if(save)localStorage.setItem(KEY,JSON.stringify(save));const w=await game("?menu=1");w.vale.save();const r=JSON.parse(localStorage.getItem(KEY)).range;return{stars:r.stars.slice(0,5),best:r.best.slice(0,5),open:r.open,named:r.named,names:w.vale.STAGES.slice(0,3).map(s=>s.name)};}
+async function run(){
+ const o={};
+ // a save from before names existed is read as it was, and gains names when next saved
+ o.old=await load(base({open:3,best:[600,500,300],stars:[3,2,1]}));
+ o.old.ok=o.old.stars.join()==="3,2,1"&&o.old.open===3&&o.old.named["First marks"].s===3&&o.old.named["First marks"].b===600&&o.old.named["The drop"].s===1&&o.old.names.join()==="First marks,Stepping back,The drop";
+ // a save whose lists are in some other order: the names win
+ o.moved=await load(base({open:9,best:[0,0,999],stars:[0,0,1],named:{"The drop":{s:3,b:500},"First marks":{s:2,b:300}}}));
+ o.moved.ok=o.moved.stars.slice(0,3).join()==="2,0,3"&&o.moved.best.slice(0,3).join()==="300,0,500"&&o.moved.open===1;
+ // a stage that is not among the release's seventeen keeps what it had
+ o.kept=await load(base({open:1,best:[300],stars:[2],named:{"First marks":{s:2,b:300},"Bolt":{s:3,b:1234}}}));
+ o.kept.ok=o.kept.named["Bolt"].s===3&&o.kept.named["Bolt"].b===1234&&o.kept.stars[0]===2&&o.kept.open===1;
+ // nothing saved yet
+ o.fresh=await load(null);o.fresh.ok=o.fresh.stars.every(n=>!n)&&o.fresh.open===0&&Object.keys(o.fresh.named).length===0;
+ localStorage.removeItem(KEY);
+ o.allOk=o.old.ok&&o.moved.ok&&o.kept.ok&&o.fresh.ok&&errors.length===0;o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

@@ -9,7 +9,8 @@ async function run(){
  const o={};
  {wipe();const w=await game("?watch=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
   const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));};
-  const live=()=>v.spirits.filter(s=>s.cfg&&s.live&&s.base.visible),sitter=()=>live().find(s=>s.mode==="sit"&&s.state==="idle")||live().find(s=>s.mode==="sit");
+  const live=()=>v.spirits.filter(s=>s.cfg&&s.live&&s.base.visible),force=cfg=>{const h=v.spirits.find(x=>!x.bird&&x.cfg);h.cfg=cfg;h.set(h,cfg);h.due=0;v.rangeTargets();steps(45);return h;},   // which shades appear is chance; the test places its own
+  sitter=()=>force({t:"sit",at:[14,2]});
   o.button=[...w.document.querySelectorAll("#cloth button")].some(b=>/^Bell Watch/.test(b.textContent));
   v.begin(false);steps(2);v.watchStart();steps(60);
   o.start={stage:r.stage,name:v.STAGES[r.stage].name,phase:r.phase,arrows:r.arrows,secondsLeft:Math.round(r.endAt-v.elapsed),shades:live().length,stagesCount:v.STAGES.length,title:v.rangeInfo().title};
@@ -17,14 +18,14 @@ async function run(){
   let banished=0;for(let n=0;n<6;n++){const s=sitter();if(!s){steps(120);continue;}const h0=r.hits;fire(s.hitMesh.getWorldPosition(V()));if(r.hits>h0)banished++;steps(30);}
   o.shooting={banished,score:r.score,arrows:r.arrows,fired:r.fired,stillPlaying:r.phase==="play"};
   // shades make for the bell: one that reaches its foot binds it; an arrow into the bell frees it; a miss costs nothing
-  {const b=v.peal.root,goers=()=>live().filter(x=>x.cfg.toBell),[fx,fz]=v.yardAt(...v.watchFoot());let seen=goers().length;for(let i=0;i<900&&!goers().length;i++)steps(1);seen=Math.max(seen,goers().length);
+  {const b=v.peal.root,goers=()=>live().filter(x=>x.cfg.toBell),[fx,fz]=v.yardAt(...v.watchFoot());const goer=()=>force({t:"run",path:[[14,0],v.watchFoot()],toBell:true});goer();let seen=goers().length;
    const before1=b.userData.bound;b.userData.bind(0);   // some may have arrived on their own already; start the count from a clear bell
-   const g1=goers()[0];g1.base.position.set(fx,g1.base.position.y,fz);steps(2);const after1=b.userData.bound,gone=!g1.live;
-   for(let k=0;k<4;k++){for(let i=0;i<900&&!goers().length;i++)steps(1);const g=goers()[0];if(g){g.base.position.set(fx,g.base.position.y,fz);steps(2);}}
+   const g1=goer();g1.base.position.set(fx,g1.base.position.y,fz);steps(2);const after1=b.userData.bound,gone=!g1.live;
+   for(let k=0;k<4;k++){const g=goer();g.base.position.set(fx,g.base.position.y,fz);steps(2);}
    const capped=b.userData.bound,streak0=r.streak,score0=r.score;
    fire(v.peal.mesh.getWorldPosition(V()));steps(5);
    o.bell={arrivedByThemselves:before1,goersSeen:seen,after1,gone,capped,afterRing:b.userData.bound,rings:r.rings,streakKept:r.streak===streak0,scoreSame:r.score===score0,arrows:r.arrows,state:b.userData.state};
-   const st=r.streak;steps(1);const e=eye(),c=v.peal.mesh.getWorldPosition(V());v.loose(e,V(c.x-e.x,0,c.z-e.z).normalize().multiplyScalar(-1).add(V(0,.3,0)).normalize(),1);steps(240);o.miss={before:st,after:r.streak};}
+   {const h=sitter(),h0=r.hits;fire(h.hitMesh.getWorldPosition(V()));steps(20);}const st=r.streak;steps(1);const e=eye(),c=v.peal.mesh.getWorldPosition(V());v.loose(e,V(c.x-e.x,0,c.z-e.z).normalize().multiplyScalar(-1).add(V(0,.3,0)).normalize(),1);steps(240);o.miss={before:st,after:r.streak};}
   steps(360);o.refilled={shades:live().length};
   // to the end of the run
   for(let i=0;i<12000&&r.phase==="play";i++)steps(1);steps(10);

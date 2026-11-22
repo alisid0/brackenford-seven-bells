@@ -80031,7 +80031,7 @@ const WORLD2=QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2); 
 const LANE={half:8,from:-3,to:76,creek:38,steps:[[43,.7],[53,1.4],[63,2.1],[72,2.8]],base:0};
 const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
 // the whole footprint of the new range: lane and shoulders, the creek's band, and the footbridge
-const inRange2=(x,z)=>{const[a,b]=laneAt(x,z);return(a>-12&&a<84&&Math.abs(b)<13)||(Math.abs(a-LANE.creek)<4.5&&Math.abs(b)<29)||(Math.abs(a-LANE.creek)<6&&Math.abs(b-13.5)<5);};
+const inRange2=(x,z)=>{const[a,b]=laneAt(x,z);return(a>-12&&a<84&&Math.abs(b)<13)||(a>6&&a<34&&b>9&&b<22)||(a>33&&a<57&&b<-7&&b>-17)||(a>62&&a<104&&b>12&&b<40)||(Math.abs(a-LANE.creek)<4.5&&Math.abs(b)<29)||(Math.abs(a-LANE.creek)<6&&Math.abs(b-13.5)<5);};
 const inLane=(x,z)=>{const[a,b]=laneAt(x,z);return a>LANE.from&&a<LANE.to&&Math.abs(b)<LANE.half;};
 const laneRise=a=>{let h=0;for(const[at,up]of LANE.steps)if(a>=at)h=up;return h;};
 const yardBits=new T.Group();   // training-yard timber that stands in the lane; hidden while the new range is in use
@@ -80041,9 +80041,10 @@ if(WORLD2){
  // level the ground under the lane and a little either side, wider where the creek crosses, easing back into the land around it
  LANE.base=rawHeight(YARD.x,YARD.z);
  for(let j=0;j<W;j++)for(let i=0;i<W;i++){
-  const[a,b]=laneAt(-HALF+i*CELL,-HALF+j*CELL);if(a<-24||a>100||Math.abs(b)>40)continue;
-  const flat=Math.abs(a-LANE.creek)<9?27:13,w=(1-smooth(Math.abs(b),flat,flat+9))*smooth(a,-20,-10)*(1-smooth(a,86,96));
+  const[a,b]=laneAt(-HALF+i*CELL,-HALF+j*CELL);if(a<-24||a>100||Math.abs(b)>48)continue;
+  const flat=Math.abs(a-LANE.creek)<9?(b>0?37:27):13,w=(1-smooth(Math.abs(b),flat,flat+9))*smooth(a,-20,-10)*(1-smooth(a,86,96));
   H[j*W+i]=lerp(H[j*W+i],LANE.base,w);
+  if(b<-15&&a>2&&a<45)H[j*W+i]=lerp(H[j*W+i],Math.min(H[j*W+i],-1.4),smooth(-b,16,23)*smooth(a,2,8)*(1-smooth(a,40,45)));   // the cove
  }
 }
 function groundAt(x,z){
@@ -80260,6 +80261,7 @@ function label(str,w=2.2){
  const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
  return new T.Mesh(new T.PlaneGeometry(w,w*.1875),new T.MeshBasicMaterial({map:tex,side:T.DoubleSide}));
 }
+window.__oldFrom=scene.children.length;
 for(const[x,z,s]of[[-15,7,1],[13,12,1.15],[-19,-9,.9],[1,20,1],[21,3,.95]]){
  const g=groundAt(x,z),hut=new T.Group();hut.position.set(x,g,z);scene.add(hut);
  mesh(hut,new T.CylinderGeometry(3*s,3.1*s,3.2,10),'#d9c59a',V(0,1.3,0));
@@ -80374,6 +80376,9 @@ const moverMid=yardAt(16,-7);
  panels.push({x:tx+1.6,z:tz,nx:1,nz:0,w:1.6,y0:gt,y1:gt+H,in:.8});
  addCollider(tx,tz,1.7,gt+H);
 }
+// everything the old world put into the scene above (hamlet, bell shrines, straw rounds, drills, climbing wall and tower): hidden while shooting on Willowbank
+const oldWorld=scene.children.slice(window.__oldFrom|0).filter(o=>o!==yardBits);let oldHidden=false;const oldWas=new Map();
+function oldWorldShow(){const hide=WORLD2&&range.on;if(hide===oldHidden)return;oldHidden=hide;for(const o of oldWorld){if(hide){oldWas.set(o,o.visible);o.visible=false;}else if(oldWas.has(o))o.visible=oldWas.get(o);}}
 // ---- the new range's lane, creek, terraces, rail, stall, footbridge and blossom trees (see WORLD2 above)
 if(WORLD2){
  const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);
@@ -80383,13 +80388,15 @@ if(WORLD2){
  box(R,P((LANE.from+LANE.to)/2,0,.02),V(LANE.half*2,.04,LANE.to-LANE.from),LAWN);
  for(const s of[-1,1])for(let a=LANE.from,i=0;a<40;i++){const len=3+2.5*Math.abs(Math.sin(i*1.7+s)),wide=.7+.6*Math.abs(Math.sin(i*2.9+s*2));box(R,P(a+len/2,s*(LANE.half+wide/2),.015),V(wide,.03,len),EDGE);a+=len;}   // a broken shoulder about a metre wide, so the lawn does not end in a ruled line
  // the creek: a flat band of water with sandy banks and a few stones, crossing at 38 m
- box(R,P(LANE.creek,0,.05),V(54,.06,3),WATER);
- for(const s of[-1,1])for(let r=-27,i=0;r<27;i++){const len=1.5+2.5*Math.abs(Math.sin(i*2.3+s)),wide=.3+.3*Math.abs(Math.sin(i*1.3+s*3));if(i%4!==3)box(R,P(LANE.creek+s*(1.5+wide/2),r+len/2,.04),V(len,.05,wide),SAND);r+=len;}   // uneven patches of sand, 0.3 to 0.6 m wide, with gaps
+ box(R,P(LANE.creek,5.5,.05),V(63,.06,2.4),WATER);   // 2.4 m of water, from the cove on the left to past 36 m on the right
+ for(const[a,r,k]of[[37.6,36.5,.9],[38.9,37.3,.7],[38.2,38.4,1.1]]){const m=mesh(R,new T.DodecahedronGeometry(k,0),ROCK,P(a,r,k*.45));m.rotation.set(a,r,0);}   // the rocks it rises among
+ for(const s of[-1,1])for(let r=-27,i=0;r<27;i++){const len=1.5+2.5*Math.abs(Math.sin(i*2.3+s)),wide=.3+.3*Math.abs(Math.sin(i*1.3+s*3));if(i%4!==3)box(R,P(LANE.creek+s*(1.2+wide/2),r+len/2,.04),V(len,.05,wide),SAND);r+=len;}   // uneven patches of sand, 0.3 to 0.6 m wide, with gaps
  for(const[a,r,k]of[[36.4,-10.5,.5],[39.8,-13,.7],[36.2,10,.6],[39.9,12.2,.45],[36.5,-20,.8],[39.6,21,.7],[36.3,-25.5,.6],[39.7,25,.55]]){const m=mesh(R,new T.DodecahedronGeometry(k,0),ROCK,P(a,r,k*.4));m.rotation.set(a,r,0);m.scale.y=.7;}
  // the terraces: each a solid step across the lane, lighter on top and darker on its face
  let low=0;for(const[at,up]of LANE.steps){const len=LANE.to-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(16,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(16,tall,.06),FACE);
   for(const s of[-1,1]){const run=2.4*(up/.7),m=box(R,P(at+len/2,s*(8+run/2-.05),up/2-.02),V(Math.hypot(run,up),.06,len),EDGE);m.rotation.z=s*Math.atan2(up,run);m.position.y=up/2;}   // each end falls away to the meadow as a grass bank
   low=up;}
+ {const m=box(R,P(78.4,0,1.4),V(16,.06,5.6),EDGE);m.rotation.x=Math.atan2(2.8,4.8);}   // the last terrace falls away behind as a grass bank
  // the rail at the shooting line, 0.85 m high as a starting height
  for(const r of[-3,-1,1,3])stick(R,P(.9,r,-.3),P(.9,r,.95),.06,timber);
  for(const y of[.85,.45])stick(R,P(.9,-3,y),P(.9,3,y),.045,timber);
@@ -80399,13 +80406,13 @@ if(WORLD2){
  for(let i=0;i<8;i++)box(R,P(-.35,-1.4+i*.4,.03),V(.37,.06,2.6),i%2?'#a5632f':'#b9763a');
  // the path from the stall to the jetty, and the jetty itself at the lake's edge
  for(let i=0;i<9;i++){const t=i/8,a=-1.5+t*15.5,r=-8.6-6*t*t;const m=box(R,P(a,r,.02),V(1.6,.03,2.3),'#b9a070');m.rotation.y=-Math.atan2(-12*t*6/8,15.5/8)*.5;}
- {const j=new T.Group();j.position.copy(P(14,-16.5));j.rotation.y=Math.PI/2;R.add(j);for(let i=0;i<6;i++)box(j,V(0,.35,-2.1+i*.85),V(2.4,.08,.78),i%2?'#a5632f':'#b9763a');for(const s of[-1,1])for(const z of[-2.3,0,2.3])stick(j,V(s*1.1,-1.2,z),V(s*1.1,.75,z),.07,timber);}
+ {const j=new T.Group();j.position.copy(P(14,-19.5));j.rotation.y=Math.PI/2;R.add(j);for(let i=0;i<6;i++)box(j,V(0,.35,-2.1+i*.85),V(2.4,.08,.78),i%2?'#a5632f':'#b9763a');for(const s of[-1,1])for(const z of[-2.3,0,2.3])stick(j,V(s*1.1,-1.2,z),V(s*1.1,.75,z),.07,timber);}
  // the village on its rise at the far right: three round huts and the watchtower (world-plan: 82 to 98 m out, 18 to 38 m right)
- for(const[a,r,k]of[[84,20,1],[89,26,1.15],[95,21,.95]]){const h=new T.Group(),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);R.add(h);
+ for(const[a,r,k]of[[84,25,1],[90,31,1.15],[95,26,.95]]){const h=new T.Group(),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);R.add(h);
   mesh(h,new T.CylinderGeometry(3,3,2.3,8),'#f1e2bd',V(0,1.15,0));
   mesh(h,new T.CylinderGeometry(2.3,4.3,1.1,8),'#b98a42',V(0,2.75,0));mesh(h,new T.ConeGeometry(2.5,1.5,8),'#d4a85a',V(0,4.05,0));   // lower band wide and darker, upper band lighter
   box(h,V(0,.95,-2.75),V(1.3,1.9,.5),'#5e4630');box(h,V(0,1.98,-2.98),V(1.6,.16,.22),'#7a5a3c');for(const s of[-1,1])box(h,V(s*.72,.95,-2.98),V(.16,1.9,.22),'#7a5a3c');}
- {const t=new T.Group(),p=P(90,34),[wx,wz]=yardAt(90,34);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);
+ {const t=new T.Group(),p=P(88,29),[wx,wz]=yardAt(88,29);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);
   for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.9,-.5,sz*1.9),V(sx*1.45,7.1,sz*1.45),.26,'#7a5a3c',5);
   for(const s of[-1,1])for(const[y0,y1]of[[.4,3.4],[3.7,6.7]]){stick(t,V(-1.8,y0,s*1.75),V(1.6,y1,s*1.6),.11,'#8a6038',4);stick(t,V(1.8,y0,s*1.75),V(-1.6,y1,s*1.6),.11,'#8a6038',4);}   // X-braces, front and back
   box(t,V(0,7.2,0),V(4.4,.28,4.4),'#a5632f');   // the gallery's deck, wider than the legs
@@ -80418,7 +80425,7 @@ if(WORLD2){
   for(const s of[-1,1]){for(const z of[-2.2,0,2.2])stick(b,V(s*.95,0,z),V(s*.95,z?1.15:1.55,z),.1,timber,5);stick(b,V(s*.95,1.1,-2.2),V(s*.95,1.5,0),.085,timber,5);stick(b,V(s*.95,1.5,0),V(s*.95,1.1,2.2),.085,timber,5);}
   for(const z of[-2.55,2.55])box(b,V(0,.12,z),V(2.6,.5,.7),'#9a968c');}   // stone abutments at both ends
  // two blossom trees, one each side in the middle distance, well clear of the lane and never behind a target
- for(const[a,r,s]of[[31,-17.5,1],[46,17,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
+ for(const[a,r,s]of[[31,-13.5,1],[46,21.5,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
   stick(t,V(0,-.3,0),V(.15,2.6,0),.2,'#7a5a3c');stick(t,V(.1,1.9,0),V(-.9,3.1,.2),.1,'#7a5a3c');stick(t,V(.1,2.1,0),V(.9,3.2,-.3),.1,'#7a5a3c');
   for(const[x,y,z,k]of[[0,3.9,0,1.5],[-1.2,3.4,.3,1.05],[1.2,3.5,-.4,1.1]])mesh(t,new T.IcosahedronGeometry(k,0),BLOSSOM,V(x,y,z));}
 }
@@ -80427,9 +80434,9 @@ if(WORLD2){
 const BOARD=WORLD2?{cloth:'#f6e6bd',edge:'#4A2943',text:'#4A2943',mark:'#6D3362'}:{cloth:'#273c34',edge:'#bcaa7a',text:'#ffebbd',mark:'#f0c75a'};   // mark: the wind and best-score line (gold on the old board; plum on cloth, where gold is kept for rewards)
 const board=(()=>{
  const c=document.createElement('canvas');c.width=1024;c.height=640;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
- const[bx,bz]=yardAt(WORLD2?12.5:11,WORLD2?9.8:6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));if(WORLD2)m.scale.setScalar(.75);   // Willowbank: 3.6 m wide, 42 degrees to the right
+ const[bx,bz]=yardAt(WORLD2?12.5:11,WORLD2?11.2:6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));if(WORLD2)m.scale.setScalar(.75);   // Willowbank: 3.6 m wide, 42 degrees to the right
  m.position.set(bx,g+2.6,bz);m.rotation.y=Math.atan2(YARD.x-bx,YARD.z-bz);scene.add(m);
- for(const k of[-1,1]){const px=bx+k*2.35*Math.cos(m.rotation.y),pz=bz-k*2.35*Math.sin(m.rotation.y);stick(scene,V(px,g-.3,pz),V(px,g+4.15,pz),.06,timber);}
+ for(const k of[-1,1]){const half=WORLD2?1.85:2.35,px=bx+k*half*Math.cos(m.rotation.y),pz=bz-k*half*Math.sin(m.rotation.y);stick(scene,V(px,g-.3,pz),V(px,g+(WORLD2?3.85:4.15),pz),.06,timber);}
  let shown='';
  return{set(key,info){
   if(key===shown)return;shown=key;const x=c.getContext('2d');
@@ -81263,9 +81270,9 @@ function showResults(){
  const i=range.stage,stars=range.stars,R=state.range;range.phase='results';stageList();
  rangeSigns.again.base.visible=true;rangeSigns.next.base.visible=i<STAGES.length-1&&R.open>i&&!STAGES[i].watch;rangeSigns.back.base.visible=i>0;rangeTargets();
  if(STAGES[i].watch){for(const sp of spirits){sp.base.visible=false;sp.live=false;sp.state='off';}rangeTargets();[523,659,784].forEach((f,k)=>note(f,.45,'sine',.1,k*.13));say('Bell Watch  ·  '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.watchBest||0))+'  ·  shoot AGAIN',6);return;}
- if(PEAL&&stars&&!R.bell1&&pealCleared())pealUnbind();
  if(stars)[523,659,784,1047].slice(0,stars+1).forEach((f,k)=>note(f,.45,'sine',.1,k*.13));else note(196,.5,'triangle',.1,0,147);
  say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars)+(range.gap?'  ·  '+range.gap:''):'Not enough  ·  '+(range.gap?range.gap+'  ·  ':'')+'shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
+ if(PEAL&&stars&&!R.bell1&&pealCleared())pealUnbind();
  if(range.earned&&!RELEASE)[1568,1976,2349].forEach((f,k)=>note(f,.12,'triangle',.05,.5+k*.07));   // coins dropping into the purse
 }
 // ---- the replay: at the end of a stage the best shot is shown again, slowed, from beside its mark
@@ -81391,7 +81398,7 @@ function rangeStep(dt){
 function setMode(m){
  if(RELEASE)m='range';
  state.mode=m;range.on=m==='range';
- for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!(WORLD2&&range.on);if(WORLD2)for(const t of targets){if(t.beacon)t.beacon.visible=!range.on&&!t.hit;if(t.kind==='lantern')t.root.visible=!range.on&&!t.hit;if(t.kind==='straw')t.root.parent.visible=!range.on;}   // on the new range the bells' beams, the lanterns and the roaming straw rounds are hidden while shooting
+ for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!((WORLD2||PEAL)&&range.on);if(WORLD2)for(const t of targets){if(t.beacon)t.beacon.visible=!range.on&&!t.hit;if(t.kind==='lantern')t.root.visible=!range.on&&!t.hit;if(t.kind==='straw')t.root.parent.visible=!range.on;}   // on the new range the bells' beams, the lanterns and the roaming straw rounds are hidden while shooting
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())rig.rotation.y=look.yaw;setStage(clamp(state.range.open,0,STAGES.length-1));}
  else{if(replay.on)endReplay();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
@@ -82105,7 +82112,7 @@ function tick(dt,frame){
  updateDeer(dt,feetNow.x,feetNow.z);updateGrass(feetNow.x,feetNow.z);
  scene.updateMatrixWorld();
  zoom+=(charge-zoom)*Math.min(1,dt*10);
- if(vr)vrPose();else desktopPose();if(vr)vrMenuStep();pealStep();watchStep(dt);
+ if(vr)vrPose();else desktopPose();if(vr)vrMenuStep();pealStep();watchStep(dt);oldWorldShow();
  bow.updateMatrixWorld();stepArrows(dt);stepBits(dt);
  $('ret').classList.toggle('hit',elapsed<hitFlash);$('ret').style.visibility=replay.on?'hidden':'';
  (vr?head():camera).getWorldPosition(eyeNow);updateSky(dt,eyeNow);stepPops(dt,replay.on&&!vr?cine.position:eyeNow);
@@ -82188,7 +82195,7 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};
 </script></body></html>

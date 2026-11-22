@@ -60,6 +60,21 @@ It opened all six renders. Written down by Claude.
 
 **Where the glow goes:** locked gold `#F0C75A` on the restored bell's lip and the small centre of the bullseye; a few short cool highlights on the water's sun-facing edge. All flat and opaque. **Kept matte on purpose:** the silent bell, thorns, the targets' outer rings, banner trim, blossoms, broad water. Saturated ember `#E02E32` stays with the shades' eyes so they remain the strongest warm points.
 
-## Gemini's audit: skipped
+## Gemini's audit: arrived, and acted on
 
-Gemini was asked to audit this pass; its app stopped at an approval prompt Claude could not read and did not approve. The developer then said to ignore the audit, since they will test the range themselves ("Ignore the audit I will be doing the test anyways", 22 November 2026). So the sightline check for the new shapes rests on the developer's own test and on `tests/world2.html`, which only checks the layout, not what stands behind each target.
+After the developer said to skip it, the audit came through anyway (the developer answered the prompt in Antigravity): `design/willowbank-art-audit.md`, PR #21. What was done with it:
+
+| Finding | Action |
+|---|---|
+| Scoreboard's posts stayed at the old width when the cloth was made smaller, so a post stood in front of the bell | Posts now follow the cloth; board moved to (12.5, 11.2 right), as Gemini ruled. On a desktop screen its right edge runs off the frame; in a headset it is a glance to the right |
+| Jetty on dry land; creek ending in grass at both ends | A cove of the lake carved in on the left from 2 to 45 m; jetty moved to (14, 19.5 left); creek narrowed to 2.4 m, running from the cove to rocks past 36 m on the right |
+| Old climbing tower beside the stall; old hamlet, bell shrines, straw rounds | Everything the old world adds to the scene is hidden while shooting on Willowbank |
+| Cream huts behind right-hand targets; tower hidden behind the blossom tree | Huts to (84, 25), (90, 31), (95, 26); tower to (88, 29); right blossom tree to (46, 21.5): Gemini's numbers |
+| Old trees and tufts by the board, bell, left flank and village | Cleared in those areas |
+| The bell's "unbound" line was overwritten by the result's line | Fixed: it is now said last |
+| Old sliding-round frame in front of the bell on the old range | Hidden while shooting whenever the bell is on |
+| A bank behind the last terrace | Added |
+
+**Not done from the audit:** red-and-cream stripes on the wind pennant; the old world's dirt paths and a stray puddle; rocks and trees on the far rim. The left blossom tree was moved to (31, 13.5 left) to keep it out of the new cove, which the audit did not ask for.
+
+**Stage 3 numbers disagree.** Gemini: sun 120 degrees left of the lane, 28 degrees up, linear fog from 95 m to 360 m. ChatGPT: sun 45 degrees left, 22 degrees up, haze from 110 m to 650 m. Both keep the 70 m target clear. To be settled between them before stage 3 starts.

@@ -228,3 +228,13 @@ It opened the six game screenshots and the run-gait sheet (`assets/renders/d1-ha
 | Question | Is a hare meant to be hittable while fully hidden, or only once it emerges? The hit area and the visual cue should follow that rule. **For the developer to decide.** In the game today a hidden or sunk hare can be hit, through a hit area shrunk by a third. |
 
 None of these changes has been started.
+
+### Hit area and crouch for the standing hare (22 November 2026)
+The developer's answer to ChatGPT's question: **a hidden hare stays hittable, as now.** Then the two changes ChatGPT put first, in the trial build only.
+
+- **Hit area.** The standing hare no longer uses the first hare's sphere (0.45 m radius). It has an egg-shaped area fitted about its body and head, about 0.68 m long, 0.6 m tall and 0.34 m wide in the game, which follows the leap and the crouch and is a third smaller while the hare keeps low. The first hare's hit area is untouched.
+- **Crouch instead of sinking.** A hiding hare now crouches where it stands, with its paws on their spots (`MOVES.hareCrouch`), and a hare creeping through tall grass carries its body low (`MOVES.HARE.lopeLow`). It is never pushed into the ground. The first hare still sinks 0.3 m as before.
+- **Checks.** `node tools/check-moves.mjs` passes for every gait and the crouch (paws move 1.1 mm at worst as it crouches). `tests/newhare.html`, in the game at 13 to 14 m: arrows through the body, head and chest hit; arrows 0.4 m to either side and 0.4 m above the back miss; a hidden hare is hit through its body and missed 0.35 m to the side. Running: 120 contacts, typical drift 0 mm, worst 58 mm. Creeping: 118 contacts, typical 1 mm, worst 8 mm, lowest paw joint 16 mm above ground. No page errors.
+- **Normal build** re-tested three times with `tests/all.html`: two runs clean; one run had `spirits creep.hitInOpen` false, which then passed in four further runs of that page, so it looks chance-dependent (a moving creeper) but is not proven so.
+
+Not done: the 0.4 m and 0.35 m misses are single shots at one distance and one facing, not a sweep; the worst running drift is still untraced; nothing seen in a headset; ChatGPT has not seen these two changes.

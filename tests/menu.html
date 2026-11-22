@@ -13,7 +13,7 @@ async function run(){
  {wipe();const w=await game("?menu=1"),d=w.document,q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)];
   o.fresh={cloth:!q("#cloth").hidden,card:q("#card").hidden,title:q("#cloth h2").textContent,main:q("#cloth .main").textContent,buttons:all("#cloth button").map(b=>b.textContent),barsHidden:w.getComputedStyle(q("#top")).display==="none"};
   q("#cloth .main").click();await sleep(500);o.fresh.playing=w.vale.playing;o.fresh.menuGone=q("#start").hidden;o.fresh.barsBack=w.getComputedStyle(q("#top")).display!=="none";
-  o.fresh.ok=o.fresh.cloth&&o.fresh.card&&o.fresh.title==="Bow & Shadow"&&o.fresh.main==="Begin"&&o.fresh.buttons.join("|")==="Begin|Settings"&&o.fresh.barsHidden&&o.fresh.playing&&o.fresh.menuGone&&o.fresh.barsBack;}
+  o.fresh.ok=o.fresh.cloth&&o.fresh.card&&o.fresh.title==="Bow & Shadow"&&o.fresh.main==="Begin"&&o.fresh.buttons.map(b=>b.split("  ")[0]).join("|")==="Begin|Bell Watch|Settings"&&o.fresh.barsHidden&&o.fresh.playing&&o.fresh.menuGone&&o.fresh.barsBack;}
  // a returning player, the stage list and the settings
  {wipe();returning();const w=await game("?menu=1"),d=w.document,q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)],press=t=>all("#cloth button").find(b=>b.textContent.trim()===t).click();
   o.back={main:q("#cloth .main").textContent,stars:q("#cloth .tally").textContent,where:q("#cloth .where").textContent,buttons:all("#cloth button").map(b=>b.textContent)};

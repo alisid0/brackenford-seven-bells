@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>bell watch</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// Bell Watch, the wave mode, first playable: a three-minute run with arrows that never run out, shades that are
+// replaced when banished, a score and a best kept apart from the stages, and nothing of it with the switch off.
+const errors=[],KEY="brackenford-trials-v1";
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,8))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function run(){
+ const o={};
+ {wipe();const w=await game("?watch=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));};
+  const live=()=>v.spirits.filter(s=>s.cfg&&s.live&&s.base.visible),sitter=()=>live().find(s=>s.mode==="sit"&&s.state==="idle")||live().find(s=>s.mode==="sit");
+  o.button=[...w.document.querySelectorAll("#cloth button")].some(b=>/^Bell Watch/.test(b.textContent));
+  v.begin(false);steps(2);v.watchStart();steps(60);
+  o.start={stage:r.stage,name:v.STAGES[r.stage].name,phase:r.phase,arrows:r.arrows,secondsLeft:Math.round(r.endAt-v.elapsed),shades:live().length,stagesCount:v.STAGES.length,title:v.rangeInfo().title};
+  // banish sitters as they come; arrows never run down
+  let banished=0;for(let n=0;n<6;n++){const s=sitter();if(!s){steps(120);continue;}const h0=r.hits;fire(s.hitMesh.getWorldPosition(V()));if(r.hits>h0)banished++;steps(30);}
+  o.shooting={banished,score:r.score,arrows:r.arrows,fired:r.fired,stillPlaying:r.phase==="play"};
+  steps(360);o.refilled={shades:live().length};
+  // to the end of the run
+  for(let i=0;i<12000&&r.phase==="play";i++)steps(1);steps(10);
+  const saved=JSON.parse(localStorage.getItem(KEY)).range;
+  o.end={phase:r.phase,score:r.score,newBest:r.newBest,savedBest:saved.watchBest,runs:saved.runs,starsSaved:saved.stars.length,namedHasWatch:!!(saved.named&&saved.named["Bell Watch"]),next:v.rangeSigns.next.base.visible,again:v.rangeSigns.again.base.visible,board:v.rangeInfo().text,shadesLeft:live().length};
+  r.pending="again";for(let i=0;i<300&&r.phase==="results";i++)steps(1);o.again={phase:r.phase,score:r.score,secondsLeft:Math.round(r.endAt-v.elapsed),best:v.rangeInfo().mark};
+  // the stages are still themselves afterwards
+  v.setStage(0);steps(30);o.stageAfter={stage:r.stage,name:v.STAGES[r.stage].name,arrows:r.arrows,title:v.rangeInfo().title};}
+ {wipe();const w=await game("?watch=0"),v=w.vale;v.begin(false);v.tick(1/60);const s0=v.range.stage;v.watchStart();v.tick(1/60);
+  o.off={WATCH:v.WATCH,button:[...w.document.querySelectorAll("#cloth button")].some(b=>/^Bell Watch/.test(b.textContent)),stage:v.range.stage,same:v.range.stage===s0};}
+ wipe();
+ o.checks={
+  onTheMenu:o.button===true,
+  starts:o.start.stage===-1&&o.start.name==="Bell Watch"&&o.start.phase==="play"&&o.start.secondsLeft>=178&&o.start.shades>=5&&o.start.stagesCount===17&&/^Bell Watch/.test(o.start.title),
+  carefree:o.shooting.banished>=2&&o.shooting.score>0&&o.shooting.arrows===9999&&o.shooting.fired>=2&&o.shooting.stillPlaying,
+  refills:o.refilled.shades>=5,
+  ends:o.end.phase==="results"&&o.end.newBest===true&&o.end.savedBest===o.end.score&&o.end.runs===1&&o.end.next===false&&o.end.again===true&&o.end.shadesLeft===0&&/Bell|Score/.test(o.end.board),
+  keptApart:o.end.starsSaved===0&&o.end.namedHasWatch===false,
+  again:o.again.phase==="play"&&o.again.score===0&&o.again.secondsLeft>=178&&o.again.best.includes(String(o.end.score)),
+  stagesIntact:o.stageAfter.stage===0&&o.stageAfter.name==="First marks"&&o.stageAfter.arrows===5&&/^Stage 1 of 17/.test(o.stageAfter.title),
+  off:o.off.WATCH===false&&o.off.button===false&&o.off.same,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

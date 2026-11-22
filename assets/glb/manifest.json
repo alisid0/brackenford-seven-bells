@@ -1,0 +1,823 @@
+{
+  "generator": "tools/export-glb.mjs",
+  "threeRevision": 184,
+  "units": "metres",
+  "coordinateSystem": "glTF 2.0 right-handed, y-up, forward +z, pivot at base (0,0,0)",
+  "count": 14,
+  "props": [
+    {
+      "file": "thornwood-bow.glb",
+      "name": "A4 Thornwood bow",
+      "prop": "thornwoodBow",
+      "options": {},
+      "triangles": 336,
+      "meshes": 1,
+      "primitives": 4,
+      "materials": [
+        "thornwood_5b2c3a",
+        "thornwoodLight_6d3646",
+        "thornwoodDark_47212d",
+        "ember_c8372d"
+      ],
+      "bytes": 26960,
+      "boundingBox": {
+        "min": [
+          -0.02,
+          -0.75,
+          -0.03
+        ],
+        "max": [
+          0.02,
+          0.75,
+          0.0473
+        ],
+        "size": [
+          0.0399,
+          1.5,
+          0.0773
+        ]
+      },
+      "nodes": [
+        {
+          "name": "thornwood-bow"
+        }
+      ],
+      "points": {
+        "grip": [
+          0,
+          0,
+          0
+        ],
+        "rest": [
+          0,
+          0.045,
+          0
+        ],
+        "nockTop": [
+          0,
+          0.738,
+          0
+        ],
+        "nockBottom": [
+          0,
+          -0.738,
+          0
+        ]
+      }
+    },
+    {
+      "file": "market-stall.glb",
+      "name": "H6 Market stall",
+      "prop": "marketStall",
+      "options": {},
+      "triangles": 605,
+      "meshes": 1,
+      "primitives": 12,
+      "materials": [
+        "timber_a5632f",
+        "timberDark_74431f",
+        "timberLight_c98646",
+        "wallLight_77421f",
+        "wall_6b3a1c",
+        "counterLight_83501f",
+        "red_c5343a",
+        "redDark_a12a30",
+        "cream_f6e6bd",
+        "creamDark_e9d3a0",
+        "crate_e6a23c",
+        "crateDark_c98428"
+      ],
+      "bytes": 51072,
+      "boundingBox": {
+        "min": [
+          -1.65,
+          0,
+          -0.957
+        ],
+        "max": [
+          2.1802,
+          2.6414,
+          1.3102
+        ],
+        "size": [
+          3.8302,
+          2.6414,
+          2.2672
+        ]
+      },
+      "nodes": [
+        {
+          "name": "market-stall"
+        }
+      ],
+      "points": {
+        "counter": [
+          0,
+          1.03,
+          0.75
+        ],
+        "keeper": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "belfry-silent.glb",
+      "name": "H8 Forked belfry",
+      "prop": "belfry",
+      "options": {
+        "state": "silent"
+      },
+      "triangles": 1071,
+      "meshes": 2,
+      "primitives": 12,
+      "materials": [
+        "belfryTimber_825435",
+        "belfryTimberDark_6a4229",
+        "iron_3b3538",
+        "rope_c9a66b",
+        "cream_f6e6bd",
+        "plum_4a2943",
+        "plumLight_6d3362",
+        "emberEye_e02e32",
+        "hem_ae493d"
+      ],
+      "bytes": 84380,
+      "boundingBox": {
+        "min": [
+          -1.4685,
+          -0.0167,
+          -0.3786
+        ],
+        "max": [
+          1.2929,
+          3.5338,
+          0.4106
+        ],
+        "size": [
+          2.7613,
+          3.5505,
+          0.7892
+        ]
+      },
+      "nodes": [
+        {
+          "name": "belfry-silent"
+        },
+        {
+          "name": "bell",
+          "translation": [
+            0,
+            2.2,
+            0
+          ]
+        }
+      ],
+      "points": {
+        "strike": [
+          0,
+          1.72,
+          0
+        ],
+        "lip": [
+          0,
+          1.37,
+          0
+        ],
+        "perch": [
+          -1.1,
+          3.2,
+          0
+        ]
+      }
+    },
+    {
+      "file": "belfry-restored.glb",
+      "name": "H8 Forked belfry",
+      "prop": "belfry",
+      "options": {
+        "state": "restored"
+      },
+      "triangles": 624,
+      "meshes": 2,
+      "primitives": 8,
+      "materials": [
+        "belfryTimber_825435",
+        "belfryTimberDark_6a4229",
+        "iron_3b3538",
+        "rope_c9a66b",
+        "cream_f6e6bd",
+        "hem_ae493d",
+        "bronze_ae783e",
+        "gold_f0c75a"
+      ],
+      "bytes": 50168,
+      "boundingBox": {
+        "min": [
+          -1.166,
+          -0.0032,
+          -0.332
+        ],
+        "max": [
+          2.1827,
+          3.2356,
+          0.332
+        ],
+        "size": [
+          3.3488,
+          3.2387,
+          0.664
+        ]
+      },
+      "nodes": [
+        {
+          "name": "belfry-restored"
+        },
+        {
+          "name": "bell",
+          "translation": [
+            0,
+            2.2,
+            0
+          ]
+        }
+      ],
+      "points": {
+        "strike": [
+          0,
+          1.72,
+          0
+        ],
+        "lip": [
+          0,
+          1.37,
+          0
+        ],
+        "perch": [
+          -1.1,
+          3.2,
+          0
+        ]
+      }
+    },
+    {
+      "file": "hut-0.glb",
+      "name": "Village hut",
+      "prop": "hut",
+      "options": {
+        "variant": 0
+      },
+      "triangles": 200,
+      "meshes": 1,
+      "primitives": 6,
+      "materials": [
+        "stone_9a968c",
+        "plaster_f1e2bd",
+        "thatchDark_b98a42",
+        "thatch_d4a85a",
+        "door_5e4630",
+        "post_7a5a3c"
+      ],
+      "bytes": 18196,
+      "boundingBox": {
+        "min": [
+          -4.1371,
+          0,
+          -4.35
+        ],
+        "max": [
+          4.1371,
+          4.75,
+          4.35
+        ],
+        "size": [
+          8.2742,
+          4.75,
+          8.7
+        ]
+      },
+      "nodes": [
+        {
+          "name": "hut-0"
+        }
+      ],
+      "points": {
+        "door": [
+          0,
+          0,
+          3.15
+        ],
+        "roofPeak": [
+          0,
+          4.75,
+          0
+        ],
+        "base": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "hut-1.glb",
+      "name": "Village hut",
+      "prop": "hut",
+      "options": {
+        "variant": 1
+      },
+      "triangles": 224,
+      "meshes": 1,
+      "primitives": 6,
+      "materials": [
+        "stone_9a968c",
+        "plaster_f1e2bd",
+        "thatchDark_b98a42",
+        "thatch_d4a85a",
+        "door_5e4630",
+        "post_7a5a3c"
+      ],
+      "bytes": 19928,
+      "boundingBox": {
+        "min": [
+          -4.1371,
+          0,
+          -4.35
+        ],
+        "max": [
+          4.1371,
+          4.9,
+          4.35
+        ],
+        "size": [
+          8.2742,
+          4.9,
+          8.7
+        ]
+      },
+      "nodes": [
+        {
+          "name": "hut-1"
+        }
+      ],
+      "points": {
+        "door": [
+          0,
+          0,
+          3.15
+        ],
+        "roofPeak": [
+          0,
+          4.9,
+          0
+        ],
+        "base": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "hut-2.glb",
+      "name": "Village hut",
+      "prop": "hut",
+      "options": {
+        "variant": 2
+      },
+      "triangles": 236,
+      "meshes": 1,
+      "primitives": 6,
+      "materials": [
+        "stone_9a968c",
+        "plaster_f1e2bd",
+        "thatchDark_b98a42",
+        "thatch_d4a85a",
+        "door_5e4630",
+        "post_7a5a3c"
+      ],
+      "bytes": 20788,
+      "boundingBox": {
+        "min": [
+          -4.1371,
+          0,
+          -4.35
+        ],
+        "max": [
+          4.1371,
+          4.65,
+          4.35
+        ],
+        "size": [
+          8.2742,
+          4.65,
+          8.7
+        ]
+      },
+      "nodes": [
+        {
+          "name": "hut-2"
+        }
+      ],
+      "points": {
+        "door": [
+          0,
+          0,
+          3.15
+        ],
+        "roofPeak": [
+          0,
+          4.65,
+          0
+        ],
+        "base": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "watchtower.glb",
+      "name": "Watchtower",
+      "prop": "watchtower",
+      "options": {},
+      "triangles": 512,
+      "meshes": 1,
+      "primitives": 6,
+      "materials": [
+        "stone_9a968c",
+        "post_7a5a3c",
+        "brace_8a6038",
+        "timber_a5632f",
+        "roofRedDark_8e1b26",
+        "roofRed_b3202f"
+      ],
+      "bytes": 40700,
+      "boundingBox": {
+        "min": [
+          -2.4466,
+          0,
+          -2.4466
+        ],
+        "max": [
+          2.4466,
+          10,
+          2.4466
+        ],
+        "size": [
+          4.8932,
+          10,
+          4.8932
+        ]
+      },
+      "nodes": [
+        {
+          "name": "watchtower"
+        }
+      ],
+      "points": {
+        "gallery": [
+          0,
+          7.13,
+          0
+        ],
+        "roofTip": [
+          0,
+          10,
+          0
+        ],
+        "base": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "footbridge.glb",
+      "name": "Footbridge",
+      "prop": "footbridge",
+      "options": {},
+      "triangles": 396,
+      "meshes": 1,
+      "primitives": 5,
+      "materials": [
+        "stone_9a968c",
+        "post_7a5a3c",
+        "timber_a5632f",
+        "bridgePlank_b9824a",
+        "brace_8a6038"
+      ],
+      "bytes": 31696,
+      "boundingBox": {
+        "min": [
+          -1.21,
+          0,
+          -2.5
+        ],
+        "max": [
+          1.21,
+          1.6441,
+          2.5
+        ],
+        "size": [
+          2.42,
+          1.6441,
+          5
+        ]
+      },
+      "nodes": [
+        {
+          "name": "footbridge"
+        }
+      ],
+      "points": {
+        "crown": [
+          0,
+          0.72,
+          0
+        ],
+        "entryNear": [
+          0,
+          0.34,
+          2.5
+        ],
+        "entryFar": [
+          0,
+          0.34,
+          -2.5
+        ]
+      }
+    },
+    {
+      "file": "jetty.glb",
+      "name": "Timber jetty",
+      "prop": "jetty",
+      "options": {},
+      "triangles": 384,
+      "meshes": 1,
+      "primitives": 4,
+      "materials": [
+        "timberDark_74431f",
+        "post_7a5a3c",
+        "timber_a5632f",
+        "plank_b9763a"
+      ],
+      "bytes": 30304,
+      "boundingBox": {
+        "min": [
+          -1.2,
+          -0.84,
+          -2.5
+        ],
+        "max": [
+          1.2,
+          0.78,
+          2.496
+        ],
+        "size": [
+          2.4,
+          1.62,
+          4.996
+        ]
+      },
+      "nodes": [
+        {
+          "name": "jetty"
+        }
+      ],
+      "points": {
+        "deck": [
+          0,
+          0.36,
+          0
+        ],
+        "head": [
+          0,
+          0.36,
+          2.5
+        ],
+        "shore": [
+          0,
+          0.36,
+          -2.5
+        ]
+      }
+    },
+    {
+      "file": "wind-pennant.glb",
+      "name": "Wind pennant",
+      "prop": "windPennant",
+      "options": {},
+      "triangles": 63,
+      "meshes": 2,
+      "primitives": 5,
+      "materials": [
+        "stone_9a968c",
+        "post_7a5a3c",
+        "timberLight_c98646",
+        "red_c5343a",
+        "cream_f6e6bd"
+      ],
+      "bytes": 7844,
+      "boundingBox": {
+        "min": [
+          -0.13,
+          0,
+          -0.13
+        ],
+        "max": [
+          0.13,
+          3.5003,
+          1.6
+        ],
+        "size": [
+          0.26,
+          3.5003,
+          1.73
+        ]
+      },
+      "nodes": [
+        {
+          "name": "wind-pennant"
+        },
+        {
+          "name": "flag",
+          "translation": [
+            0,
+            3.38,
+            0
+          ]
+        }
+      ],
+      "points": {
+        "top": [
+          0,
+          3.38,
+          0
+        ],
+        "base": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "blossom-tree.glb",
+      "name": "F1 Blossom tree",
+      "prop": "blossomTree",
+      "options": {},
+      "triangles": 208,
+      "meshes": 1,
+      "primitives": 3,
+      "materials": [
+        "post_7a5a3c",
+        "blossom_f299b5",
+        "blossomShade_e182a1"
+      ],
+      "bytes": 17076,
+      "boundingBox": {
+        "min": [
+          -1.7516,
+          0,
+          -1.6745
+        ],
+        "max": [
+          1.7516,
+          4.9968,
+          1.6775
+        ],
+        "size": [
+          3.5031,
+          4.9968,
+          3.3521
+        ]
+      },
+      "nodes": [
+        {
+          "name": "blossom-tree"
+        }
+      ],
+      "points": {
+        "base": [
+          0,
+          0,
+          0
+        ],
+        "crown": [
+          0,
+          3.6,
+          0
+        ]
+      }
+    },
+    {
+      "file": "rail.glb",
+      "name": "Shooting rail",
+      "prop": "rail",
+      "options": {},
+      "triangles": 144,
+      "meshes": 1,
+      "primitives": 3,
+      "materials": [
+        "post_7a5a3c",
+        "timberDark_74431f",
+        "timber_a5632f"
+      ],
+      "bytes": 12416,
+      "boundingBox": {
+        "min": [
+          -3,
+          0,
+          -0.08
+        ],
+        "max": [
+          3,
+          0.85,
+          0.08
+        ],
+        "size": [
+          6,
+          0.85,
+          0.16
+        ]
+      },
+      "nodes": [
+        {
+          "name": "rail"
+        }
+      ],
+      "points": {
+        "centre": [
+          0,
+          0.85,
+          0
+        ],
+        "left": [
+          -3,
+          0,
+          0
+        ],
+        "right": [
+          3,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "file": "deck.glb",
+      "name": "Archer deck",
+      "prop": "deck",
+      "options": {},
+      "triangles": 156,
+      "meshes": 1,
+      "primitives": 4,
+      "materials": [
+        "timberDark_74431f",
+        "timber_a5632f",
+        "plank_b9763a",
+        "timberLight_c98646"
+      ],
+      "bytes": 13912,
+      "boundingBox": {
+        "min": [
+          -1.6,
+          0,
+          -1.3
+        ],
+        "max": [
+          1.6,
+          0.095,
+          1.3
+        ],
+        "size": [
+          3.2,
+          0.095,
+          2.6
+        ]
+      },
+      "nodes": [
+        {
+          "name": "deck"
+        }
+      ],
+      "points": {
+        "stance": [
+          0,
+          0.08,
+          0
+        ],
+        "front": [
+          0,
+          0.08,
+          1.3
+        ]
+      }
+    }
+  ]
+}

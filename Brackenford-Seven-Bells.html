@@ -80022,7 +80022,7 @@ const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
 //   The lane is 16 m wide and runs 76 m from the line. The ground is levelled under it. A creek crosses at 38 m.
 //   Beyond the creek the lane steps up in four terraces from 43 m, so distance reads without shadows; no stage
 //   stands a target on a step's edge.
-const WORLD2=!RELEASE&&QUERY.get('world')==='2';
+const WORLD2=QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2);   // Willowbank Range, the art pass (stage 2). Off unless asked for: ?world=2, or "world": 2 in src/config.json
 const LANE={half:8,from:-3,to:76,creek:38,steps:[[43,.7],[53,1.4],[63,2.1],[72,2.8]],base:0};
 const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
 // the whole footprint of the new range: lane and shoulders, the creek's band, and the footbridge
@@ -80045,7 +80045,7 @@ function groundAt(x,z){
  const fx=clamp((x+HALF)/CELL,0,N-.0001),fz=clamp((z+HALF)/CELL,0,N-.0001),i=fx|0,j=fz|0,u=fx-i,v=fz-j,k=j*W+i;
  const a=H[k],b=H[k+1],c=H[k+W],d=H[k+W+1];
  const h=u+v<=1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v);
- if(WORLD2){const[al,rt]=laneAt(x,z);if(al>=LANE.steps[0][0]&&al<LANE.to&&Math.abs(rt)<10.5)return LANE.base+laneRise(al);}   // on a terrace
+ if(WORLD2){const[al,rt]=laneAt(x,z);if(al>=LANE.steps[0][0]&&al<LANE.to&&Math.abs(rt)<8)return LANE.base+laneRise(al);}   // on a terrace
  return h;
 }
 const slopeAt=(x,z)=>hyp(groundAt(x+1.5,z)-groundAt(x-1.5,z),groundAt(x,z+1.5)-groundAt(x,z-1.5))/3;
@@ -80382,18 +80382,32 @@ if(WORLD2){
  for(const s of[-1,1])for(let r=-27,i=0;r<27;i++){const len=1.5+2.5*Math.abs(Math.sin(i*2.3+s)),wide=.3+.3*Math.abs(Math.sin(i*1.3+s*3));if(i%4!==3)box(R,P(LANE.creek+s*(1.5+wide/2),r+len/2,.04),V(len,.05,wide),SAND);r+=len;}   // uneven patches of sand, 0.3 to 0.6 m wide, with gaps
  for(const[a,r,k]of[[36.4,-10.5,.5],[39.8,-13,.7],[36.2,10,.6],[39.9,12.2,.45],[36.5,-20,.8],[39.6,21,.7],[36.3,-25.5,.6],[39.7,25,.55]]){const m=mesh(R,new T.DodecahedronGeometry(k,0),ROCK,P(a,r,k*.4));m.rotation.set(a,r,0);m.scale.y=.7;}
  // the terraces: each a solid step across the lane, lighter on top and darker on its face
- let low=0;for(const[at,up]of LANE.steps){const len=LANE.to-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(21,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(21,tall,.06),FACE);low=up;}
+ let low=0;for(const[at,up]of LANE.steps){const len=LANE.to-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(16,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(16,tall,.06),FACE);
+  for(const s of[-1,1]){const run=2.4*(up/.7),m=box(R,P(at+len/2,s*(8+run/2-.05),up/2-.02),V(Math.hypot(run,up),.06,len),EDGE);m.rotation.z=s*Math.atan2(up,run);m.position.y=up/2;}   // each end falls away to the meadow as a grass bank
+  low=up;}
  // the rail at the shooting line, 0.85 m high as a starting height
  for(const r of[-3,-1,1,3])stick(R,P(.9,r,-.3),P(.9,r,.95),.06,timber);
  for(const y of[.85,.45])stick(R,P(.9,-3,y),P(.9,3,y),.045,timber);
- // the stall, beside the line on the right (the climbing wall and tower already stand on the left)
- if(typeof PROPS!=='undefined'){const stall=PROPS.marketStall(T);stall.position.copy(P(-2.5,11.5));stall.rotation.y=-Math.PI/2-.25;R.add(stall);}
+ // the stall, left of the line and outside the lane (world-plan: -1.5 along, 10.5 left), its counter turned toward the archer
+ if(typeof PROPS!=='undefined'){const stall=PROPS.marketStall(T);stall.position.copy(P(-1.5,-10.5));stall.rotation.y=Math.PI/2+.3;R.add(stall);}
+ // the archer's stand: a timber deck, flush with the ground for now (raising it over a channel changes the aim, so it waits for the playtest)
+ for(let i=0;i<8;i++)box(R,P(-.35,-1.4+i*.4,.03),V(.37,.06,2.6),i%2?'#a5632f':'#b9763a');
+ // the path from the stall to the jetty, and the jetty itself at the lake's edge
+ for(let i=0;i<9;i++){const t=i/8,a=-1.5+t*15.5,r=-8.6-6*t*t;const m=box(R,P(a,r,.02),V(1.6,.03,2.3),'#b9a070');m.rotation.y=-Math.atan2(-12*t*6/8,15.5/8)*.5;}
+ {const j=new T.Group();j.position.copy(P(14,-16.5));j.rotation.y=Math.PI/2;R.add(j);for(let i=0;i<6;i++)box(j,V(0,.35,-2.1+i*.85),V(2.4,.08,.78),i%2?'#a5632f':'#b9763a');for(const s of[-1,1])for(const z of[-2.3,0,2.3])stick(j,V(s*1.1,-1.2,z),V(s*1.1,.75,z),.07,timber);}
+ // the village on its rise at the far right: three round huts and the watchtower (world-plan: 82 to 98 m out, 18 to 38 m right)
+ for(const[a,r,k]of[[84,20,1],[89,26,1.15],[95,21,.95]]){const h=new T.Group(),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);R.add(h);
+  mesh(h,new T.CylinderGeometry(3,3,2.4,8),'#f1e2bd',V(0,1.2,0));mesh(h,new T.ConeGeometry(3.7,2.6,8),'#c99a4e',V(0,3.7,0));box(h,V(0,1,-2.98),V(.9,1.9,.1),'#7a5a3c');}
+ {const t=new T.Group(),p=P(90,34),[wx,wz]=yardAt(90,34);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);
+  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.6,-.5,sz*1.6),V(sx*1.2,7.2,sz*1.2),.14,'#7a5a3c');
+  box(t,V(0,7.2,0),V(3.2,.2,3.2),'#a5632f');for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.4,7.2,sz*1.4),V(sx*1.4,9.1,sz*1.4),.1,'#7a5a3c');
+  mesh(t,new T.ConeGeometry(2.8,1.6,4),'#b3202f',V(0,9.9,0)).rotation.y=Math.PI/4;for(const y of[2.4,4.8])for(const sx of[-1,1])stick(t,V(sx*1.5,y-1.6,-1.5),V(sx*1.3,y+.6,1.4),.07,'#8a6038');}
  // the footbridge over the creek, to the right of the lane and clear of it
  {const b=new T.Group();b.position.copy(P(LANE.creek,13.5));R.add(b);
   for(let i=-2;i<=2;i++){const p=box(b,V(0,.42-.07*i*i,i*.95),V(1.9,.1,1),'#b9824a');p.rotation.x=i*.14;}
   for(const s of[-1,1]){for(const z of[-2.1,0,2.1])stick(b,V(s*.9,.1,z),V(s*.9,z?1:1.25,z),.05,timber);stick(b,V(s*.9,.95,-2.1),V(s*.9,1.2,0),.04,timber);stick(b,V(s*.9,1.2,0),V(s*.9,.95,2.1),.04,timber);}}
  // two blossom trees, one each side in the middle distance, well clear of the lane and never behind a target
- for(const[a,r,s]of[[31,-17.5,1],[45,17,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
+ for(const[a,r,s]of[[31,-17.5,1],[46,17,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
   stick(t,V(0,-.3,0),V(.15,2.6,0),.2,'#7a5a3c');stick(t,V(.1,1.9,0),V(-.9,3.1,.2),.1,'#7a5a3c');stick(t,V(.1,2.1,0),V(.9,3.2,-.3),.1,'#7a5a3c');
   for(const[x,y,z,k]of[[0,3.9,0,1.5],[-1.2,3.4,.3,1.05],[1.2,3.5,-.4,1.1]])mesh(t,new T.IcosahedronGeometry(k,0),BLOSSOM,V(x,y,z));}
 }
@@ -80402,7 +80416,7 @@ if(WORLD2){
 const BOARD=WORLD2?{cloth:'#f6e6bd',edge:'#4A2943',text:'#4A2943',mark:'#6D3362'}:{cloth:'#273c34',edge:'#bcaa7a',text:'#ffebbd',mark:'#f0c75a'};   // mark: the wind and best-score line (gold on the old board; plum on cloth, where gold is kept for rewards)
 const board=(()=>{
  const c=document.createElement('canvas');c.width=1024;c.height=640;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
- const[bx,bz]=yardAt(11,WORLD2?12:6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));
+ const[bx,bz]=yardAt(WORLD2?12.5:11,WORLD2?9.8:6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));if(WORLD2)m.scale.setScalar(.75);   // Willowbank: 3.6 m wide, 42 degrees to the right
  m.position.set(bx,g+2.6,bz);m.rotation.y=Math.atan2(YARD.x-bx,YARD.z-bz);scene.add(m);
  for(const k of[-1,1]){const px=bx+k*2.35*Math.cos(m.rotation.y),pz=bz-k*2.35*Math.sin(m.rotation.y);stick(scene,V(px,g-.3,pz),V(px,g+4.15,pz),.06,timber);}
  let shown='';
@@ -80558,7 +80572,7 @@ for(const[id,text,right]of[['back','◀  BACK',-3.6],['again','AGAIN',0],['next'
  rangeSigns[id]=item;
 }
 // a pennant by the line that points downwind and stretches with the wind
-const sock=(()=>{const[x,z]=yardAt(5,WORLD2?-10.5:-4.6),g=groundAt(x,z),root=new T.Group();root.position.set(x,g,z);scene.add(root);stick(root,V(0,-.3,0),V(0,3.3,0),.05,timber);return pennant(root,0,3.25,'#e8743b');})();
+const sock=(()=>{const[x,z]=yardAt(WORLD2?11:5,WORLD2?-9.8:-4.6),g=groundAt(x,z),root=new T.Group();root.position.set(x,g,z);scene.add(root);stick(root,V(0,-.3,0),V(0,3.3,0),.05,timber);return pennant(root,0,3.25,'#e8743b');})();
 // numbers that rise from a hit
 const pops=[];
 function popup(text,pos,color,life=1.4){

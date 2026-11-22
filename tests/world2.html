@@ -17,7 +17,7 @@ async function run(){
  // the lane is level from the line to the creek, across its whole width
  {let worst=0;for(let a=-2;a<=36;a+=2)for(const b of[-7.5,-4,0,4,7.5])worst=Math.max(worst,Math.abs(ground(a,b)));out.level={worstBump:R(worst),ok:worst<.02};}
  // the terraces: 0.7 m from 43 m, then 1.4, 2.1 and 2.8 m
- out.terraces={at40:R(ground(40,0)),at45:R(ground(45,0)),at55:R(ground(55,3)),at65:R(ground(65,-5)),at75:R(ground(75,6)),offTheLaneAt65:R(ground(65,14))};
+ out.terraces={at40:R(ground(40,0)),at45:R(ground(45,0)),at55:R(ground(55,3)),at65:R(ground(65,-5)),at75:R(ground(75,6)),offTheLaneAt65:R(ground(65,14)),justOffTheEdgeAt65:R(ground(65,8.6))};
  out.terraces.ok=out.terraces.at40===0&&out.terraces.at45===.7&&out.terraces.at55===1.4&&out.terraces.at65===2.1&&out.terraces.at75===2.8&&Math.abs(out.terraces.offTheLaneAt65)<.3;
  // far targets stand on their terrace, and an arrow aimed at one strikes it
  {stage("The long lane");const t=rounds()[0],c=centre(t),a=v.laneAt(c.x,c.z)[0],s0=r.score,d=fire(c);
@@ -42,7 +42,7 @@ async function run(){
   await put("world2-above",from(at(36,0,0),at(-30,0,44)));await put("world2-side",from(at(40,2,1),at(24,30,10)));await put("world2-line",from(at(6,0,1),at(-9,-3,3.2)));
  }
  // without the switch, and on the release page, the layout is not there
- for(const[name,query]of[["noSwitch","?release=0"],["releasePage","?world=2"]]){
+ for(const[name,query]of[["noSwitch","?release=0"],["releasePage","?world=0"]]){
   const w2=await game(query),v2=w2.vale,p=V(v2.YARD.x+v2.YARD.ux*65,0,v2.YARD.z+v2.YARD.uz*65),q=V(v2.YARD.x+v2.YARD.ux*45,0,v2.YARD.z+v2.YARD.uz*45);
   out[name]={on:v2.WORLD2,base:v2.LANE.base,ok:v2.WORLD2===false&&v2.LANE.base===0};
  }

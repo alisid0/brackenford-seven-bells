@@ -71,10 +71,13 @@ const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
 // ---- The new range layout, built to assets/concepts/world-2-layout-v2.jpg (ChatGPT's picture, with Gemini's
 // corrections). Never on in release mode; outside it, ?world=2 turns it on. With it off nothing below changes anything.
 //   The lane is 16 m wide and runs 76 m from the line. The ground is levelled under it. A creek crosses at 38 m.
-//   Beyond the creek the lane steps up in four terraces, so distance reads without shadows.
+//   Beyond the creek the lane steps up in four terraces from 43 m, so distance reads without shadows; no stage
+//   stands a target on a step's edge.
 const WORLD2=!RELEASE&&QUERY.get('world')==='2';
-const LANE={half:8,from:-3,to:76,creek:38,steps:[[41,.7],[52,1.4],[63,2.1],[74,2.8]],base:0};
+const LANE={half:8,from:-3,to:76,creek:38,steps:[[43,.7],[53,1.4],[63,2.1],[72,2.8]],base:0};
 const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
+// the whole footprint of the new range: lane and shoulders, the creek's band, and the footbridge
+const inRange2=(x,z)=>{const[a,b]=laneAt(x,z);return(a>-12&&a<84&&Math.abs(b)<13)||(Math.abs(a-LANE.creek)<4.5&&Math.abs(b)<29)||(Math.abs(a-LANE.creek)<6&&Math.abs(b-13.5)<5);};
 const inLane=(x,z)=>{const[a,b]=laneAt(x,z);return a>LANE.from&&a<LANE.to&&Math.abs(b)<LANE.half;};
 const laneRise=a=>{let h=0;for(const[at,up]of LANE.steps)if(a>=at)h=up;return h;};
 const yardBits=new T.Group();   // training-yard timber that stands in the lane; hidden while the new range is in use
@@ -93,7 +96,7 @@ function groundAt(x,z){
  const fx=clamp((x+HALF)/CELL,0,N-.0001),fz=clamp((z+HALF)/CELL,0,N-.0001),i=fx|0,j=fz|0,u=fx-i,v=fz-j,k=j*W+i;
  const a=H[k],b=H[k+1],c=H[k+W],d=H[k+W+1];
  const h=u+v<=1?a+(b-a)*u+(c-a)*v:d+(c-d)*(1-u)+(b-d)*(1-v);
- if(WORLD2){const[al,rt]=laneAt(x,z);if(al>=LANE.steps[0][0]&&al<80&&Math.abs(rt)<8.5)return LANE.base+laneRise(al);}   // on a terrace
+ if(WORLD2){const[al,rt]=laneAt(x,z);if(al>=LANE.steps[0][0]&&al<LANE.to&&Math.abs(rt)<10.5)return LANE.base+laneRise(al);}   // on a terrace
  return h;
 }
 const slopeAt=(x,z)=>hyp(groundAt(x+1.5,z)-groundAt(x-1.5,z),groundAt(x,z+1.5)-groundAt(x,z-1.5))/3;
@@ -213,7 +216,7 @@ const dummy=new T.Object3D(), tint=new T.Color();
   if(rng()>dens)continue;
   trees.push({x,z,g,s:.8+rng()*.9,pine:rng()<smooth(g,8,22)*.6+.3,r:rng()*6.28,v:rng()});
  }
- for(let i=trees.length-1;i>=0;i--)if(inYard(trees[i].x,trees[i].z))trees.splice(i,1);
+ for(let i=trees.length-1;i>=0;i--)if(inYard(trees[i].x,trees[i].z)||(WORLD2&&inRange2(trees[i].x,trees[i].z)))trees.splice(i,1);
  const white=new T.MeshStandardMaterial({color:0xffffff,flatShading:true,roughness:.95});
  const trunkGeo=new T.CylinderGeometry(.7,1,1,6,1,true).translate(0,.5,0),coneGeo=new T.ConeGeometry(1,1,7).translate(0,.5,0),blobGeo=new T.IcosahedronGeometry(1,0);
  const pines=trees.filter(t=>t.pine).length;
@@ -238,7 +241,7 @@ const dummy=new T.Object3D(), tint=new T.Color();
  for(let i=0;i<rocks.count;i++){
   let x,z,g,tries=0;do{x=(rng()-.5)*780;z=(rng()-.5)*780;g=groundAt(x,z);tries++;}while((g<.4||hyp(x,z)<26||onPath(x,z)||SITES.some(s=>hyp(x-s.x,z-s.z)<9))&&tries<40);
   const s=.4+rng()*rng()*2.6;put(rocks,i,x,g+s*.2,z,s*(1+rng()*.5),s*.75,s,rng()*6,'#8f8c83',.8+rng()*.35);
-  if(inYard(x,z)){dummy.scale.setScalar(0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);continue;}
+  if(inYard(x,z)||(WORLD2&&inRange2(x,z))){dummy.scale.setScalar(0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);continue;}
   if(s>1)addCollider(x,z,s*.95,g+s*.9);
  }
  scene.add(rocks);
@@ -251,7 +254,7 @@ function updateGrass(px,pz){
  if(hyp(px-grassX,pz-grassZ)<3)return;grassX=px;grassZ=pz;
  for(let i=0;i<tufts.length;i++){
   const t=tufts[i],x=t[0]+TILE*Math.round((px-t[0])/TILE),z=t[1]+TILE*Math.round((pz-t[1])/TILE),g=groundAt(x,z);
-  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)||(WORLD2&&inLane(x,z))?0:t[2]);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
+  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)||(WORLD2&&inRange2(x,z))?0:t[2]);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
  }
  grass.instanceMatrix.needsUpdate=true;
 }
@@ -370,7 +373,7 @@ const moverMid=yardAt(16,-7);
  scene.add(yardBits);stick(yardBits,V(ends[0][0],gm+2.8,ends[0][1]),V(ends[1][0],gm+2.8,ends[1][1]),.07,timber);
  for(const[x,z]of ends)stick(yardBits,V(x,groundAt(x,z)-.4,z),V(x,gm+2.8,z),.08,timber);
  // the shooting line
- for(let b=-8;b<=8;b+=3.2){const[x,z]=yardAt(0,b),g=groundAt(x,z);stick(scene,V(x,g-.3,z),V(x,g+.55,z),.06,timber);}
+ for(let b=-8;b<=8;b+=3.2){const[x,z]=yardAt(0,b),g=groundAt(x,z);stick(WORLD2?yardBits:scene,V(x,g-.3,z),V(x,g+.55,z),.06,timber);}
  // low climbing wall, pegged on the side that looks toward +x
  const gw=groundAt(-27,-17);box(scene,V(-27,gw+1,-17),V(1,4,3),stone);pegs(scene,-26.5,-17,1.5,gw,gw+3,11);
  wallTop={x:-27,z:-17,hx:.5,hz:1.5,top:gw+3};platforms.push(wallTop);
@@ -392,15 +395,16 @@ const moverMid=yardAt(16,-7);
 if(WORLD2){
  const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);
  const P=(along,right,y=0)=>V(-right,y,along);   // a place given as metres along the lane, to the right, and up
- const LAWN='#a6c55a',FACE='#7d9c41',WATER='#4a90d9',SAND='#d2c08a',ROCK='#9a968c',BLOSSOM='#F299B5';
+ const LAWN='#99B44E',EDGE='#8DA748',FACE='#829B47',WATER='#5897BE',SAND='#B8A275',ROCK='#9a968c',BLOSSOM='#F299B5';   // ChatGPT's colours, set after it saw the first build
  // the lane: a lighter strip of mown grass from the line to the far end
  box(R,P((LANE.from+LANE.to)/2,0,.02),V(LANE.half*2,.04,LANE.to-LANE.from),LAWN);
+ for(const s of[-1,1])for(let a=LANE.from,i=0;a<40;i++){const len=3+2.5*Math.abs(Math.sin(i*1.7+s)),wide=.7+.6*Math.abs(Math.sin(i*2.9+s*2));box(R,P(a+len/2,s*(LANE.half+wide/2),.015),V(wide,.03,len),EDGE);a+=len;}   // a broken shoulder about a metre wide, so the lawn does not end in a ruled line
  // the creek: a flat band of water with sandy banks and a few stones, crossing at 38 m
  box(R,P(LANE.creek,0,.05),V(54,.06,3),WATER);
- for(const s of[-1,1])box(R,P(LANE.creek+s*1.75,0,.04),V(54,.05,.5),SAND);
+ for(const s of[-1,1])for(let r=-27,i=0;r<27;i++){const len=1.5+2.5*Math.abs(Math.sin(i*2.3+s)),wide=.3+.3*Math.abs(Math.sin(i*1.3+s*3));if(i%4!==3)box(R,P(LANE.creek+s*(1.5+wide/2),r+len/2,.04),V(len,.05,wide),SAND);r+=len;}   // uneven patches of sand, 0.3 to 0.6 m wide, with gaps
  for(const[a,r,k]of[[36.4,-10.5,.5],[39.8,-13,.7],[36.2,10,.6],[39.9,12.2,.45],[36.5,-20,.8],[39.6,21,.7],[36.3,-25.5,.6],[39.7,25,.55]]){const m=mesh(R,new T.DodecahedronGeometry(k,0),ROCK,P(a,r,k*.4));m.rotation.set(a,r,0);m.scale.y=.7;}
  // the terraces: each a solid step across the lane, lighter on top and darker on its face
- let low=0;for(const[at,up]of LANE.steps){const len=80-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(17,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(17,tall,.06),FACE);low=up;}
+ let low=0;for(const[at,up]of LANE.steps){const len=LANE.to-at,tall=up-low;box(R,P(at+len/2,0,low+tall/2),V(21,tall,len),LAWN);box(R,P(at-.02,0,low+tall/2),V(21,tall,.06),FACE);low=up;}
  // the rail at the shooting line, 0.85 m high as a starting height
  for(const r of[-3,-1,1,3])stick(R,P(.9,r,-.3),P(.9,r,.95),.06,timber);
  for(const y of[.85,.45])stick(R,P(.9,-3,y),P(.9,3,y),.045,timber);
@@ -420,7 +424,7 @@ if(WORLD2){
 const BOARD=WORLD2?{cloth:'#f6e6bd',edge:'#4A2943',text:'#4A2943',mark:'#6D3362'}:{cloth:'#273c34',edge:'#bcaa7a',text:'#ffebbd',mark:'#f0c75a'};   // mark: the wind and best-score line (gold on the old board; plum on cloth, where gold is kept for rewards)
 const board=(()=>{
  const c=document.createElement('canvas');c.width=1024;c.height=640;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
- const[bx,bz]=yardAt(11,6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));
+ const[bx,bz]=yardAt(11,WORLD2?12:6.5),g=groundAt(bx,bz),m=new T.Mesh(new T.PlaneGeometry(4.8,3),new T.MeshBasicMaterial({map:tex}));
  m.position.set(bx,g+2.6,bz);m.rotation.y=Math.atan2(YARD.x-bx,YARD.z-bz);scene.add(m);
  for(const k of[-1,1]){const px=bx+k*2.35*Math.cos(m.rotation.y),pz=bz-k*2.35*Math.sin(m.rotation.y);stick(scene,V(px,g-.3,pz),V(px,g+4.15,pz),.06,timber);}
  let shown='';
@@ -546,7 +550,7 @@ for(const[id,text,right]of[['back','◀  BACK',-3.6],['again','AGAIN',0],['next'
  rangeSigns[id]=item;
 }
 // a pennant by the line that points downwind and stretches with the wind
-const sock=(()=>{const[x,z]=yardAt(5,-4.6),g=groundAt(x,z),root=new T.Group();root.position.set(x,g,z);scene.add(root);stick(root,V(0,-.3,0),V(0,3.3,0),.05,timber);return pennant(root,0,3.25,'#e8743b');})();
+const sock=(()=>{const[x,z]=yardAt(5,WORLD2?-10.5:-4.6),g=groundAt(x,z),root=new T.Group();root.position.set(x,g,z);scene.add(root);stick(root,V(0,-.3,0),V(0,3.3,0),.05,timber);return pennant(root,0,3.25,'#e8743b');})();
 // numbers that rise from a hit
 const pops=[];
 function popup(text,pos,color,life=1.4){
@@ -1240,7 +1244,7 @@ function rangeStep(dt){
 function setMode(m){
  if(RELEASE)m='range';
  state.mode=m;range.on=m==='range';
- for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!(WORLD2&&range.on);
+ for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!(WORLD2&&range.on);if(WORLD2)for(const t of targets){if(t.beacon)t.beacon.visible=!range.on&&!t.hit;if(t.kind==='lantern')t.root.visible=!range.on&&!t.hit;if(t.kind==='straw')t.root.parent.visible=!range.on;}   // on the new range the bells' beams, the lanterns and the roaming straw rounds are hidden while shooting
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())rig.rotation.y=look.yaw;setStage(clamp(state.range.open,0,STAGES.length-1));}
  else{if(replay.on)endReplay();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
@@ -1505,7 +1509,8 @@ function stepArrows(dt){
    const g=groundAt(p.x,p.z);
    if(p.y<0&&g<0){rangeEnded(q);p.y=0;thump(1800,.3,.12);burst(p,'#d8ecee',12,1,1.3);recycle(i);q.stuck=true;break;}
    if(p.y<=g){
-    rangeEnded(q);p.y=g;thump(350,.1,.14);burst(p,'#8d7b58',q.spent?3:7,.7);
+    const wet=WORLD2&&(()=>{const[a,b]=laneAt(p.x,p.z);return Math.abs(a-LANE.creek)<1.5&&Math.abs(b)<27;})();   // in the creek
+    rangeEnded(q);p.y=g;thump(wet?1800:350,wet?.3:.1,.14);burst(p,wet?'#d8ecee':'#8d7b58',wet?12:q.spent?3:7,wet?1:.7,wet?1.3:1);
     if(q.spent){
      settle(q,dir,0);q.flat=true;u.body.rotation.set(0,0,0);p.y+=.02;
      const l=hyp(dir.x,dir.z);q.o.quaternion.setFromUnitVectors(FWD,l>.001?V(dir.x/l,0,dir.z/l):V(1,0,0));

@@ -16,16 +16,20 @@ async function run(){
  v.begin(false);steps(2);
  // the lane is level from the line to the creek, across its whole width
  {let worst=0;for(let a=-2;a<=36;a+=2)for(const b of[-7.5,-4,0,4,7.5])worst=Math.max(worst,Math.abs(ground(a,b)));out.level={worstBump:R(worst),ok:worst<.02};}
- // the terraces: 0.7 m at 41 m, then 1.4, 2.1 and 2.8 m
- out.terraces={at40:R(ground(40,0)),at45:R(ground(45,0)),at55:R(ground(55,3)),at65:R(ground(65,-5)),at75:R(ground(75,6)),offTheLaneAt65:R(ground(65,12))};
+ // the terraces: 0.7 m from 43 m, then 1.4, 2.1 and 2.8 m
+ out.terraces={at40:R(ground(40,0)),at45:R(ground(45,0)),at55:R(ground(55,3)),at65:R(ground(65,-5)),at75:R(ground(75,6)),offTheLaneAt65:R(ground(65,14))};
  out.terraces.ok=out.terraces.at40===0&&out.terraces.at45===.7&&out.terraces.at55===1.4&&out.terraces.at65===2.1&&out.terraces.at75===2.8&&Math.abs(out.terraces.offTheLaneAt65)<.3;
  // far targets stand on their terrace, and an arrow aimed at one strikes it
  {stage("The long lane");const t=rounds()[0],c=centre(t),a=v.laneAt(c.x,c.z)[0],s0=r.score,d=fire(c);
   out.target60={along:R(a),standsOn:R(t.base.position.y-L.base-ground(a,v.laneAt(c.x,c.z)[1])),distance:R(d),scored:r.score-s0,ok:r.score>s0};}
  {stage("Master of the line");const far=rounds().find(t=>v.laneAt(centre(t).x,centre(t).z)[0]>60),c=centre(far),a=v.laneAt(c.x,c.z);
   out.target70={along:R(a[0]),right:R(a[1]),height:R(c.y-L.base),terrace:R(ground(a[0],0)),ok:c.y-L.base>ground(a[0],0)+.5};}
- // a target at 35 m has lawn behind it, not the creek: the creek runs from 36.5 to 39.5 m
- out.creek={at:L.creek,target35clear:35<L.creek-1.5};
+ // a target at 35 m has lawn behind it, not the creek (36.5 to 39.5 m); one at 40 m stands on level lawn clear of the bank and of the first terrace
+ out.creek={at:L.creek,target35clear:35<L.creek-1.5,levelAt40:R(ground(40,0)),firstTerraceAt:L.steps[0][0],target40clear:Math.abs(ground(40,0))<.001&&L.steps[0][0]-40>=2.5};
+ // every stage's targets stand inside the lane, and none within a metre of a terrace edge or in the creek
+ {const bad=[];v.STAGES.forEach((st,i)=>{for(const m of st.marks){if(Math.abs(m[1]||0)+(m[3]?m[3][0]:0)>8)bad.push(st.name+" off the lane");if(Math.abs(m[0]-L.creek)<1.6)bad.push(st.name+" in the creek");for(const[e]of L.steps)if(Math.abs(m[0]-e)<1)bad.push(st.name+" on the edge at "+e);}});out.stages={checked:v.STAGES.length,faults:bad,ok:bad.length===0};}
+ // the scoreboard and the wind pennant stand outside the lane
+
  // shades still behave on the levelled lane
  {stage("Creepers");let moved=0;const sp=v.spirits.find(s=>s.base.visible),p0=sp.base.position.clone();for(let i=0;i<600;i++)steps(1);moved=sp.base.position.distanceTo(p0);
   out.creeper={moved:R(moved),onTheGround:R(sp.base.position.y-L.base),ok:moved>2&&Math.abs(sp.base.position.y-L.base)<.05};}
@@ -42,7 +46,7 @@ async function run(){
   const w2=await game(query),v2=w2.vale,p=V(v2.YARD.x+v2.YARD.ux*65,0,v2.YARD.z+v2.YARD.uz*65),q=V(v2.YARD.x+v2.YARD.ux*45,0,v2.YARD.z+v2.YARD.uz*45);
   out[name]={on:v2.WORLD2,base:v2.LANE.base,ok:v2.WORLD2===false&&v2.LANE.base===0};
  }
- out.allOk=["level","terraces","target60","target70","creeper","noSwitch","releasePage"].every(k=>out[k].ok)&&out.creek.target35clear;
+ out.allOk=["level","terraces","target60","target70","creeper","stages","noSwitch","releasePage"].every(k=>out[k].ok)&&out.creek.target35clear&&out.creek.target40clear;
  out.errors=errors;return out;
 }
 run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,300)+JSON.stringify(errors));

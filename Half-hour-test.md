@@ -61,7 +61,7 @@ Open the third link and play **First shade** and **The warren** (stages 4 and 7 
 
 ## Part 5: the pictures (about 6 minutes)
 
-In `assets/concepts/` open `world-map-v1.jpg` and the five aerial views: `aerial-2a-reedwater-pier.jpg`, `aerial-2b-flint-quarry-v2.jpg`, `aerial-3a-alderwood.jpg`, `aerial-3b-bellward-village.jpg`, `aerial-4-stormcrest.jpg`.
+In `assets/concepts/` open `world-map-v1.jpg` and the five aerial views: `aerial-2a-reedwater-pier.jpg`, `aerial-2b-flint-quarry-v2.jpg`, `aerial-3a-alderwood.jpg`, `aerial-3b-bellward-village-v2.jpg`, `aerial-4-stormcrest.jpg`.
 
 For each of the five, one line:
 

@@ -1,5 +1,5 @@
 // Props built in code from the approved concept pictures (assets/concepts). The build carries this file; the game uses
-// the stall and belfry now and swaps in the Willowbank builders as stage 2 lands. tests/props.html shows them and saves pictures to assets/renders.
+// the stall, belfry and Willowbank builders. tests/props.html shows them and saves pictures to assets/renders.
 // Every builder takes three.js (T) and returns a Group in metres, standing on y=0 unless noted, facing +z, with its
 // attachment points listed in group.userData.
 (function(){
@@ -10,8 +10,9 @@ const PALETTE={                       // taken from assets/concepts/style-sheet-
  thornwood:'#5b2c3a',thornwoodDark:'#47212d',thornwoodLight:'#6d3646',ember:'#c8372d',
  plaster:'#f1e2bd',thatch:'#d4a85a',thatchDark:'#b98a42',door:'#5e4630',
  post:'#7a5a3c',brace:'#8a6038',plank:'#b9763a',bridgePlank:'#b9824a',
- stone:'#9a968c',stoneDark:'#7f7c73',roofRed:'#b3202f',roofRedDark:'#8e1b26',
- blossom:'#F299B5',blossomShade:'#e182a1'
+ frameTimber:'#825435',frameTimberDark:'#6a4229',
+ stone:'#9a968c',stoneDark:'#7f7c73',roofRed:'#ae493d',roofRedDark:'#8a372d',
+ blossom:'#F299B5',blossomShade:'#c97894'
 };
 function kit(T){
  const mats=new Map();
@@ -44,6 +45,16 @@ function kit(T){
   const bCone=(r,h,segs,c,x=0,y=0,z=0,rx=0,ry=0,rz=0)=>push(new T.ConeGeometry(r,h,segs),c,x,y,z,rx,ry,rz);
   const bIco=(r,det,c,x=0,y=0,z=0,sx=1,sy=1,sz=1)=>push(new T.IcosahedronGeometry(r,det),c,x,y,z,0,0,0,sx,sy,sz);
   const bTorus=(r,tube,rs,ts,c,x=0,y=0,z=0,rx=0,ry=0,rz=0)=>push(new T.TorusGeometry(r,tube,rs,ts),c,x,y,z,rx,ry,rz);
+  const bQuad=(a,b,cPt,d,color,two=true)=>{
+   const geo=new T.BufferGeometry();
+   geo.setAttribute('position',new T.Float32BufferAttribute([a.x,a.y,a.z, b.x,b.y,b.z, cPt.x,cPt.y,cPt.z,  a.x,a.y,a.z, cPt.x,cPt.y,cPt.z, d.x,d.y,d.z],3));
+   parts.push({geo,color,two});
+  };
+  const bTri=(a,b,cPt,color,two=true)=>{
+   const geo=new T.BufferGeometry();
+   geo.setAttribute('position',new T.Float32BufferAttribute([a.x,a.y,a.z, b.x,b.y,b.z, cPt.x,cPt.y,cPt.z],3));
+   parts.push({geo,color,two});
+  };
   const mergeList=(list,withCol)=>{
    let total=0;for(const p of list)total+=p.geo.attributes.position.count;
    const pos=new Float32Array(total*3),col=withCol?new Float32Array(total*3):null,tc=withCol?new T.Color():null;
@@ -66,7 +77,7 @@ function kit(T){
   const buildSingle=(parent,two=false)=>{
    const m=new T.Mesh(mergeList(parts,true),vmat(two));parent.add(m);parts.length=0;return m;
   };
-  return{push,box:bBox,beam:bBeam,rod:bRod,cyl:bCyl,cone:bCone,ico:bIco,torus:bTorus,buildByColor,buildSingle};
+  return{push,box:bBox,beam:bBeam,rod:bRod,cyl:bCyl,cone:bCone,ico:bIco,torus:bTorus,quad:bQuad,tri:bTri,buildByColor,buildSingle};
  };
  return{mat,vmat,add,box,beam,V,batch};
 }
@@ -136,15 +147,15 @@ function marketStall(T){
  return g;
 }
 
-// H8 The forked belfry of The Silent Peal (design/theme.md; picture assets/concepts/theme-belfry-states.jpg). One stands
-// in every place. 3.2 m tall, posts 1.4 m apart, the forks' tips 2.2 m apart, crossbeam at 2.3 m, a bell 0.75 m tall
-// and 0.65 m across the lip. Faces +z. Merged down to 8 meshes (static frame, bell body, gold lip, 3 thorn bands,
-// silent crow+brambles+tied ribbon, restored streaming ribbon).
+// H8 The forked belfry of The Silent Peal (design/theme.md; improved per design/willowbank-props-review.md).
+// 3.2 m tall, posts 1.4 m apart, forks' tips 2.2 m apart, crossbeam at 2.3 m, bell 0.75 m tall and 0.65 m across
+// the lip. Faces +z. Merged to 8 meshes (frame, bell body, bold 0.08 m gold lip, 3 separate thorn bands for
+// Bell Watch bind(0..3), silent crow+brambles+tied ribbon, restored sweeping two-bend ribbon).
 function belfry(T,opt={}){
  const k=kit(T),{add,V,batch}=k,g=new T.Group();
  const TIMBER='#825435',TIMBER_D='#6a4229',IRON='#3B3538',BRONZE='#AE783E',GOLD='#F0C75A',PLUM='#4A2943',PLUM_L='#6D3362',CREAM='#F6E6BD',HEM='#ae493d',ROPE='#c9a66b',EMBER='#E02E32';
  const matIron=k.mat(IRON,true),matBronze=k.mat(BRONZE,true);
- // 1. static frame: posts, forks, iron straps, crossbeam, fixed hanger bracket, rope coil, ribbon post-wrap (1 mesh)
+ // 1. static frame: posts, forks, iron straps, crossbeam, fixed hanger clevis, rope coil, triple cream lash (1 mesh)
  const fr=batch();
  for(const s of[-1,1]){
   fr.beam(V(s*.76,0,0),V(s*.68,2.52,0),.2,TIMBER);                                  // post, leaning in a little
@@ -154,23 +165,27 @@ function belfry(T,opt={}){
  fr.beam(V(-.86,2.3,0),V(.86,2.3,0),.16,TIMBER_D);
  fr.box(.08,.2,.06,IRON,0,2.16,0);                                                  // iron hanger clevis under the crossbeam
  for(let i=0;i<3;i++)fr.torus(.19-.01*i,.04,5,10,ROPE,-.76,.05+i*.075,0,Math.PI/2,0,0);   // rope coiled at the left post
- fr.box(.24,.2,.24,CREAM,.69,2.0,0);                                                // ribbon wrap round the post, in both states
+ for(let i=0;i<3;i++)fr.box(.25,.055,.25,CREAM,.69,1.93+i*.07,0);                   // triple cream rope lash on right post
  fr.buildSingle(g,false);
- // 2-3. swinging bell pivot at y=2.2: body (material swapped in set) + gold lip (2 meshes)
+ // 2-3. swinging bell pivot at y=2.2: 0.75 m body (material swapped in set) + bold 0.08 m continuous gold lip (2 meshes)
  const bell=new T.Group();bell.position.set(0,2.2,0);g.add(bell);
  const prof=[[.04,-.12],[.15,-.13],[.2,-.3],[.235,-.58],[.325,-.83],[.325,-.87]].map(([r,y])=>new T.Vector2(r,y));
- const body=add(bell,new T.LatheGeometry(prof,8),IRON,0,0,0,true);body.material=matIron;
- const lip=add(bell,new T.CylinderGeometry(.332,.332,.08,8,1,true),GOLD,0,-.83,0,true);
- // 4-6. three individual thorn bands on the bell (1 merged mesh per band so bind(0..3) toggles each cleanly)
+ const body=add(bell,new T.LatheGeometry(prof,10),IRON,0,0,0,true);body.material=matIron;
+ const lipProf=[[.312,-.872],[.346,-.872],[.34,-.786],[.312,-.786]].map(([r,y])=>new T.Vector2(r,y));
+ const lip=add(bell,new T.LatheGeometry(lipProf,10),GOLD,0,0,0,true);
+ // 4-6. three separate thorn bands on the bell: two wide-set silent bands (leaving half the iron showing) + 3rd middle band for Bell Watch bind(3)
  const thorns=new T.Group();bell.add(thorns);
  const bands=[];
- for(const[y,r,tilt,turn]of[[-.42,.235,.42,0],[-.66,.3,-.36,1.3],[-.54,.27,.1,2.4]]){
+ for(const[y,r,tilt,turn]of[[-.33,.22,.34,.1],[-.68,.308,-.32,1.4],[-.51,.266,.12,2.4]]){
   const tb=batch();
-  tb.torus(r,.028,5,10,PLUM,0,y,0,Math.PI/2+tilt,0,turn);
-  for(let i=0;i<5;i++){const a=i/5*Math.PI*2+turn;tb.cone(.03,.13,4,PLUM_L,Math.cos(a)*(r+.05),y+Math.sin(a)*Math.sin(tilt)*r,Math.sin(a)*(r+.05)*Math.cos(tilt),0,-a,-Math.PI/2);}
+  tb.torus(r,.032,5,10,PLUM,0,y,0,Math.PI/2+tilt,0,turn);
+  for(let i=0;i<5;i++){
+   const a=i/5*Math.PI*2+turn;
+   tb.cone(.042,.16,4,PLUM_L,Math.cos(a)*(r+.06),y+Math.sin(a)*Math.sin(tilt)*r,Math.sin(a)*(r+.06)*Math.cos(tilt),0,-a,-Math.PI/2);
+  }
   bands.push(tb.buildSingle(thorns,false));
  }
- // 7. silent-only extras: foot brambles + perched shade crow + lashed flat ribbon (1 merged DoubleSide mesh)
+ // 7. silent-only extras: foot brambles + perched shade crow + flat lashed ribbon with swallowtail hem (1 DoubleSide mesh)
  const sil=batch();
  for(const[x,z,sk]of[[-1.15,.15,1],[-.45,-.2,.8],[.5,.2,.9],[1.1,-.1,1.05]])for(let i=0;i<3;i++){const a=i*2.1+x;sil.beam(V(x,0,z),V(x+Math.cos(a)*.3*sk,.32*sk,z+Math.sin(a)*.3*sk),.035,PLUM);}
  const cx=-1.1,cy=3.2;
@@ -178,13 +193,29 @@ function belfry(T,opt={}){
  sil.ico(.075,0,PLUM,cx+.2,cy+.27,0);sil.cone(.03,.11,4,PLUM_L,cx+.3,cy+.26,0,0,0,-Math.PI/2);
  sil.box(.22,.03,.1,PLUM_L,cx-.26,cy+.13,0,0,0,.35);for(const s of[-1,1])sil.box(.012,.1,.012,PLUM,cx+.02,cy+.05,s*.04);
  sil.box(.02,.02,.02,EMBER,cx+.24,cy+.29,.062);sil.box(.02,.02,.02,EMBER,cx+.24,cy+.29,-.062);
- sil.box(.22,1.0,.025,CREAM,.72,1.45,.115);sil.box(.05,1.0,.027,HEM,.72,1.45,.116);
- {const sh=new T.Shape();sh.moveTo(-.11,0);sh.lineTo(.11,0);sh.lineTo(.11,-.16);sh.lineTo(0,-.07);sh.lineTo(-.11,-.16);sh.closePath();sil.push(new T.ShapeGeometry(sh),HEM,.72,.95,.128,0,0,0,1,1,1,true);}
+ sil.box(.23,.96,.025,CREAM,.71,1.44,.115);
+ {const sh=new T.Shape();sh.moveTo(-.115,0);sh.lineTo(.115,0);sh.lineTo(.115,-.18);sh.lineTo(0,-.08);sh.lineTo(-.115,-.18);sh.closePath();sil.push(new T.ShapeGeometry(sh),HEM,.71,.96,.128,0,0,0,1,1,1,true);}
  const silentExtras=sil.buildSingle(g,true);
- // 8. restored-only streaming ribbon (1 merged mesh)
+ // 8. restored-only streaming ribbon: two broad smooth cloth bends with continuous red hem carried along the bottom (1 DoubleSide mesh)
  const lo=batch();
- {const pts=[[.8,2.0],[1.15,1.82],[1.5,1.96],[1.85,1.74],[2.15,1.84]];for(let i=0;i<pts.length-1;i++){const a=V(pts[i][0],pts[i][1],0),b=V(pts[i+1][0],pts[i+1][1],.02*i),d=b.clone().sub(a),rz=Math.atan2(d.y,d.x);lo.box(d.length()+.02,.22-.03*i,.02,CREAM,(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2,0,0,rz);lo.box(d.length()+.02,.05,.022,HEM,(a.x+b.x)/2,(a.y+b.y)/2-.085+.012*i,(a.z+b.z)/2,0,0,rz);}}
- const loose=lo.buildSingle(g,false);
+ {
+  const segs=8,x0=.78,x1=2.24,ribH=.23,hemH=.065;
+  const pt=(t,dy)=>{
+   const x=x0+(x1-x0)*t;
+   const y=1.96-.24*t+.14*Math.sin(t*Math.PI*2-1.15)+dy;
+   const z=.06*Math.sin(t*Math.PI*2);
+   return V(x,y,z);
+  };
+  for(let i=0;i<segs;i++){
+   const t0=i/segs,t1=(i+1)/segs,h0=ribH*(1-.14*t0),h1=ribH*(1-.14*t1);
+   lo.quad(pt(t0,h0/2),pt(t0,-h0/2+hemH),pt(t1,-h1/2+hemH),pt(t1,h1/2),CREAM,true);
+   lo.quad(pt(t0,-h0/2+hemH),pt(t0,-h0/2),pt(t1,-h1/2),pt(t1,-h1/2+hemH),HEM,true);
+  }
+  const hEnd=ribH*.86;
+  lo.tri(pt(1,hEnd/2),pt(1,0),pt(1.07,hEnd*.35),CREAM,true);
+  lo.tri(pt(1,0),pt(1,-hEnd/2),pt(1.07,-hEnd*.35),HEM,true);
+ }
+ const loose=lo.buildSingle(g,true);
  function set(state){
   const on=state==='restored';body.material=on?matBronze:matIron;lip.visible=on;thorns.visible=!on;bands.forEach((b,i)=>b.visible=i<2);silentExtras.visible=!on;loose.visible=on;g.userData.state=on?'restored':'silent';
  }
@@ -195,151 +226,171 @@ function belfry(T,opt={}){
  return g;
 }
 
-// 1. Village hut (opt.variant 0, 1 or 2): round cream wall 3 m in radius, deep two-band thatched overhang, recessed
-// timber doorway facing +z. Reads clearly as a building from 85 m.
+// 1. Village hut (opt.variant 0, 1 or 2): 12-sided cream (#F6E6BD) wall 3 m in radius, sharper two-band thatched roof
+// with 0.85 m eaves overhang, deeply recessed (0.12 m) framed timber doorway facing +z.
 function hut(T,opt={}){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,b=batch();
- const v=((opt.variant|0)%3+3)%3,wallH=v===1?2.45:v===2?2.2:2.3,peakH=wallH+2.45;
- b.cyl(3.12,3.18,.28,10,P.stone,0,.14,0);                                          // stone plinth grounding the round wall
- b.cyl(3,3,wallH,10,P.plaster,0,wallH/2,0);                                        // 3 m radius round cream wall
- // low thatched roof in two bands with a deep 1.35 m overhang
- b.cyl(2.35,4.35,1.15,10,P.thatchDark,0,wallH+.35,0);                              // broad lower overhang band
- b.cone(2.55,1.55,10,P.thatch,0,wallH+1.675,0);                                    // lighter upper thatch crown
- // recessed timber doorway on +z with thick jambs, overhanging lintel and threshold stone
- b.box(1.26,1.88,.34,P.door,0,.94,2.86);                                           // recessed dark door leaf
- b.box(1.52,.14,.42,P.stone,0,.07,3.06);                                           // threshold step
- b.box(1.76,.2,.3,P.post,0,1.98,3.04);                                             // heavy timber lintel
- for(const s of[-1,1])b.box(.18,1.92,.26,P.post,s*.72,.96,3.02);                   // door jambs
- if(v===1){                                                                        // variant 1: hearth hut with roof chimney
-  b.box(.62,.95,.62,P.stone,.85,wallH+1.85,-.55);b.box(.74,.14,.74,P.post,.85,wallH+2.36,-.55);
- }else if(v===2){                                                                  // variant 2: shuttered cottage with side window
-  const a=.88,cx=Math.sin(a)*2.94,cz=Math.cos(a)*2.94;
-  b.box(.82,.82,.2,P.door,cx,1.3,cz,0,a,0);b.box(1.06,.14,.24,P.post,Math.sin(a)*3.02,1.76,Math.cos(a)*3.02,0,a,0);b.box(1.06,.12,.24,P.post,Math.sin(a)*3.02,.84,Math.cos(a)*3.02,0,a,0);
+ const v=((opt.variant|0)%3+3)%3,wallH=v===1?2.07:v===2?2.2:2.3,peakH=wallH+2.32;
+ b.cyl(3.12,3.18,.26,12,P.stone,0,.13,0);                                          // grounded 12-sided stone plinth
+ b.cyl(3,3,wallH,12,P.cream,0,wallH/2,0);                                          // 3 m radius round cream wall
+ // two broad thatch bands with clear ridge step and dark under-eave soffit (r = 3.85 m -> 0.85 m overhang)
+ b.cyl(3.8,3.8,.08,12,P.door,0,wallH-.04,0);                                       // shaded eave underside
+ b.cyl(2.26,3.85,1.02,12,P.thatchDark,0,wallH+.43,0);                              // darker broad lower thatch band
+ b.cone(2.42,1.38,12,P.thatch,0,wallH+1.63,0);                                     // brighter upper thatch crown
+ // doorway recessed 0.12 m inside a proud heavy timber frame (+z)
+ const doorH=Math.min(1.82,wallH-.26),lintelD=v===1?.4:.32;
+ b.box(1.22,doorH,.2,P.door,0,doorH/2+.06,2.86);                                   // recessed dark timber door leaf
+ b.box(1.56,.14,.44,P.stone,0,.07,3.06);                                           // stone threshold step
+ for(const s of[-1,1])b.box(.2,doorH+.06,.3,P.post,s*.71,doorH/2+.08,3.01);        // proud jambs (+0.12 m ahead of door)
+ b.box(1.86,.22,lintelD,P.post,0,doorH+.16,3.02+(v===1?.04:0));                    // deep timber lintel
+ if(v===1){                                                                        // variant 1: squatter hearth hut + off-centre stone chimney stack
+  b.box(.56,1.05,.56,P.stone,1.05,wallH+1.72,-.68);
+  b.box(.7,.15,.7,P.post,1.05,wallH+2.3,-.68);
+ }else if(v===2){                                                                  // variant 2: same roof & recessed doorway + recessed shuttered window
+  const a=.88,cx=Math.sin(a)*2.88,cz=Math.cos(a)*2.88;
+  b.box(.82,.82,.2,P.door,cx,1.25,cz,0,a,0);
+  b.box(1.08,.16,.28,P.post,Math.sin(a)*3.01,1.72,Math.cos(a)*3.01,0,a,0);
+  b.box(1.08,.14,.28,P.post,Math.sin(a)*3.01,.78,Math.cos(a)*3.01,0,a,0);
+  for(const s of[-1,1]){const ox=Math.cos(a)*s*.46,oz=-Math.sin(a)*s*.46;b.box(.14,.84,.26,P.post,Math.sin(a)*3.0+ox,1.25,Math.cos(a)*3.0+oz,0,a,0);}
  }
  b.buildByColor(g);
- g.userData={name:'Village hut',variant:v,width:8.7,height:peakH,radius:3,points:{door:V(0,0,3.15),roofPeak:V(0,peakH,0),base:V(0,0,0)},forward:'+z',note:'round cream hut (variant 0-2), 3 m wall radius, two-band thatched eaves, doorway faces +z'};
+ g.userData={name:'Village hut',variant:v,width:7.7,height:peakH,radius:3,points:{door:V(0,0,3.18),roofPeak:V(0,peakH,0),base:V(0,0,0)},forward:'+z',note:'12-sided cream hut (variants 0-2), 3 m wall radius, 0.85 m two-band thatched eaves, 0.12 m recessed doorway on +z'};
  return g;
 }
 
-// 2. Watchtower: 10 m to the roof tip, thick splayed legs, two-sided X-braces (+z and -z), overhanging gallery deck
-// with low rail, red pyramid roof.
+// 2. Watchtower: 10 m to the roof tip, 20% thicker legs in #825435, one bold X per front/back face (busy lower diagonals
+// removed), 0.18 m gallery fascia band, clean low rail, banner-red (#AE493D) roof.
 function watchtower(T){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,b=batch();
- // four thick splayed timber legs on stone plinth blocks
+ // four 20% thicker splayed square timber legs on chunky stone plinths
  for(const sx of[-1,1])for(const sz of[-1,1]){
-  b.box(.56,.34,.56,P.stone,sx*1.85,.17,sz*1.85);
-  b.rod(V(sx*1.85,.25,sz*1.85),V(sx*1.38,6.88,sz*1.38),.24,6,P.post,.28);
+  b.box(.64,.36,.64,P.stone,sx*1.86,.18,sz*1.86);
+  b.beam(V(sx*1.86,.25,sz*1.86),V(sx*1.38,6.84,sz*1.38),.34,P.frameTimber);
  }
- // horizontal girts at mid height (all four sides) + thick X-braces on front (+z) and back (-z)
+ // one clean mid-level girt ring (all 4 sides) + ONE single bold X per visible face (+z and -z, y = 3.15..6.65)
  for(const s of[-1,1]){
-  b.beam(V(-1.62,3.4,s*1.62),V(1.62,3.4,s*1.62),.18,P.brace);
-  b.beam(V(s*1.62,3.4,-1.62),V(s*1.62,3.4,1.62),.18,P.brace);
-  for(const[y0,y1,x0,x1]of[[.35,3.35,1.78,1.58],[3.45,6.65,1.58,1.38]]){
-   b.beam(V(-x0,y0,s*x0),V(x1,y1,s*x1),.16,P.brace);b.beam(V(x0,y0,s*x0),V(-x1,y1,s*x1),.16,P.brace);
-  }
+  b.beam(V(-1.62,3.15,s*1.62),V(1.62,3.15,s*1.62),.2,P.frameTimber);
+  b.beam(V(s*1.62,3.15,-1.62),V(s*1.62,3.15,1.62),.2,P.frameTimber);
+  b.beam(V(-1.6,3.18,s*1.6),V(1.38,6.68,s*1.38),.19,P.frameTimber);
+  b.beam(V(1.6,3.18,s*1.6),V(-1.38,6.68,s*1.38),.19,P.frameTimber);
  }
- // gallery deck (4.4 x 4.4 m, wider than legs) + corner brackets + posts + low rail
- b.box(4.4,.28,4.4,P.timber,0,6.99,0);
+ // gallery deck (4.4 x 4.4 m) wrapped with a bold 0.18 m perimeter fascia so the level reads clearly
+ b.box(4.4,.26,4.4,P.timber,0,6.98,0);
+ for(const s of[-1,1]){
+  b.box(4.56,.22,.14,P.frameTimberDark,0,6.98,s*2.21);
+  b.box(.14,.22,4.56,P.frameTimberDark,s*2.21,6.98,0);
+ }
  for(const sx of[-1,1])for(const sz of[-1,1]){
-  b.beam(V(sx*1.42,6.05,sz*1.42),V(sx*2.02,6.88,sz*2.02),.15,P.brace);
-  b.box(.22,1.68,.22,P.post,sx*1.96,7.96,sz*1.96);
+  b.beam(V(sx*1.44,6.15,sz*1.44),V(sx*2.02,6.88,sz*2.02),.16,P.frameTimberDark);
+  b.box(.24,1.56,.24,P.frameTimber,sx*1.98,7.9,sz*1.98);
  }
- for(const s of[-1,1])for(const y of[7.62,8.08]){
-  b.box(3.92,.13,.13,P.brace,0,y,s*1.96);b.box(.13,.13,3.92,P.brace,s*1.96,y,0);
+ // single clean low gallery rail all round
+ for(const s of[-1,1]){
+  b.box(3.96,.15,.14,P.frameTimber,0,7.94,s*1.98);
+  b.box(.14,.15,3.96,P.frameTimber,s*1.98,7.94,0);
  }
- // red pyramid roof with dark eaves fascia, tip at exactly y = 10.0 m
- b.box(4.76,.14,4.76,P.roofRedDark,0,8.52,0);
- b.cone(3.46,1.54,4,P.roofRed,0,9.23,0,0,Math.PI/4,0);
+ // banner-red (#AE493D) pyramid roof with crisp dark fascia, tip at exactly y = 10.00 m
+ b.box(4.82,.18,4.82,P.roofRedDark,0,8.52,0);
+ b.cone(3.48,1.52,4,P.roofRed,0,9.24,0,0,Math.PI/4,0);
  b.buildByColor(g);
- g.userData={name:'Watchtower',width:4.89,height:10,points:{gallery:V(0,7.13,0),roofTip:V(0,10,0),base:V(0,0,0)},forward:'+z',note:'10 m village watchtower with splayed legs, two-sided X-braces, overhanging gallery and red roof'};
+ g.userData={name:'Watchtower',width:4.92,height:10,points:{gallery:V(0,7.11,0),roofTip:V(0,10,0),base:V(0,0,0)},forward:'+z',note:'10 m village watchtower with thick legs, one X per face, 0.22 m gallery fascia and #AE493D roof'};
  return g;
 }
 
-// 3. Footbridge: 5 m long (along z) and 2 m wide (along x), crowned plank deck, thick posts with one solid handrail
-// per side, stone abutments at both ends.
+// 3. Footbridge: 5 m long (along z) and 2 m wide (along x), shallow 0.22 m crown in 5 straight deck segments,
+// two continuous curved timber stringers, 0.12 m posts, shallow-curved handrails, lowered bevelled stone abutments.
 function footbridge(T){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,b=batch();
- const arch=z=>.66-.082*z*z;
- // stone abutments at z = +-2.25 (outer faces at +-2.5 m -> exact 5 m length)
+ const arch=z=>.48-.055*z*z;                                                        // shallow 0.22 m crown over 4 m span
+ // lowered stone abutments bevelled into the banks (outer faces at +-2.5 m -> exact 5.0 m span, standing on y=0)
  for(const s of[-1,1]){
-  b.box(2.34,.44,.5,P.stone,0,.22,s*2.25);
-  for(const sx of[-1,1])b.box(.34,.56,.5,P.stone,sx*1.04,.28,s*2.25);
+  b.box(2.26,.28,.44,P.stone,0,.14,s*2.18);
+  b.box(2.26,.14,.26,P.stone,0,.11,s*2.34,s*.42,0,0);                               // bevelled outer bank slope
  }
- // arched stringers underneath + 9 crowned deck planks
- for(const sx of[-1,1])for(const[z0,z1]of[[-2.05,-1],[-1,0],[0,1],[1,2.05]])b.beam(V(sx*.82,arch(z0)-.12,z0),V(sx*.82,arch(z1)-.12,z1),.14,P.post);
- for(let i=-4;i<=4;i++){
-  const z=i*.49,y=arch(z),rx=Math.atan(.164*z);
-  b.box(2,.12,.45,i%2?P.bridgePlank:P.timber,0,y,z,rx,0,0);
+ // two continuous arched timber stringers underneath
+ const sPts=[-2.05,-1.05,0,1.05,2.05];
+ for(const sx of[-1,1])for(let i=0;i<sPts.length-1;i++)b.beam(V(sx*.88,arch(sPts[i])-.11,sPts[i]),V(sx*.88,arch(sPts[i+1])-.11,sPts[i+1]),.13,P.timberDark,.16);
+ // 5 straight crowned deck plank segments spanning z = -2.0..+2.0 m
+ for(let i=-2;i<=2;i++){
+  const z=i*.84,y=arch(z),rx=Math.atan(.11*z);
+  b.box(2,.11,.8,i%2?P.bridgePlank:P.timber,0,y,z,rx,0,0);
  }
- // three thick posts + one solid arched handrail per side
+ // 0.12 m posts + smooth 4-segment shallow-curved handrail per side
+ const rPts=[-1.95,-.98,0,.98,1.95];
  for(const sx of[-1,1]){
-  for(const z of[-2,0,2]){const top=arch(z)+.96;b.box(.15,top,.15,P.post,sx*.92,top/2,z);}
-  b.beam(V(sx*.92,arch(-2)+.92,-2),V(sx*.92,arch(0)+.92,0),.11,P.brace,.13);
-  b.beam(V(sx*.92,arch(0)+.92,0),V(sx*.92,arch(2)+.92,2),.11,P.brace,.13);
+  for(const z of[-1.9,0,1.9]){const top=arch(z)+.88;b.box(.12,top,.12,P.post,sx*.94,top/2,z);}
+  for(let i=0;i<rPts.length-1;i++)b.beam(V(sx*.94,arch(rPts[i])+.86,rPts[i]),V(sx*.94,arch(rPts[i+1])+.86,rPts[i+1]),.11,P.frameTimber,.12);
  }
  b.buildByColor(g);
- g.userData={name:'Footbridge',width:2.42,length:5,height:1.62,points:{crown:V(0,.72,0),entryNear:V(0,.34,2.5),entryFar:V(0,.34,-2.5)},forward:'+z',note:'5 x 2 m crowned plank footbridge with stone abutments and single solid handrails; spans along z'};
+ g.userData={name:'Footbridge',width:2.26,length:5,height:1.42,points:{crown:V(0,.54,0),entryNear:V(0,.26,2.5),entryFar:V(0,.26,-2.5)},forward:'+z',note:'5 x 2 m footbridge with 0.22 m crown in 5 segments, continuous stringers, 0.12 m posts and bevelled stone abutments'};
  return g;
 }
 
-// 4. Jetty: 5 m long (along z) by 2.4 m wide (along x), deck top at y = 0.36 m, piles reaching 1.2 m below the deck
-// (down to y = -0.84 m) with mooring bollard tops above the planks.
+// 4. Jetty: 5 m long (along z) by 2.4 m wide (along x), thicker 0.20 m piles in 4 pairs reaching 1.2 m below deck
+// (down to y = -0.84 m), two lengthwise 0.14 x 0.20 m beams under planks, outer piles rising 0.26 m above planks.
 function jetty(T){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,b=batch();
- const deckY=.36,pileBot=deckY-1.2,pileTop=.78;
- // under-deck stringers and cross-bearers
- for(const sx of[-1,1])b.box(.14,.14,4.86,P.timberDark,sx*.92,deckY-.13,0);
- for(const z of[-2.15,-.72,.72,2.15]){
-  b.box(2.26,.12,.14,P.timberDark,0,deckY-.14,z);
-  for(const sx of[-1,1])b.rod(V(sx*1.08,pileBot,z),V(sx*1.08,pileTop,z),.09,6,P.post);
- }
- // 10 deck planks spanning 5.0 m x 2.4 m
- for(let i=0;i<10;i++)b.box(2.4,.08,.46,i%2?P.plank:P.timber,0,deckY-.04,-2.27+i*.504);
+ const deckY=.36,pileBot=deckY-1.2;
+ // two beefy 0.14 x 0.20 m lengthwise beams directly beneath the deck
+ for(const sx of[-1,1])b.box(.14,.2,4.88,P.timberDark,sx*.92,deckY-.18,0);
+ // 4 pairs of chunky 0.20 m piles + cross-bearers; outer water-end pair stands +0.26 m above planks to mark the end
+ const zs=[-2.12,-.71,.71,2.12];
+ zs.forEach((z,idx)=>{
+  const top=deckY+(idx===3?.26:.17);
+  b.box(2.26,.14,.14,P.timberDark,0,deckY-.17,z);
+  for(const sx of[-1,1])b.rod(V(sx*1.06,pileBot,z),V(sx*1.06,top,z),.1,8,P.frameTimber);
+ });
+ // 8 chunky deck planks spanning exact 5.0 m x 2.4 m
+ for(let i=0;i<8;i++)b.box(2.4,.09,.58,i%2?P.plank:P.timber,0,deckY-.045,-2.21+i*.6314);
  b.buildByColor(g);
- g.userData={name:'Timber jetty',width:2.4,length:5,height:pileTop-pileBot,deckY,points:{deck:V(0,deckY,0),head:V(0,deckY,2.5),shore:V(0,deckY,-2.5)},forward:'+z',note:'5 x 2.4 m jetty; y=0 is waterline, deck top at y=0.36, piles reach 1.2 m below deck to y=-0.84'};
+ g.userData={name:'Timber jetty',width:2.4,length:5,height:deckY+.26-pileBot,deckY,points:{deck:V(0,deckY,0),head:V(0,deckY,2.5),shore:V(0,deckY,-2.5)},forward:'+z',note:'5 x 2.4 m jetty; y=0 is waterline, deck top y=0.36, 0.20 m piles reach 1.2 m below deck to y=-0.84'};
  return g;
 }
 
-// 5. Wind pennant: 3.5 m pole standing on y = 0, with a 1.6 m red-and-cream striped pennant as a separate child in
-// userData.flag extending along +z so the game can turn (rotation.y) and stretch (scale.z) it with the wind.
+// 5. Wind pennant: 3.5 m pole with two cream rope ties, and a 1.48 m tapered cloth pennant with two broad bends
+// in wide #AE493D and #F6E6BD stripes as a separate child in userData.flag extending along +z.
 function windPennant(T){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,pb=batch();
  pb.box(.26,.16,.26,P.stone,0,.08,0);                                               // base stone collar
- pb.cyl(.042,.065,3.44,6,P.post,0,1.72,0);                                          // tapered timber pole
+ pb.cyl(.045,.07,3.44,6,P.frameTimber,0,1.72,0);                                    // tapered timber pole
  pb.ico(.065,0,P.timberLight,0,3.445,0);                                            // finial knob peaking at 3.50 m
+ for(const y of[3.36,2.85])pb.cyl(.072,.072,.05,6,P.cream,0,y,0);                   // two chunky cream rope ties at the hoist
  pb.buildByColor(g);
- // separate flag child at pole top, 1.6 m long along +z, four alternating red and cream stripes
- const flag=new T.Group();flag.position.set(0,3.38,0);g.add(flag);
- const fb=batch(),L=1.6,H=.72,bands=4;
- for(let i=0;i<bands;i++){
-  const z0=i/bands*L,z1=(i+1)/bands*L,t0=z0/L,t1=z1/L,yTop0=-t0*H/2,yBot0=-H+t0*H/2,yTop1=-t1*H/2,yBot1=-H+t1*H/2;
-  const geo=new T.BufferGeometry();
-  const pts=i<bands-1?[0,yTop0,z0, 0,yBot0,z0, 0,yBot1,z1,  0,yTop0,z0, 0,yBot1,z1, 0,yTop1,z1]:[0,yTop0,z0, 0,yBot0,z0, 0,-H/2,z1];
-  geo.setAttribute('position',new T.Float32BufferAttribute(pts,3));
-  fb.push(geo,i%2?P.cream:P.red,0,0,0,0,0,0,1,1,1,true);
+ // separate cloth flag child at pole top: 1.48 m taper, 0.52 m hoist, two broad bends, 3 wide red/cream/red stripes
+ const flag=new T.Group();flag.position.set(0,3.37,0);g.add(flag);
+ const fb=batch(),L=1.48,H=.52,segs=9;
+ const pTop=t=>V(.07*Math.sin(t*Math.PI*2),-.5*H*t+.035*Math.sin(t*Math.PI*2),t*L);
+ const pBot=t=>V(.07*Math.sin(t*Math.PI*2),-H+.5*H*t+.035*Math.sin(t*Math.PI*2),t*L);
+ for(let i=0;i<segs;i++){
+  const t0=i/segs,t1=(i+1)/segs,col=(i>=3&&i<6)?P.cream:P.roofRed;
+  if(i<segs-1)fb.quad(pTop(t0),pBot(t0),pBot(t1),pTop(t1),col,true);
+  else fb.tri(pTop(t0),pBot(t0),pTop(1),col,true);
  }
  fb.buildByColor(flag);
- g.userData={name:'Wind pennant',width:.26,height:3.5,flag,points:{top:V(0,3.38,0),base:V(0,0,0)},forward:'+z',note:'3.5 m pole with 1.6 m red-and-cream striped pennant in userData.flag extending along +z'};
+ g.userData={name:'Wind pennant',width:.26,height:3.5,flag,points:{top:V(0,3.37,0),base:V(0,0,0)},forward:'+z',note:'3.5 m pole with two rope ties and 1.48 m wavy striped cloth pennant in userData.flag extending along +z'};
  return g;
 }
 
-// 6. Blossom tree (F1): 5 m tall with a 3.5 m faceted crown in #F299B5; opt.scale scales the whole tree.
+// 6. Blossom tree (F1): 5 m tall, bent trunk with visible fork gap, five broad flattened asymmetric canopy lobes
+// (~4.25 m wide) in #F299B5 on top and muted rose (#c97894) underneath; opt.scale scales the whole tree.
 function blossomTree(T,opt={}){
  const {V,batch}=kit(T),g=new T.Group(),P=PALETTE,b=batch(),sc=opt.scale||1;
- b.cyl(.22,.34,.45,6,P.post,0,.225,0);                                              // rooted base flare
- b.rod(V(0,.35,0),V(.14,2.65,0),.16,6,P.post,.22);                                  // main trunk
- b.rod(V(.08,1.95,0),V(-.98,3.3,.2),.09,5,P.post,.14);                              // left bough
- b.rod(V(.1,2.1,0),V(1.02,3.4,-.25),.09,5,P.post,.14);                              // right bough
- b.rod(V(.06,2.15,0),V(.05,3.4,.85),.08,5,P.post,.12);                              // front bough
- // 3.5 m faceted crown peaking at y = 5.0 m
- b.ico(1.16,0,P.blossom,0,4.01,0);
- b.ico(.86,0,P.blossom,-1.02,3.52,.18);
- b.ico(.86,0,P.blossom,1.02,3.58,-.2);
- b.ico(.82,0,P.blossomShade,-.1,3.38,.98);
- b.ico(.84,0,P.blossomShade,.18,3.68,-.96);
+ // gently bent trunk with a clean visible V-fork gap beneath the crown
+ b.cyl(.24,.36,.44,6,P.frameTimber,0,.22,0);                                        // root flare
+ b.rod(V(0,.35,0),V(-.1,1.45,.04),.2,6,P.frameTimber,.24);                          // lower curved trunk
+ b.rod(V(-.1,1.38,.04),V(.05,2.42,0),.16,6,P.frameTimber,.2);                       // upper bend to fork
+ b.rod(V(.02,2.28,0),V(-1.05,3.26,.16),.095,5,P.frameTimber,.14);                   // left fork bough (leaves open V gap)
+ b.rod(V(.05,2.34,0),V(.96,3.42,-.18),.095,5,P.frameTimber,.14);                    // right fork bough
+ b.rod(V(.02,2.35,0),V(.16,3.34,-.78),.085,5,P.frameTimber,.12);                    // back bough
+ // five broad flattened asymmetric canopy lobes peaking at exact y = 5.00 m
+ b.ico(1.12,0,P.blossom,.22,4.26,-.06,1.22,.78,1.14);                               // upper right-centre crest
+ b.ico(.92,0,P.blossom,-1.24,3.46,.22,1.18,.74,1.05);                               // broad offset left overhang
+ b.ico(.92,0,P.blossom,1.16,3.7,-.2,1.14,.74,1.05);                                 // right wing lobe
+ b.ico(.84,0,P.blossomShade,.36,3.28,.86,1.12,.72,1.0);                             // muted rose front-under lobe
+ b.ico(.86,0,P.blossomShade,-.46,3.56,-.8,1.14,.74,1.02);                           // muted rose back-under lobe
  b.buildByColor(g);
  if(sc!==1)g.scale.setScalar(sc);
- g.userData={name:'F1 Blossom tree',width:3.5*sc,height:5*sc,scale:sc,points:{base:V(0,0,0),crown:V(0,3.6*sc,0)},forward:'+z',note:'5 m blossom tree with 3.5 m crown in #F299B5; opt.scale defaults to 1'};
+ g.userData={name:'F1 Blossom tree',width:4.25*sc,height:5*sc,scale:sc,points:{base:V(0,0,0),crown:V(0,3.7*sc,0)},forward:'+z',note:'5 m blossom tree with bent forked trunk and 5 broad flattened lobes (#F299B5 / muted rose); opt.scale defaults to 1'};
  return g;
 }
 

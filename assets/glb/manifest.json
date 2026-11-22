@@ -130,36 +130,36 @@
       "options": {
         "state": "silent"
       },
-      "triangles": 1071,
+      "triangles": 1103,
       "meshes": 2,
       "primitives": 12,
       "materials": [
-        "belfryTimber_825435",
-        "belfryTimberDark_6a4229",
+        "frameTimber_825435",
+        "frameTimberDark_6a4229",
         "iron_3b3538",
         "rope_c9a66b",
         "cream_f6e6bd",
         "plum_4a2943",
         "plumLight_6d3362",
         "emberEye_e02e32",
-        "hem_ae493d"
+        "roofRed_ae493d"
       ],
-      "bytes": 84380,
+      "bytes": 86668,
       "boundingBox": {
         "min": [
           -1.4685,
           -0.0167,
-          -0.3786
+          -0.3852
         ],
         "max": [
           1.2929,
           3.5338,
-          0.4106
+          0.4231
         ],
         "size": [
           2.7613,
           3.5505,
-          0.7892
+          0.8082
         ]
       },
       "nodes": [
@@ -200,35 +200,35 @@
       "options": {
         "state": "restored"
       },
-      "triangles": 624,
+      "triangles": 650,
       "meshes": 2,
       "primitives": 8,
       "materials": [
-        "belfryTimber_825435",
-        "belfryTimberDark_6a4229",
+        "frameTimber_825435",
+        "frameTimberDark_6a4229",
         "iron_3b3538",
         "rope_c9a66b",
         "cream_f6e6bd",
-        "hem_ae493d",
+        "roofRed_ae493d",
         "bronze_ae783e",
         "gold_f0c75a"
       ],
-      "bytes": 50168,
+      "bytes": 52048,
       "boundingBox": {
         "min": [
           -1.166,
           -0.0032,
-          -0.332
+          -0.346
         ],
         "max": [
-          2.1827,
+          2.3422,
           3.2356,
-          0.332
+          0.346
         ],
         "size": [
-          3.3488,
+          3.5082,
           3.2387,
-          0.664
+          0.692
         ]
       },
       "nodes": [
@@ -269,33 +269,33 @@
       "options": {
         "variant": 0
       },
-      "triangles": 200,
+      "triangles": 276,
       "meshes": 1,
       "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "plaster_f1e2bd",
+        "cream_f6e6bd",
+        "door_5e4630",
         "thatchDark_b98a42",
         "thatch_d4a85a",
-        "door_5e4630",
         "post_7a5a3c"
       ],
-      "bytes": 18196,
+      "bytes": 23652,
       "boundingBox": {
         "min": [
-          -4.1371,
+          -3.85,
           0,
-          -4.35
+          -3.85
         ],
         "max": [
-          4.1371,
-          4.75,
-          4.35
+          3.85,
+          4.62,
+          3.85
         ],
         "size": [
-          8.2742,
-          4.75,
-          8.7
+          7.7,
+          4.62,
+          7.7
         ]
       },
       "nodes": [
@@ -307,11 +307,11 @@
         "door": [
           0,
           0,
-          3.15
+          3.18
         ],
         "roofPeak": [
           0,
-          4.75,
+          4.62,
           0
         ],
         "base": [
@@ -328,33 +328,33 @@
       "options": {
         "variant": 1
       },
-      "triangles": 224,
+      "triangles": 300,
       "meshes": 1,
       "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "plaster_f1e2bd",
+        "cream_f6e6bd",
+        "door_5e4630",
         "thatchDark_b98a42",
         "thatch_d4a85a",
-        "door_5e4630",
         "post_7a5a3c"
       ],
-      "bytes": 19928,
+      "bytes": 25380,
       "boundingBox": {
         "min": [
-          -4.1371,
+          -3.85,
           0,
-          -4.35
+          -3.85
         ],
         "max": [
-          4.1371,
-          4.9,
-          4.35
+          3.85,
+          4.445,
+          3.85
         ],
         "size": [
-          8.2742,
-          4.9,
-          8.7
+          7.7,
+          4.445,
+          7.7
         ]
       },
       "nodes": [
@@ -366,11 +366,11 @@
         "door": [
           0,
           0,
-          3.15
+          3.18
         ],
         "roofPeak": [
           0,
-          4.9,
+          4.39,
           0
         ],
         "base": [
@@ -387,33 +387,33 @@
       "options": {
         "variant": 2
       },
-      "triangles": 236,
+      "triangles": 336,
       "meshes": 1,
       "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "plaster_f1e2bd",
+        "cream_f6e6bd",
+        "door_5e4630",
         "thatchDark_b98a42",
         "thatch_d4a85a",
-        "door_5e4630",
         "post_7a5a3c"
       ],
-      "bytes": 20788,
+      "bytes": 27976,
       "boundingBox": {
         "min": [
-          -4.1371,
+          -3.85,
           0,
-          -4.35
+          -3.85
         ],
         "max": [
-          4.1371,
-          4.65,
-          4.35
+          3.85,
+          4.52,
+          3.85
         ],
         "size": [
-          8.2742,
-          4.65,
-          8.7
+          7.7,
+          4.52,
+          7.7
         ]
       },
       "nodes": [
@@ -425,11 +425,11 @@
         "door": [
           0,
           0,
-          3.15
+          3.18
         ],
         "roofPeak": [
           0,
-          4.65,
+          4.52,
           0
         ],
         "base": [
@@ -444,33 +444,33 @@
       "name": "Watchtower",
       "prop": "watchtower",
       "options": {},
-      "triangles": 512,
+      "triangles": 416,
       "meshes": 1,
       "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "post_7a5a3c",
-        "brace_8a6038",
+        "frameTimber_825435",
         "timber_a5632f",
-        "roofRedDark_8e1b26",
-        "roofRed_b3202f"
+        "frameTimberDark_6a4229",
+        "roofRedDark_8a372d",
+        "roofRed_ae493d"
       ],
-      "bytes": 40700,
+      "bytes": 33812,
       "boundingBox": {
         "min": [
-          -2.4466,
+          -2.4607,
           0,
-          -2.4466
+          -2.4607
         ],
         "max": [
-          2.4466,
+          2.4607,
           10,
-          2.4466
+          2.4607
         ],
         "size": [
-          4.8932,
+          4.9215,
           10,
-          4.8932
+          4.9215
         ]
       },
       "nodes": [
@@ -481,7 +481,7 @@
       "points": {
         "gallery": [
           0,
-          7.13,
+          7.11,
           0
         ],
         "roofTip": [
@@ -501,32 +501,33 @@
       "name": "Footbridge",
       "prop": "footbridge",
       "options": {},
-      "triangles": 396,
+      "triangles": 372,
       "meshes": 1,
-      "primitives": 5,
+      "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "post_7a5a3c",
+        "timberDark_74431f",
         "timber_a5632f",
         "bridgePlank_b9824a",
-        "brace_8a6038"
+        "post_7a5a3c",
+        "frameTimber_825435"
       ],
-      "bytes": 31696,
+      "bytes": 30576,
       "boundingBox": {
         "min": [
-          -1.21,
-          0,
-          -2.5
+          -1.13,
+          -0.0069,
+          -2.4872
         ],
         "max": [
-          1.21,
-          1.6441,
-          2.5
+          1.13,
+          1.3999,
+          2.4872
         ],
         "size": [
-          2.42,
-          1.6441,
-          5
+          2.26,
+          1.4068,
+          4.9745
         ]
       },
       "nodes": [
@@ -537,17 +538,17 @@
       "points": {
         "crown": [
           0,
-          0.72,
+          0.54,
           0
         ],
         "entryNear": [
           0,
-          0.34,
+          0.26,
           2.5
         ],
         "entryFar": [
           0,
-          0.34,
+          0.26,
           -2.5
         ]
       }
@@ -557,16 +558,16 @@
       "name": "Timber jetty",
       "prop": "jetty",
       "options": {},
-      "triangles": 384,
+      "triangles": 424,
       "meshes": 1,
       "primitives": 4,
       "materials": [
         "timberDark_74431f",
-        "post_7a5a3c",
+        "frameTimber_825435",
         "timber_a5632f",
         "plank_b9763a"
       ],
-      "bytes": 30304,
+      "bytes": 33196,
       "boundingBox": {
         "min": [
           -1.2,
@@ -575,13 +576,13 @@
         ],
         "max": [
           1.2,
-          0.78,
-          2.496
+          0.62,
+          2.4998
         ],
         "size": [
           2.4,
-          1.62,
-          4.996
+          1.46,
+          4.9998
         ]
       },
       "nodes": [
@@ -612,17 +613,17 @@
       "name": "Wind pennant",
       "prop": "windPennant",
       "options": {},
-      "triangles": 63,
+      "triangles": 121,
       "meshes": 2,
-      "primitives": 5,
+      "primitives": 6,
       "materials": [
         "stone_9a968c",
-        "post_7a5a3c",
+        "frameTimber_825435",
         "timberLight_c98646",
-        "red_c5343a",
-        "cream_f6e6bd"
+        "cream_f6e6bd",
+        "roofRed_ae493d"
       ],
-      "bytes": 7844,
+      "bytes": 12568,
       "boundingBox": {
         "min": [
           -0.13,
@@ -632,12 +633,12 @@
         "max": [
           0.13,
           3.5003,
-          1.6
+          1.48
         ],
         "size": [
           0.26,
           3.5003,
-          1.73
+          1.61
         ]
       },
       "nodes": [
@@ -648,7 +649,7 @@
           "name": "flag",
           "translation": [
             0,
-            3.38,
+            3.37,
             0
           ]
         }
@@ -656,7 +657,7 @@
       "points": {
         "top": [
           0,
-          3.38,
+          3.37,
           0
         ],
         "base": [
@@ -671,30 +672,30 @@
       "name": "F1 Blossom tree",
       "prop": "blossomTree",
       "options": {},
-      "triangles": 208,
+      "triangles": 232,
       "meshes": 1,
       "primitives": 3,
       "materials": [
-        "post_7a5a3c",
+        "frameTimber_825435",
         "blossom_f299b5",
-        "blossomShade_e182a1"
+        "blossomShade_c97894"
       ],
-      "bytes": 17076,
+      "bytes": 18812,
       "boundingBox": {
         "min": [
-          -1.7516,
+          -2.1635,
           0,
-          -1.6745
+          -1.5462
         ],
         "max": [
-          1.7516,
-          4.9968,
-          1.6775
+          2.0522,
+          5.0031,
+          1.5745
         ],
         "size": [
-          3.5031,
-          4.9968,
-          3.3521
+          4.2156,
+          5.0031,
+          3.1207
         ]
       },
       "nodes": [
@@ -710,7 +711,7 @@
         ],
         "crown": [
           0,
-          3.6,
+          3.7,
           0
         ]
       }

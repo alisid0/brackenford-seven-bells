@@ -248,3 +248,25 @@ Not done: the 0.4 m and 0.35 m misses are single shots at one distance and one f
 | Question | Does "one-third smaller" mean every axis at two-thirds, or only some? All three leaves about 30% of the volume. **Answer: every axis is at two-thirds today**, so the area shrinks more than the body does. |
 
 None of this has been started.
+
+### Follow-ups from ChatGPT's review, and a third reviewer (22 November 2026)
+**1. The intermittent check on the first hare is chance, and is not from the new work.** `tests/creep-baseline.html` replays `creep.hitInOpen` with the game's random numbers replaced by a fixed sequence. Over 24 numbered runs the normal build hits 23 times and misses once (run 8: the hare slips into grass while the arrow is in the air and ends 0.6 m from the point aimed at). The known-good build of 21 November, pulled out of git, gives exactly the same 24 results. Each run comes out the same when repeated. The check is now listed as chance-dependent in `tests/all.html`.
+
+**2. The hit area was measured, found too loose, and rebuilt.** Lines of sight from the archer's place through a grid of points 3 cm apart were tested against the visible hare and against the hit area, in eight set-ups (standing, crouched and leaping; broadside and head-on; 14 m and 28 m). The single egg shape counted a lot of empty space: 32 to 51% of it lay off the hare broadside, reaching up to 18 cm outside it. It is replaced by **two shapes fixed to bones**: one about the body (about 0.5 m long, 0.25 m deep, 0.2 m wide) on the hip bone and one about the head (about 0.19 m across) on the head bone. They follow the leap, the crouch and the head turn by themselves, so the separate one-third reduction for a hare keeping low is gone. Legs, ears and tail are not part of the hit area.
+
+| Set-up | Hit area off the hare, before | after | Furthest outside the hare, before | after |
+|---|---|---|---|---|
+| Standing, broadside, 14 m | 48% | 15% | 18 cm | 6 cm |
+| Standing, head-on, 14 m | 36% | 11% | 11 cm | 4 cm |
+| Standing, broadside, 28 m | 51% | 13% | 18 cm | 6 cm |
+| Crouched, broadside | 32% | 6% | 10 cm | 3 cm |
+| Crouched, head-on | 13% | 6% | 6 cm | 3 cm |
+| Leaping, broadside | 50% | 15% | 18 cm | 6 cm |
+
+Real arrows 5 cm inside and 5 cm outside the edge (left, right and over the top) in four set-ups, 24 shots: every inside shot hits and every outside shot misses. Between a third and two-thirds of the visible hare counts as a hit, depending on the view; the rest is legs, ears and tail.
+
+**3. The running paw slip is found and fixed.** Every slip was a forepaw. The head turn had been put partly on the bone below the head (`Head_0`), which also carries the forelegs, so a running hare glancing at the archer swung its planted forepaws sideways. The turn is now on the head bone alone. Running: 116 contacts, worst drift 1 mm, no slips over 2 cm. Creeping: 138 contacts, worst 7 mm.
+
+**Checks after all three:** `tests/all.html` on the normal build passes; `tools/check-moves.mjs` passes all five; `tests/newhare.html` reports no errors.
+
+**Gemini.** The developer opened Gemini 4 Neon (Google AI Studio) in the browser pane as a third reviewer for low-level tasks. It was given read access to the public repository through raw links (its "URL context" tool was switched on) and a first task: an independent reading of why `creep.hitInOpen` is intermittent. **It had not answered after more than 20 minutes** and its result is not used here. No account, key or write access was given to it.

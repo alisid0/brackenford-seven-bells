@@ -20,7 +20,7 @@ async function run(){
  const paws=["0_Right_Limb_2","0_Left_Limb_2","1_Right_Limb_3","bone_21"];
  // follow every moving shade for a while; for each run of frames in which a paw is down, how far its joint drifts
  function contact(frames,move){
-  const open=new Map(),drifts=[];let moving=0,lowest=9;
+  const open=new Map(),drifts=[],slips=[];let moving=0,lowest=9;
   for(let f=0;f<frames;f++){
    for(const sp of S)sp.cycDrawn=sp.cyc;   // the game poses a shade before it moves it, so the pose on screen is for the stride it had going into the frame
    steps(1);
@@ -32,13 +32,13 @@ async function run(){
     const down=move.pose(sp.cycDrawn)._down;
     paws.forEach((name,k)=>{
      const key=S.indexOf(sp)+name,p=sp.rig[name].getWorldPosition(new T.Vector3()),g=v.groundAt(p.x,p.z);
-     if(going&&down[k]){lowest=Math.min(lowest,p.y-g);const o=open.get(key);if(o){o.max=Math.max(o.max,Math.hypot(p.x-o.x,p.z-o.z));o.n++;}else open.set(key,{x:p.x,z:p.z,max:0,n:1});}
-     else if(open.has(key)){const o=open.get(key);if(o.n>1)drifts.push(o.max);open.delete(key);}
+     if(going&&down[k]){lowest=Math.min(lowest,p.y-g);const o=open.get(key);if(o){const d=Math.hypot(p.x-o.x,p.z-o.z);if(d>o.max+.01)o.why={paw:name,phase:R(sp.cycDrawn%1),stepOfContact:o.n,low:R(sp.lowS),lowWas:R(o.low),pace:R(sp.pace),paceWas:R(o.pace),hasGoal:!!sp.goal,waiting:sp.wait>0,sunk:sp.sunk,headingWas:R(o.ry),heading:R(sp.base.rotation.y)};o.max=Math.max(o.max,d);o.n++;}else open.set(key,{x:p.x,z:p.z,max:0,n:1,low:sp.lowS,pace:sp.pace,ry:sp.base.rotation.y});}
+     else if(open.has(key)){const o=open.get(key);if(o.n>1){drifts.push(o.max);if(o.max>.02)slips.push({drift:R(o.max),...o.why});}open.delete(key);}
     });
    }
   }
   drifts.sort((a,b)=>a-b);
-  return{framesMoving:moving,contacts:drifts.length,worstDrift:R(drifts[drifts.length-1]||0),typicalDrift:R(drifts[drifts.length>>1]||0),lowestJointAboveGround:R(lowest)};
+  return{framesMoving:moving,contacts:drifts.length,worstDrift:R(drifts[drifts.length-1]||0),slips:slips.sort((a,b)=>b.drift-a.drift).slice(0,6),slipCount:slips.length,typicalDrift:R(drifts[drifts.length>>1]||0),lowestJointAboveGround:R(lowest)};
  }
  const stage=name=>{const i=v.STAGES.findIndex(s=>s.name===name);if(i<0)throw new Error("no stage "+name);v.setStage(i);steps(50);};
  v.begin(false);steps(2);
@@ -83,6 +83,62 @@ async function run(){
   hiddenBody:shoot("Horns in the grass",sp=>at(sp,"Spine_1")),
   hiddenBesideBy35cm:shoot("Horns in the grass",sp=>aside(sp,.35))
  };
+ // ---- the edges of the hit area, from the archer's place. Lines of sight are drawn through a grid of points 3 cm
+ // apart around the hare; each either passes through the visible hare or not, and through the hit area or not.
+ const eyeAt=()=>v.rig.position.clone().add(new T.Vector3(0,1.5,0));
+ function frozen(sp){   // the hare's skin as it is posed now, as a plain mesh that lines of sight can be tested against
+  sp.base.updateMatrixWorld(true);let skin;sp.root.traverse(o=>{if(o.isSkinnedMesh)skin=o;});skin.skeleton.update();
+  const n=skin.geometry.attributes.position.count,pos=new w.Float32Array(n*3),p=new T.Vector3();
+  for(let i=0;i<n;i++){skin.getVertexPosition(i,p);p.applyMatrix4(skin.matrixWorld);pos.set([p.x,p.y,p.z],i*3);}
+  const g=new T.BufferGeometry();g.setAttribute("position",new T.BufferAttribute(pos,3));return new T.Mesh(g,new T.MeshBasicMaterial({side:T.DoubleSide}));
+ }
+ const facing=(sp,how)=>{const e=eyeAt(),b=sp.base.position,dx=b.x-e.x,dz=b.z-e.z;sp.base.rotation.y=how==="broadside"?Math.atan2(dz,-dx):Math.atan2(-dx,-dz);};
+ const moveTo=(sp,far)=>{const e=eyeAt(),b=sp.base.position,dx=b.x-e.x,dz=b.z-e.z,l=Math.hypot(dx,dz),x=e.x+dx/l*far,z=e.z+dz/l*far;b.set(x,v.groundAt(x,z),z);};
+ function edges(sp){
+  v.posePeek(sp);const body=frozen(sp),e=eyeAt(),C=sp.hitMesh.getWorldPosition(new T.Vector3()),ground=v.groundAt(C.x,C.z);
+  const view=C.clone().sub(e).normalize(),right=new T.Vector3(-view.z,0,view.x).normalize(),rc=new T.Raycaster(),step=.03,cells=[];
+  sp.base.updateMatrixWorld(true);body.updateMatrixWorld(true);
+  for(let a=-.63;a<=.631;a+=step)for(let b=-.54;b<=.661;b+=step){
+   const P=C.clone().addScaledVector(right,a);P.y+=b;rc.set(e,P.sub(e).normalize());
+   const seen=rc.intersectObject(body,false).length>0,area=rc.intersectObjects(sp.meshes,false).length>0;if(seen||area)cells.push({a,h:C.y+b-ground,seen,area});
+  }
+  const pick=k=>cells.filter(c=>c[k]),span=(list,k)=>[R(Math.min(...list.map(c=>c[k]))),R(Math.max(...list.map(c=>c[k])))],seen=pick("seen"),area=pick("area");
+  const both=cells.filter(c=>c.seen&&c.area).length,empty=cells.filter(c=>c.area&&!c.seen),missed=cells.filter(c=>c.seen&&!c.area);
+  // how far into empty space the hit area reaches: for each empty point that counts as a hit, the distance to the nearest visible point
+  let reach=0;for(const c of empty){let d=9;for(const q of seen)d=Math.min(d,Math.hypot(c.a-q.a,c.h-q.h));reach=Math.max(reach,d);}
+  const top=Math.max(...area.map(c=>c.h)),bottom=Math.min(...area.map(c=>c.h));
+  return{distance:R(e.distanceTo(C)),visibleAcross:span(seen,"a"),visibleHeight:span(seen,"h"),areaAcross:span(area,"a"),areaHeight:span(area,"h"),
+   visibleCovered:Math.round(both/seen.length*100)+"%",hitsOnEmptySpace:Math.round(empty.length/area.length*100)+"%",furthestIntoEmptySpace:R(reach),
+   visibleNotCounted:{aboveArea:missed.filter(c=>c.h>top).length,belowArea:missed.filter(c=>c.h<bottom).length,besideArea:missed.filter(c=>c.h<=top&&c.h>=bottom).length,ofVisible:seen.length}};
+ }
+ const set=(name,how,far,then)=>{stage(name);steps(60);const sp=S[0];if(far)moveTo(sp,far);facing(sp,how);if(then)then(sp);return sp;};
+ const air=sp=>{sp.mode="run";sp.gait=sp.gaitTo=1;sp.cyc=.4;};
+ out.edges={
+  standingBroadsideNear:edges(set("First shade","broadside")),
+  standingHeadOnNear:edges(set("First shade","headOn")),
+  standingBroadsideFar:edges(set("First shade","broadside",28)),
+  standingHeadOnFar:edges(set("First shade","headOn",28)),
+  crouchedBroadside:edges(set("Horns in the grass","broadside")),
+  crouchedHeadOn:edges(set("Horns in the grass","headOn")),
+  leapingBroadside:edges(set("First shade","broadside",0,air)),
+  leapingHeadOn:edges(set("First shade","headOn",0,air))
+ };
+ // real arrows 5 cm inside and 5 cm outside the edge of the hit area, at the height of its middle and over its top
+ function edgeShots(name,how,far){
+  const res={};
+  for(const[key,side,d]of[["insideLeft",-1,-.05],["outsideLeft",-1,.05],["insideRight",1,-.05],["outsideRight",1,.05],["underTop",0,-.05],["overTop",0,.05]]){
+   const sp=set(name,how,far);v.posePeek(sp);sp.base.updateMatrixWorld(true);
+   const e=eyeAt(),C=sp.hitMesh.getWorldPosition(new T.Vector3()),view=C.clone().sub(e).normalize(),right=new T.Vector3(-view.z,0,view.x).normalize(),rc=new T.Raycaster();
+   // find the edge along this direction by stepping outward a centimetre at a time
+   let edge=0;for(let x=0;x<1;x+=.01){const P=C.clone();if(side)P.addScaledVector(right,side*x);else P.y+=x;rc.set(e,P.sub(e).normalize());if(rc.intersectObjects(sp.meshes,false).length)edge=x;else break;}
+   const to=C.clone();if(side)to.addScaledVector(right,side*(edge+d));else to.y+=edge+d;
+   steps(1);const o=v.rig.position.clone().add(new T.Vector3(0,1.5,0)),flat=new T.Vector3(to.x-o.x,0,to.z-o.z),dist=flat.length(),h=to.y-o.y,s0=62,g=7;
+   const ang=Math.atan((s0*s0-Math.sqrt(s0**4-g*(g*dist*dist+2*h*s0*s0)))/(g*dist));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(new T.Vector3(0,Math.sin(ang),0)),1);steps(Math.ceil((dist/55+.3)/.016));
+   res[key]={hit:sp.state==="waking",edge:R(edge)};
+  }
+  res.asExpected=res.insideLeft.hit&&res.insideRight.hit&&res.underTop.hit&&!res.outsideLeft.hit&&!res.outsideRight.hit&&!res.overTop.hit;return res;
+ }
+ out.edgeShots={standingBroadsideNear:edgeShots("First shade","broadside"),standingHeadOnNear:edgeShots("First shade","headOn"),standingBroadsideFar:edgeShots("First shade","broadside",28),crouchedBroadside:edgeShots("Horns in the grass","broadside")};
  out.hitsAsExpected=["body","head","chest","hiddenBody"].every(k=>out.hits[k].hit)&&["besideBy40cm","besideOtherSide","aboveBackBy40cm","hiddenBesideBy35cm"].every(k=>!out.hits[k].hit);
  out.errors=errors;out.fault=!!(v.fault&&v.fault());
  return out;

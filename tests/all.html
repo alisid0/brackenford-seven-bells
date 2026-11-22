@@ -5,7 +5,10 @@
 const TESTS=["release","range","spirits","birds","select","trigger","hand","power","coins","slice1"];
 // checks that are false by design
 // (spirits run.ledShotHits and run.hitWhileStopped depend on a randomly moving runner, so they are reported but not counted)
-const FLAKY={"spirits":["run.ledShotHits","run.hitWhileStopped"]};
+// (spirits creep.hitInOpen shoots at a moving creeper without leading it; it misses when the hare slips into grass while the
+// arrow is in the air. tests/creep-baseline.html replays it with fixed random numbers: 1 run in 24 misses, the same run on
+// the known-good build of 21 November.)
+const FLAKY={"spirits":["run.ledShotHits","run.hitWhileStopped","creep.hitInOpen"]};
 const EXPECTED={"spirits":["sitter.others","startle.live"],"birds":["perch.nearMiss.live","perch.farMissIgnored","flush.landingFlushes.others"],"range":["results.back","weakRun.next","roam.rounds","longHit.miss"],"select":[],"trigger":[],"hand":[],"power":[],"coins":[],"slice1":[],"release":["fullMode.release"]};
 const falses=(o,p="")=>Object.entries(o||{}).flatMap(([k,v])=>v===false?[p+k]:v&&typeof v==="object"&&!Array.isArray(v)?falses(v,p+k+"."):[]);
 const lines=[];

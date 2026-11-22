@@ -12,3 +12,5 @@ assets/source/
 test-site/index.html
 # the trial build with the new hare (node src/build.mjs <three> --new-hare); rebuilt on demand
 Brackenford-Seven-Bells-new-hare.html
+# a copy of the known-good build pulled out of git for comparison runs
+tests/_known-good.html

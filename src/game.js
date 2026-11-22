@@ -564,6 +564,8 @@ const RIG2=NEW_HARE?(()=>{
 })():null;
 const HARE_MOVES=RIG2?{lope:MOVES.hareBound(RIG2.bones,MOVES.HARE.lope),lopeLow:MOVES.hareBound(RIG2.bones,MOVES.HARE.lopeLow),run:MOVES.hareBound(RIG2.bones,MOVES.HARE.run),crouch:MOVES.hareCrouch(RIG2.bones,MOVES.HARE.crouch)}:null,HARE_SCALE=.55;
 const EARS2=[['Head_2','Head_3','Head_4'],['Ear2_0','Ear2_1','Ear2_2']];
+// the standing hare's hit shapes: body [up, back, half-width, half-height, half-length] from the hip bone; head [up, back, radius] from the head bone
+const HIT_HARE={body:[-.02,-.11,.125,.15,.31],head:[.05,-.07,.115]};
 // The standing hare's pose. Its bound comes from src/moves.js and is driven by how far it has travelled (sp.cyc, in
 // strides), so its paws do not slide; everything else is laid over that. On this hare a positive turn about x tips the
 // body nose-up, swings a leg forward and lays an ear back.
@@ -578,17 +580,15 @@ function standingPose(sp,dt){
  for(const n in B)B[n].rotation.x=(goLow?val(go,n)*(1-low)+val(goLow,n)*low:val(go,n))*w+val(still,n)*(1-w);
  const lift=(goLow?go._lift*(1-low)+goLow._lift*low:go._lift)*w+still._lift*(1-w);
  B.Root.position.y=RIG2.rootY+lift;
- // What an arrow strikes: an egg-shaped area fitted about the body and head (in the game about 0.68 m long, 0.6 m
- // tall and 0.34 m wide), which follows the leap and the crouch and is a third smaller while the hare keeps low.
- const s=1-low/3;sp.hitMesh.scale.set(.113*s,.2*s,.227*s);sp.hitMesh.position.set(0,.267+lift*HARE_SCALE,.013);
  const add=(n,x,y=0,z=0)=>{const r=B[n].rotation;r.x+=x;r.y+=y;r.z+=z;};
  add('Spine_1',Math.sin(t*2.1)*.022);                                             // breathing
  // risen on its haunches as it is banished; the hind legs turn the other way to stay planted
  const tipUp=rear*.5,fold=rear*.9;
  add('Spine_0',tipUp);add('1_Right_Limb_0',-tipUp);add('bone_18',-tipUp);add('1_Left_Limb_0',-tipUp*.6);
  for(const leg of['0_Right_Limb','0_Left_Limb']){add(leg+'_0',.7*fold);add(leg+'_1',-fold);}
- // head: turns to look at the archer, lifts a little as it does
- add('Head_0',0,turn*.45);add('Head_1',-sp.look*.06-rear*.3,turn*.55,Math.sin(t*.9)*.03*(1-sp.look));
+ // head: turns to look at the archer, lifts a little as it does. The turn is on the head bone alone: the bone below
+ // it (Head_0) also carries the forelegs, and turning that swings planted forepaws sideways.
+ add('Head_1',-sp.look*.06-rear*.3,turn*.85,Math.sin(t*.9)*.03*(1-sp.look));
  // ears: sway, lie back in fear, prick when it looks, and one twitches now and then
  EARS2.forEach((chain,side)=>chain.forEach((name,i)=>{
   const k=(i+1)/3,lag=t*2.3-i*.6+side*1.3;
@@ -665,6 +665,15 @@ for(let k=0;k<5;k++){
  const hitMesh=new T.Mesh(new T.SphereGeometry(1,8,6));hitMesh.visible=false;root.add(hitMesh);   // what an arrow actually strikes
  const sp={kind:'spirit',rig,bound,cyc:0,lowS:0,sink:bound?0:.3,seed:k*7.3,gait:0,gaitTo:0,phase:0,turn:0,rear:0,fear:0,twitch:0,twitchSide:0,base,tilt,root,head,ears,flares,flare,glow,glow0:glow.emissiveIntensity,leaf,ember,look:0,lookUntil:0,nextLook:0,mist,hitMesh,meshes:[hitMesh],scale:SPIRIT_SIZE,up:true,kick:-10,live:false,done:true,mode:'sit',state:'off',t:0};
  hitMesh.userData.target=sp;sp.set=spiritSet;spirits.push(sp);
+ if(bound){
+  // What an arrow strikes on the standing hare: one rounded shape about its body and one about its head, each fixed
+  // to a bone, so they follow the leap, the crouch and the turn of the head with no further care. Sizes are in the
+  // model's own units (in the game: body about 0.5 m long, 0.25 m deep and 0.2 m wide; head about 0.19 m across).
+  // Legs, ears and tail are not part of it.
+  rig.Spine_0.add(hitMesh);hitMesh.position.set(0,HIT_HARE.body[0],HIT_HARE.body[1]);hitMesh.scale.set(HIT_HARE.body[2],HIT_HARE.body[3],HIT_HARE.body[4]);
+  const hitHead=new T.Mesh(hitMesh.geometry);hitHead.visible=false;rig.Head_1.add(hitHead);hitHead.position.set(0,HIT_HARE.head[0],HIT_HARE.head[1]);hitHead.scale.setScalar(HIT_HARE.head[2]);
+  hitHead.userData.target=sp;sp.hitHead=hitHead;sp.meshes.push(hitHead);
+ }
 }
 for(let k=0;k<9;k++){
  // a clump of tall grass that a spirit can sink into
@@ -867,7 +876,7 @@ function spiritStep(dt){
 }
 function rangeTargets(){
  rangeMeshes=[];for(const r of rangeRounds)if(r.base.visible)rangeMeshes.push(...r.meshes);
- for(const sp of spirits)if(sp.live&&sp.base.visible)rangeMeshes.push(sp.hitMesh);
+ for(const sp of spirits)if(sp.live&&sp.base.visible){rangeMeshes.push(sp.hitMesh);if(sp.hitHead)rangeMeshes.push(sp.hitHead);}
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
 }
 function setStage(i){

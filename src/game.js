@@ -444,36 +444,21 @@ if(WORLD2){
   low=up;}
  {const m=box(R,P(78.4,0,1.4),V(16,.06,5.6),EDGE);m.rotation.x=Math.atan2(2.8,4.8);}   // the last terrace falls away behind as a grass bank
  // the rail at the shooting line, 0.85 m high as a starting height
- for(const r of[-3,-1,1,3])stick(R,P(.9,r,-.3),P(.9,r,.95),.06,timber);
- for(const y of[.85,.45])stick(R,P(.9,-3,y),P(.9,3,y),.045,timber);
+ {const rail=PROPS.rail(T,{height:.85});rail.position.copy(P(.9,0));R.add(rail);}   // Gemini's rail
  // the stall, left of the line and outside the lane (world-plan: -1.5 along, 10.5 left), its counter turned toward the archer
  if(typeof PROPS!=='undefined'){const stall=PROPS.marketStall(T);stall.position.copy(P(-1.5,-10.5));stall.rotation.y=Math.PI/2+.3;R.add(stall);}
  // the archer's stand: a timber deck, flush with the ground for now (raising it over a channel changes the aim, so it waits for the playtest)
- for(let i=0;i<8;i++)box(R,P(-.35,-1.4+i*.4,.03),V(.37,.06,2.6),i%2?'#a5632f':'#b9763a');
+ {const deck=PROPS.deck(T);deck.position.copy(P(-.35,0));R.add(deck);}   // Gemini's deck
  // the path from the stall to the jetty, and the jetty itself at the lake's edge
  for(let i=0;i<9;i++){const t=i/8,a=-1.5+t*15.5,r=-8.6-6*t*t;const m=box(R,P(a,r,.02),V(1.6,.03,2.3),'#b9a070');m.rotation.y=-Math.atan2(-12*t*6/8,15.5/8)*.5;}
- {const j=new T.Group();j.position.copy(P(14,-19.5));j.rotation.y=Math.PI/2;R.add(j);for(let i=0;i<6;i++)box(j,V(0,.35,-2.1+i*.85),V(2.4,.08,.78),i%2?'#a5632f':'#b9763a');for(const s of[-1,1])for(const z of[-2.3,0,2.3])stick(j,V(s*1.1,-1.2,z),V(s*1.1,.75,z),.07,timber);}
+ {const j=PROPS.jetty(T);j.position.copy(P(14,-19.5,-.4));j.rotation.y=Math.PI/2;R.add(j);}   // Gemini's jetty, running out into the cove
  // the village on its rise at the far right: three round huts and the watchtower (world-plan: 82 to 98 m out, 18 to 38 m right)
- for(const[a,r,k]of[[84,25,1],[90,31,1.15],[95,26,.95]]){const h=new T.Group(),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);R.add(h);
-  mesh(h,new T.CylinderGeometry(3,3,2.3,8),'#f1e2bd',V(0,1.15,0));
-  mesh(h,new T.CylinderGeometry(2.3,4.3,1.1,8),'#b98a42',V(0,2.75,0));mesh(h,new T.ConeGeometry(2.5,1.5,8),'#d4a85a',V(0,4.05,0));   // lower band wide and darker, upper band lighter
-  box(h,V(0,.95,-2.75),V(1.3,1.9,.5),'#5e4630');box(h,V(0,1.98,-2.98),V(1.6,.16,.22),'#7a5a3c');for(const s of[-1,1])box(h,V(s*.72,.95,-2.98),V(.16,1.9,.22),'#7a5a3c');}
- {const t=new T.Group(),p=P(88,29),[wx,wz]=yardAt(88,29);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);
-  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.9,-.5,sz*1.9),V(sx*1.45,7.1,sz*1.45),.26,'#7a5a3c',5);
-  for(const s of[-1,1])for(const[y0,y1]of[[.4,3.4],[3.7,6.7]]){stick(t,V(-1.8,y0,s*1.75),V(1.6,y1,s*1.6),.11,'#8a6038',4);stick(t,V(1.8,y0,s*1.75),V(-1.6,y1,s*1.6),.11,'#8a6038',4);}   // X-braces, front and back
-  box(t,V(0,7.2,0),V(4.4,.28,4.4),'#a5632f');   // the gallery's deck, wider than the legs
-  for(const sx of[-1,1])for(const sz of[-1,1])stick(t,V(sx*1.95,7.3,sz*1.95),V(sx*1.95,9.5,sz*1.95),.16,'#7a5a3c',5);
-  for(const s of[-1,1]){box(t,V(0,8.25,s*1.95),V(3.9,.14,.14),'#8a6038');box(t,V(s*1.95,8.25,0),V(.14,.14,3.9),'#8a6038');}   // a low rail under the roof
-  mesh(t,new T.ConeGeometry(3.6,1.9,4),'#b3202f',V(0,10.4,0)).rotation.y=Math.PI/4;}
+ [[84,25,1,0],[90,31,1.15,1],[95,26,.95,2]].forEach(([a,r,k,variant])=>{const h=PROPS.hut(T,{variant}),p=P(a,r),[wx,wz]=yardAt(a,r);p.y=groundAt(wx,wz)-LANE.base;h.position.copy(p);h.scale.setScalar(k);h.rotation.y=Math.PI;R.add(h);});   // Gemini's huts, doors toward the archer
+ {const t=PROPS.watchtower(T),p=P(88,29),[wx,wz]=yardAt(88,29);p.y=groundAt(wx,wz)-LANE.base;t.position.copy(p);R.add(t);}   // Gemini's watchtower
  // the footbridge over the creek, to the right of the lane and clear of it
- {const b=new T.Group();b.position.copy(P(LANE.creek,13.5));R.add(b);
-  for(let i=-2;i<=2;i++){const p=box(b,V(0,.62-.1*i*i,i*.95),V(2,.16,1.02),i%2?'#b9824a':'#a5632f');p.rotation.x=i*.2;}   // a deck with a clear crown
-  for(const s of[-1,1]){for(const z of[-2.2,0,2.2])stick(b,V(s*.95,0,z),V(s*.95,z?1.15:1.55,z),.1,timber,5);stick(b,V(s*.95,1.1,-2.2),V(s*.95,1.5,0),.085,timber,5);stick(b,V(s*.95,1.5,0),V(s*.95,1.1,2.2),.085,timber,5);}
-  for(const z of[-2.55,2.55])box(b,V(0,.12,z),V(2.6,.5,.7),'#9a968c');}   // stone abutments at both ends
+ {const b=PROPS.footbridge(T);b.position.copy(P(LANE.creek,13.5));R.add(b);}   // Gemini's footbridge, its length across the creek
  // two blossom trees, one each side in the middle distance, well clear of the lane and never behind a target
- for(const[a,r,s]of[[31,-13.5,1],[46,21.5,1.15]]){const t=new T.Group();t.position.copy(P(a,r));t.scale.setScalar(s);R.add(t);
-  stick(t,V(0,-.3,0),V(.15,2.6,0),.2,'#7a5a3c');stick(t,V(.1,1.9,0),V(-.9,3.1,.2),.1,'#7a5a3c');stick(t,V(.1,2.1,0),V(.9,3.2,-.3),.1,'#7a5a3c');
-  for(const[x,y,z,k]of[[0,3.9,0,1.5],[-1.2,3.4,.3,1.05],[1.2,3.5,-.4,1.1]])mesh(t,new T.IcosahedronGeometry(k,0),BLOSSOM,V(x,y,z));}
+ for(const[a,r,s]of[[31,-13.5,1],[46,21.5,1.15]]){const t=PROPS.blossomTree(T,{scale:s});t.position.copy(P(a,r));t.rotation.y=a;R.add(t);}   // Gemini's blossom trees
 }
 // the trainer's board beside the shooting line
 // with the new layout the board is a cream cloth banner with a plum border and plum lettering (cloth is for what is read)

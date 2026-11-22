@@ -53,8 +53,8 @@ function kit(T){
     if(withCol){tc.set(p.color);for(let i=0;i<p.geo.attributes.position.count;i++){const k=(off+i)*3;col[k]=tc.r;col[k+1]=tc.g;col[k+2]=tc.b;}}
     off+=p.geo.attributes.position.count;p.geo.dispose();
    }
-   const out=new T.BufferGeometry();out.setAttribute('position',new T.BufferAttribute(pos,3));
-   if(withCol)out.setAttribute('color',new T.BufferAttribute(col,3));
+   const out=new T.BufferGeometry();out.setAttribute('position',new T.Float32BufferAttribute(pos,3));   // three makes its own copy: an array made in another frame is refused by the renderer
+   if(withCol)out.setAttribute('color',new T.Float32BufferAttribute(col,3));
    out.computeVertexNormals();return out;
   };
   const buildByColor=parent=>{

@@ -16,8 +16,8 @@ const config = JSON.parse(readFileSync(join(here, 'config.json'), 'utf8'));
 // --new-hare makes a separate trial build, Brackenford-Seven-Bells-new-hare.html, that also carries the standing hare
 // from assets/staging and its timed movement (src/moves.js). Without it the normal build has neither.
 const newHare = process.argv.includes('--new-hare');
-// the shade ram: Tripo's model, turned to face forward by tools/turn-ram.mjs. The "ram" switch decides whether the game uses it.
-{ const ram = join(assets, 'staging', 'shade-ram-rig-turned.json'); if (existsSync(ram)) models['shade-ram'] = JSON.parse(readFileSync(ram, 'utf8')); }
+// the shade ram: Tripo's model, turned by tools/turn-ram.mjs and left hind leg repaired by tools/patch-ram.mjs. The "ram" switch decides whether the game uses it.
+{ const patched = join(assets, 'staging', 'shade-ram-rig-turned-patched.json'), ram = existsSync(patched) ? patched : join(assets, 'staging', 'shade-ram-rig-turned.json'); if (existsSync(ram)) models['shade-ram'] = JSON.parse(readFileSync(ram, 'utf8')); }
 if (newHare) { models['shade-hare-standing'] = JSON.parse(readFileSync(join(assets, 'staging', 'shade-hare-standing-rig-patched.json'), 'utf8')); config.newHare = true; }
 const game = 'const MODELS=' + JSON.stringify(models) + ';\nconst BUILD_CONFIG=' + JSON.stringify(config) + ';\n' + readFileSync(join(here, 'props.js'), 'utf8') + '\n' + (newHare ? readFileSync(join(here, 'moves.js'), 'utf8') + '\n' : '') + readFileSync(join(here, 'game.js'), 'utf8');   // props.js: code-built props (the stall), used only by the new range layout
 if (game.includes('</script')) throw new Error('game code must not contain a closing script tag');

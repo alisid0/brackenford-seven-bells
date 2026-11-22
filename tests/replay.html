@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><title>replay pull</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The first-release pieces of design/replay-plan.md: the "how close" line on a stage's result, and the playtest tally
+// kept on this device. Checks both with the switch on, and that neither appears with it off.
+const errors=[];
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1","brackenford-trials-v1","brackenford-seven-bells-v1-tally","brackenford-trials-v1-tally"])localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,9))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+async function play(query){
+ wipe();const w=await game(query),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z);
+ const steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ const centre=()=>v.rangeRounds.filter(t=>t.base.visible)[0].root.getWorldPosition(V());
+ function hit(){steps(1);const to=centre(),o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(40);}
+ function miss(){steps(1);const to=centre(),o=eye(),flat=V(to.x-o.x,0,to.z-o.z).normalize();v.loose(o,flat.add(V(0,.9,0)).normalize(),1);steps(40);}
+ const finish=()=>{for(let i=0;i<900&&r.phase!=="results";i++)steps(1);steps(5);};
+ const again=()=>{for(let i=0;i<1200&&!(r.phase==="results"&&!v.replay?.on);i++)steps(1);r.pending="again";for(let i=0;i<600&&r.phase==="results";i++)steps(1);};
+ v.begin(false);steps(2);if(r.stage!==0||r.phase!=="play")v.setStage(0);steps(30);
+ const out={on:v.REPLAY,button:!w.document.getElementById("tally").hidden};
+ // first try: one hit and four misses
+ hit();for(let i=0;i<4;i++)miss();finish();
+ const need=r.stars<3?Math.max(1,Math.ceil(v.STAR_AT[r.stars]*r.ideal)-r.score):0;
+ out.first={score:r.score,ideal:Math.round(r.ideal),stars:r.stars,gap:r.gap,expected:need?need+(need===1?" point":" points")+" to "+"★".repeat(r.stars+1):"",board:v.rangeInfo().text};
+ const best1=r.score;again();
+ // second try: every arrow at the centre
+ for(let i=0;i<5;i++)hit();finish();
+ out.second={score:r.score,stars:r.stars,gap:r.gap,gain:r.gain,expectedGain:r.score-best1,board:v.rangeInfo().text};
+ out.summary=v.playtest();out.stored=localStorage.getItem((v.RELEASE?"brackenford-trials-v1":"brackenford-seven-bells-v1")+"-tally");
+ return out;
+}
+async function run(){
+ const on=await play("?replay=1"),off=await play("?replay=0"),o={on,off};
+ const s=on.summary,st=s.stages["First marks"];
+ o.checks={
+  gapLine:on.first.gap===on.first.expected&&on.first.gap!==""&&on.first.board.includes(on.first.gap),
+  gain:on.second.gain===on.second.expectedGain&&on.second.gain>0&&on.second.board.includes("+"+on.second.gain),
+  tally:s.attempts===2&&s.finished===2&&st.tries===2&&st.abandoned===0&&s.sittings===1&&s.days===1&&(on.first.stars?st.retriesAfterClear===1:st.retriesAfterClear===0),
+  button:on.button===true,
+  offNoLine:off.first.gap===""&&off.second.gain===0&&!off.first.board.includes("points to"),
+  offNoTally:off.summary.attempts===0&&off.stored===null&&off.button===false,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,300)+JSON.stringify(errors));
+</script>

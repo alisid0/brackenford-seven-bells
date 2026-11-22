@@ -261,6 +261,35 @@ function updateGrass(px,pz){
 
 // ---------------------------------------------------------------- saved progress
 const SAVE=RELEASE?'brackenford-trials-v1':'brackenford-seven-bells-v1';   // the release keeps its own progress, as its stages are in a different order
+// ---- Replay pull (design/replay-plan.md, first-release pieces). One switch: "replay" in src/config.json, or ?replay=1 / ?replay=0.
+//   1. The result of a stage says how far the score was from the next star, and by how much a best was beaten.
+//   2. A playtest tally is kept on this device only (nothing is sent anywhere): tries, clears and retries by stage,
+//      near misses and whether AGAIN followed, minutes played, the days played. "Copy playtest summary" puts it on the clipboard.
+const REPLAY=QUERY.has('replay')?QUERY.get('replay')==='1':!!CONFIG.replay;
+const STAR_AT=[.3,.6,.95];   // the share of a stage's ideal score each star asks for
+const TALLY_KEY=SAVE+'-tally';
+const tally=(()=>{let t={};try{t=JSON.parse(localStorage.getItem(TALLY_KEY)||'{}')||{};}catch{}return{days:t.days||[],stages:t.stages||{},near:t.near|0,nearAgain:t.nearAgain|0,seconds:t.seconds|0,sittings:t.sittings|0};})();
+const tallyNow={begun:false,last:null};
+function tallySave(){try{localStorage.setItem(TALLY_KEY,JSON.stringify(tally));}catch{}}
+function tallyStage(name){return tally.stages[name]||(tally.stages[name]={tries:0,done:0,clears:0,again:0,stars:0});}
+function tallyStart(name){
+ if(!REPLAY)return;
+ if(!tallyNow.begun){tallyNow.begun=true;tally.sittings++;const d=new Date().toISOString().slice(0,10);if(!tally.days.includes(d))tally.days.push(d);tally.days=tally.days.slice(-60);}
+ const s=tallyStage(name),l=tallyNow.last;s.tries++;
+ if(l&&l.name===name){if(l.stars)s.again++;if(l.near)tally.nearAgain++;}   // AGAIN after a clear; AGAIN after a near miss
+ tallyNow.last=null;tallySave();
+}
+function tallyEnd(name,stars,near,seconds){
+ if(!REPLAY)return;
+ const s=tallyStage(name);s.done++;if(stars)s.clears++;s.stars=Math.max(s.stars,stars);if(near)tally.near++;tally.seconds+=Math.max(0,Math.round(seconds));
+ tallyNow.last={name,stars,near};tallySave();
+}
+function playtest(){
+ const st=Object.entries(tally.stages),sum=k=>st.reduce((a,[,s])=>a+s[k],0);
+ return{build:CONFIG.title+(RELEASE?' release':' full'),days:tally.days.length,sittings:tally.sittings,minutes:Math.round(tally.seconds/6)/10,minutesPerSitting:tally.sittings?Math.round(tally.seconds/6/tally.sittings)/10:0,
+  attempts:sum('tries'),finished:sum('done'),clears:sum('clears'),retriesAfterClear:sum('again'),nearMisses:tally.near,nearMissThenAgain:tally.nearAgain,
+  stages:Object.fromEntries(st.map(([n,s])=>[n,{tries:s.tries,abandoned:s.tries-s.done,clears:s.clears,retriesAfterClear:s.again,bestStars:s.stars}]))};
+}
 const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',mode:'range',range:{open:0,best:[],stars:[]}};
 try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[]};
  state.coins=typeof s.coins==='number'?Math.max(0,s.coins|0):state.range.stars.reduce((a,b)=>a+(b||0)*25,0)+Math.round(state.range.best.reduce((a,b)=>a+(b||0),0)/20);}}catch{}
@@ -935,8 +964,8 @@ function rangeTargets(){
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
 }
 function setStage(i){
- const st=STAGES[i];Object.assign(range,{stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
- quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;
+ const st=STAGES[i];Object.assign(range,{gap:'',gain:0,stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
+ quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
  rangeRounds.forEach((r,k)=>{
@@ -1108,8 +1137,11 @@ function rangeHit(t,q){
  if(range.arrows<=0)range.endAt=Math.min(range.endAt||1e9,elapsed+.9);
 }
 function rangeResults(){
- const i=range.stage,frac=range.score/range.ideal,stars=frac>=.95?3:frac>=.6?2:frac>=.3?1:0,R=state.range;
- range.phase='results';range.stars=stars;range.newBest=range.score>(R.best[i]||0);
+ const i=range.stage,frac=range.score/range.ideal,stars=frac>=STAR_AT[2]?3:frac>=STAR_AT[1]?2:frac>=STAR_AT[0]?1:0,R=state.range;
+ const before=R.best[i]||0,need=stars<3?Math.max(1,Math.ceil(STAR_AT[stars]*range.ideal)-range.score):0;
+ range.phase='results';range.stars=stars;range.newBest=range.score>before;
+ range.gap=REPLAY&&need?need+(need===1?' point':' points')+' to '+'★'.repeat(stars+1):'';range.gain=REPLAY&&range.newBest&&before?range.score-before:0;
+ tallyEnd(STAGES[i].name,stars,need>0&&need<=.1*range.ideal,elapsed-range.t0);
  range.earned=Math.round(range.score/20)+Math.max(0,stars-(R.stars[i]||0))*25;state.coins+=range.earned;
  if(range.newBest)R.best[i]=range.score;R.stars[i]=Math.max(R.stars[i]||0,stars);if(stars&&R.open<i+1)R.open=Math.min(STAGES.length-1,i+1);
  // one replay at most. Up close: the best bullseye, or failing that the final arrow, hit or near miss.
@@ -1121,7 +1153,7 @@ function showResults(){
  const i=range.stage,stars=range.stars,R=state.range;range.phase='results';stageList();
  rangeSigns.again.base.visible=true;rangeSigns.next.base.visible=i<STAGES.length-1&&R.open>i;rangeSigns.back.base.visible=i>0;rangeTargets();
  if(stars)[523,659,784,1047].slice(0,stars+1).forEach((f,k)=>note(f,.45,'sine',.1,k*.13));else note(196,.5,'triangle',.1,0,147);
- say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars):'Not enough  ·  shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
+ say((stars?'Stage clear  ·  '+'★'.repeat(stars)+'☆'.repeat(3-stars)+(range.gap?'  ·  '+range.gap:''):'Not enough  ·  '+(range.gap?range.gap+'  ·  ':'')+'shoot AGAIN')+coins(range.earned?'  ·  +'+range.earned+' coins':''),5);
  if(range.earned&&!RELEASE)[1568,1976,2349].forEach((f,k)=>note(f,.12,'triangle',.05,.5+k*.07));   // coins dropping into the purse
 }
 // ---- the replay: at the end of a stage the best shot is shown again, slowed, from beside its mark
@@ -1214,7 +1246,7 @@ function fpsStep(now){
 function rangeInfo(){
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(range.phase==='results')return{title:'Stage '+(i+1)+'  ·  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars),
-  text:'Score '+range.score+(range.newBest?'  ·  new best':'  ·  best '+(R.best[i]||0))+'.  '+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
+  text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.best[i]||0))+'.  '+(range.gap?range.gap+'.  ':'')+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
   mark:'★ '+R.stars.reduce((a,b)=>a+(b||0),0)+' of '+STAGES.length*3+coins('      Coins '+state.coins)+fpsText(),wind};
  return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak+quiverText(),mark:wind+(R.best[i]?'      best '+R.best[i]:'')+coins('      Coins '+state.coins)+fpsText(),wind};
 }
@@ -1642,6 +1674,9 @@ mapCanvas.addEventListener('click',e=>{
 });
 function travel(s){const l=hyp(s.x,s.z),d=s.tower?10:7;place(s.x-s.x/l*d,s.z-s.z/l*d,Math.atan2(s.x,s.z)+Math.PI);say(s.name,2);note(660,.5,'sine',.08,0,990);}
 $('wipe').onclick=()=>{try{localStorage.removeItem(SAVE);}catch{}location.reload();};
+if(REPLAY&&$('tally')){const b=$('tally');b.hidden=false;b.onclick=async()=>{const text=JSON.stringify(playtest(),null,1);let ok=false;try{await navigator.clipboard.writeText(text);ok=true;}catch{}
+ if(!ok){const a=document.createElement('textarea');a.value=text;document.body.appendChild(a);a.select();try{ok=document.execCommand('copy');}catch{}a.remove();}
+ b.textContent=ok?'Copied':'Could not copy';setTimeout(()=>b.textContent='Copy playtest summary',2000);};}
 
 // ---------------------------------------------------------------- VR play
 const fake={on:false};
@@ -1675,7 +1710,7 @@ function vrStatus(){
  if(!bowHand)return bare?'Close a fist on the bow\nPoint a finger to walk':'Grip near the bow\nwith either hand';
  if(!state.shots)return bare?'Pinch the string\npull back and let go':state.draw==='one'?'Hold a trigger to draw\nlet go to loose':'Free hand to the string\nhold trigger, pull, let go';
  if(charging)return'Draw '+Math.round(charge*10)*10+'%'+String.fromCharCode(10)+(charge>=.95?'full draw':'pull further for more power');
- if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+quiverText()+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
+ if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+(range.gap?'\n'+range.gap:range.gain?'\nnew best  +'+range.gain:'')+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':'Arrows '+range.arrows+'   Streak '+range.streak+'\nScore '+range.score+quiverText()+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
  if(state.lesson<5&&hyp(rig.position.x-YARD.x,rig.position.z-YARD.z)<80){const i=lessonInfo();return i.title.split('  ·  ')[1]+'\n'+(i.mark||'See the board');}
  if(state.lesson<5&&state.bells.size===0)return'Training yard\nfollow the gold needle';
  if(state.done)return'The vale is awake\n'+counts().split('\n').slice(1).join('\n');
@@ -1906,6 +1941,6 @@ if(RELEASE){
  $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

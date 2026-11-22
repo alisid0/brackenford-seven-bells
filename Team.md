@@ -56,3 +56,12 @@ Each acts on one thing, reuses a system the game already has, and costs nothing 
 2. ~~Arrows in the air when Score Attack's 180 seconds run out~~ **Decided 22 November 2026: they count.** An arrow loosed before the 180 seconds are up scores if it hits, however late it lands; only a release after the time is up is blocked. (Gemini's rule; ChatGPT had proposed voiding them.)
 3. ~~A Bonus Bell in Score Attack~~ **Decided 22 November 2026: add it.** Gemini's rule: when every target in a six-second slot is cleared with at least 1.5 seconds left, one Bonus Bell appears; a hit scores a flat 50 and a miss costs nothing. To answer ChatGPT's objection, the main targets keep their fixed schedule, and the bell must appear at a fixed place and draw nothing from the shared random sequence, so two players on the same seed still face the same run. Claude advised leaving it out until play showed dead time; the developer chose to include it.
 4. **Whether to start any of this before the Trials playtest.** All three models say Trials ships first.
+
+## Order of work for the world and the levels (set by the developer, 22 November 2026)
+Claude built a range layout into the game straight from one picture. The developer stopped that: it is not how it is done. The order is:
+
+1. **The aerial view**, made by all three: Gemini writes the plan in metres, ChatGPT draws it, Claude and Gemini check the drawing against the plan and the stage list.
+2. **The player's-eye view for the stages**, drawn from that aerial view.
+3. **Then the assets** those pictures call for, **and the levels built with the right assets in them**.
+
+Each step goes to the developer before the next starts. The layout Claude built behind `?world=2` stays where it is as a rough block-out; it is not the result of this process and nothing more is added to it until step 3.

@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><title>ribbons</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// Ribbons (design/small-specs.md): a second goal on every stage. Checks that one is offered on a clear that misses
+// it, earned on a clear that meets it, remembered afterwards and after a reload, never given on a failed run, that
+// Pure Bow only exists with special arrows on, that every stage has an entry, and that nothing appears with it off.
+const errors=[],KEY="brackenford-trials-v1";
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,9))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+function kit(w){
+ const v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ const centre=()=>v.rangeRounds.filter(t=>t.base.visible)[0].root.getWorldPosition(V());
+ const hit=()=>{steps(1);const to=centre(),o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(40);};
+ const miss=()=>{steps(1);const to=centre(),o=eye(),flat=V(to.x-o.x,0,to.z-o.z).normalize();v.loose(o,flat.add(V(0,.9,0)).normalize(),1);steps(40);};
+ const finish=()=>{for(let i=0;i<900&&r.phase!=="results";i++)steps(1);steps(5);};
+ const again=()=>{for(let i=0;i<1200&&!(r.phase==="results"&&!v.replay?.on);i++)steps(1);r.pending="again";for(let i=0;i<600&&r.phase==="results";i++)steps(1);};
+ const start=()=>{v.begin(false);steps(2);if(r.stage!==0||r.phase!=="play")v.setStage(0);steps(30);};
+ const run=(hits,misses)=>{for(let i=0;i<hits;i++)hit();for(let i=0;i<misses;i++)miss();finish();return{stars:r.stars,ribbon:r.ribbon,fired:r.fired,hits:r.hits,board:v.rangeInfo().text};};
+ return{v,start,run,again};
+}
+const saved=()=>{const s=JSON.parse(localStorage.getItem(KEY)||"null");return s&&s.range.named&&s.range.named["First marks"];};
+async function run(){
+ const o={};
+ {wipe();const k=kit(await game("?ribbons=1"));k.start();
+  o.failed=k.run(1,4);k.again();                 // too few points to clear: no ribbon line at all
+  o.missed=k.run(4,1);k.again();                 // clears, but one miss: the ribbon is offered
+  o.earned=k.run(5,0);o.savedAfter=saved();k.again();   // clears with no miss: earned
+  o.owned=k.run(4,1);                            // owned already: shown as held even on a run that would not earn it
+  o.every=k.v.ALL_STAGES.every(st=>!!k.v.RIBBON[st.name]);o.count=Object.keys(k.v.RIBBON).length;
+  o.pureWithoutArrows=k.v.ribbonFor(k.v.ALL_STAGES.find(s=>s.name==="Crosswind"));}
+ {const w=await game("?ribbons=1"),sel=w.document.getElementById("stageSel");o.listAfterReload=sel.options[0].textContent;o.keptAfterReload=saved();}
+ {const w=await game("?release=0&ribbons=1&arrows=1"),rb=w.vale.ribbonFor(w.vale.ALL_STAGES.find(s=>s.name==="Crosswind"));o.pureWithArrows=rb&&rb.name;}
+ {wipe();const k=kit(await game("?ribbons=0"));k.start();o.off=k.run(5,0);o.offSaved=saved();o.offOn=k.v.RIBBONS;}
+ wipe();
+ o.checks={
+  failedShowsNone:o.failed.stars===0&&o.failed.ribbon==="",
+  offered:o.missed.stars>0&&o.missed.ribbon==="◇ Ribbon: Clean Quiver (no misses)"&&o.missed.board.includes(o.missed.ribbon),
+  earned:o.earned.ribbon==="◆ Ribbon earned: Clean Quiver"&&o.earned.board.includes(o.earned.ribbon)&&o.savedAfter&&o.savedAfter.r===1,
+  owned:o.owned.ribbon==="◆ Clean Quiver",
+  everyStage:o.every&&o.count===29,
+  pure:o.pureWithoutArrows===null&&o.pureWithArrows==="Pure Bow",
+  remembered:/◆/.test(o.listAfterReload)&&o.keptAfterReload&&o.keptAfterReload.r===1,
+  off:o.offOn===false&&o.off.ribbon===""&&o.off.stars===3&&o.offSaved&&o.offSaved.r===undefined&&!/[◆◇]/.test(o.off.board),
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

@@ -557,15 +557,33 @@ const ALL_STAGES=[
  {name:'Blighted meadow',arrows:10,marks:[],spirits:[{t:'sit',at:[13,-4],alt:[15,-6],back:5},{t:'hide',at:[19,4]},{t:'run',area:[20,27,-6,6]},{t:'perch',at:[16,1,2.6],back:5},{t:'cross',lane:24}]}];
 // The release plays a chosen few of these in its own order (stage numbers, from one); every stage stays here, none is deleted.
 const STAGES=RELEASE&&CONFIG.order.length?CONFIG.order.map(n=>ALL_STAGES[n-1]):ALL_STAGES;
+// ---- Ribbons: one second goal on every stage, earned on a run that also clears it (design/small-specs.md).
+// One switch: "ribbons" in src/config.json, or ?ribbons=1 / ?ribbons=0. Off: nothing is counted, shown or saved.
+//   clean: every arrow loosed hit, and on a shade stage every shade was banished
+//   dead N: N hits made with a perfect release        swift T: every shade banished within T seconds
+//   pure: cleared without a special arrow; only exists while special arrows are switched on
+const RIBBONS=QUERY.has('ribbons')?QUERY.get('ribbons')==='1':!!CONFIG.ribbons;
+const RIBBON={'First marks':['clean'],'Stepping back':['dead',3],'The drop':['clean'],'Three ranges':['dead',3],'The long lane':['clean'],'A breeze':['clean'],'Crosswind':['pure'],'Sliding mark':['dead',3],
+ 'Slide and breeze':['pure'],'Pop-ups':['pure'],'Far and small':['dead',3],'Gusts':['dead',3],'Quick marks':['pure'],'Crossing pair':['clean'],'Long wind':['pure'],'The gauntlet':['dead',4],'Small bull':['clean'],
+ 'Storm lane':['pure'],'Far slider':['dead',3],'Master of the line':['pure'],'First shade':['clean'],'The warren':['swift',22],'Horns in the grass':['pure'],'Creepers':['clean'],'Bolt':['swift',25],
+ 'On the post':['clean'],'Flush':['swift',24],'Flight line':['pure'],'Blighted meadow':['swift',32]};
+// the ribbon a stage offers today, as {name, goal, won(run)}; null when it has none (ribbons off, or Pure Bow without special arrows)
+function ribbonFor(st){
+ const r=RIBBONS&&RIBBON[st.name];if(!r)return null;const shades=st.spirits?st.spirits.length:0,all=x=>!shades||x.hits===shades;
+ if(r[0]==='clean')return{name:'Clean Quiver',goal:'no misses',won:x=>x.fired>0&&x.hits===x.fired&&all(x)};
+ if(r[0]==='dead')return{name:'Dead-Eye',goal:r[1]+' perfect',won:x=>x.perfectHits>=r[1]};
+ if(r[0]==='swift')return{name:'Swift Banish',goal:'within '+r[1]+' s',won:x=>x.hits===shades&&x.sec<=r[1]};
+ return ARROWS?{name:'Pure Bow',goal:'no special arrows',won:x=>x.specialUsed===0}:null;
+}
 // stars and bests by stage name, for the save file (see the note where the save is read)
 function rangeNames(){
  const R=state.range,named=R.named&&typeof R.named==='object'?R.named:{};
- STAGES.forEach((st,i)=>{if(R.stars[i]||R.best[i])named[st.name]={s:R.stars[i]||0,b:R.best[i]||0};});   // stages not in today's list keep what they had
+ STAGES.forEach((st,i)=>{if(R.stars[i]||R.best[i]||(R.ribbon&&R.ribbon[i]))named[st.name]={s:R.stars[i]||0,b:R.best[i]||0,...(R.ribbon&&R.ribbon[i]?{r:1}:named[st.name]&&named[st.name].r?{r:1}:{})};});   // stages not in today's list keep what they had
  R.named=named;
 }
 // put a save that carries names back in today's order; the next stage to open is the first without a star
 (function rangeFromNames(){
- const R=state.range;if(!R.named)return;
+ const R=state.range;R.ribbon=STAGES.map(st=>R.named&&R.named[st.name]&&R.named[st.name].r?1:0);if(!R.named)return;
  R.stars=STAGES.map(st=>R.named[st.name]?R.named[st.name].s|0:0);R.best=STAGES.map(st=>R.named[st.name]?R.named[st.name].b|0:0);
  let open=0;while(open<STAGES.length-1&&R.stars[open]>0)open++;R.open=open;
 })();
@@ -976,7 +994,7 @@ function rangeTargets(){
  for(const id in rangeSigns)if(rangeSigns[id].base.visible)rangeMeshes.push(...rangeSigns[id].meshes);
 }
 function setStage(i){
- const st=STAGES[i];Object.assign(range,{gap:'',gain:0,stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
+ const st=STAGES[i];Object.assign(range,{gap:'',gain:0,perfectHits:0,specialUsed:0,ribbon:'',stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
  quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
  if(replay.arrow)replay.arrow.visible=false;
@@ -1103,7 +1121,7 @@ function rangeLoosed(q,perfect){
  if(range.phase!=='play')return;
  q.ranged=true;q.perfect=perfect;q.path=[q.o.position.clone()];range.arrows--;range.fired++;
  q.kind='std';if(ARROWS&&quiver.kind!=='std'&&quiver.charges>0){q.kind=quiver.kind;if(--quiver.charges<=0)quiver.kind='std';}   // a special shot spends a charge as it leaves the string
- galeCue(q.o,q.kind==='gale');
+ galeCue(q.o,q.kind==='gale');if(q.kind!=='std')range.specialUsed++;
  if(guiding()&&range.hits===0&&range.arrows<=0)range.arrows=3;   // a learner who has not yet hit anything is never left without arrows
  q.final=range.arrows<=0;
  if(perfect)note(1320,.18,'sine',.07,0,1760);
@@ -1134,7 +1152,7 @@ function rangeHit(t,q){
  if(spirit){if(!t.live)return;spiritWake(t);}else{t.kick=elapsed;thump(500,.15,.25);note(124,.16,'triangle',.2,0,40);}
  if(!q.ranged||q.done)return;q.done=true;
  const at=q.o.position,local=t.root.worldToLocal(at.clone()),r=spirit?0:hyp(local.x,local.y),ring=Math.min(q.kind==='gale'?ARROW_RULE.galeCap:1e9,spirit?t.value:r<.1?100:r<.23?80:r<.37?60:r<.5?40:20),dist=Math.round(q.origin.distanceTo(at));
- range.streak++;range.hits++;range.best=Math.max(range.best,range.streak);
+ range.streak++;range.hits++;if(q.perfect)range.perfectHits++;range.best=Math.max(range.best,range.streak);
  const pts=Math.round((ring+dist)*Math.min(2,1+.1*(range.streak-1))*(q.perfect?1.25:1));range.score+=pts;
  q.path.push(at.clone());const shot={path:q.path,pts,ring:spirit?100:ring,spirit,target:t,base:t.base.position.clone(),off:r*t.scale};
  if(!range.closest||shot.off<range.closest.off)range.closest=shot;
@@ -1154,6 +1172,9 @@ function rangeResults(){
  range.phase='results';range.stars=stars;range.newBest=range.score>before;
  range.gap=REPLAY&&need?need+(need===1?' point':' points')+' to '+'★'.repeat(stars+1):'';range.gain=REPLAY&&range.newBest&&before?range.score-before:0;
  tallyEnd(STAGES[i].name,stars,need>0&&need<=.1*range.ideal,elapsed-range.t0);
+ {const rb=ribbonFor(STAGES[i]);range.ribbon='';
+  if(rb&&stars){const had=!!(R.ribbon&&R.ribbon[i]),won=rb.won({fired:range.fired,hits:range.hits,perfectHits:range.perfectHits,specialUsed:range.specialUsed,sec:elapsed-range.t0});
+   if(won&&!had){(R.ribbon||(R.ribbon=[]))[i]=1;range.ribbon='◆ Ribbon earned: '+rb.name;}else range.ribbon=had?'◆ '+rb.name:'◇ Ribbon: '+rb.name+' ('+rb.goal+')';}}
  range.earned=Math.round(range.score/20)+Math.max(0,stars-(R.stars[i]||0))*25;state.coins+=range.earned;
  if(range.newBest)R.best[i]=range.score;R.stars[i]=Math.max(R.stars[i]||0,stars);if(stars&&R.open<i+1)R.open=Math.min(STAGES.length-1,i+1);
  // one replay at most. Up close: the best bullseye, or failing that the final arrow, hit or near miss.
@@ -1258,7 +1279,7 @@ function fpsStep(now){
 function rangeInfo(){
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(range.phase==='results')return{title:'Stage '+(i+1)+'  ·  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars),
-  text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.best[i]||0))+'.  '+(range.gap?range.gap+'.  ':'')+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
+  text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.best[i]||0))+'.  '+(range.gap?range.gap+'.  ':'')+(range.ribbon?range.ribbon+'.  ':'')+(st.spirits?'Shades banished '+range.hits+' of '+st.spirits.length:'Hits '+range.hits+' of '+st.arrows)+', longest streak '+range.best+'.'+coins('  +'+range.earned+' coins.')+'  Shoot a sign to go on.',
   mark:'★ '+R.stars.reduce((a,b)=>a+(b||0),0)+' of '+STAGES.length*3+coins('      Coins '+state.coins)+fpsText(),wind};
  return{title:'Stage '+(i+1)+' of '+STAGES.length+'  ·  '+st.name,text:'Arrows '+range.arrows+'      Score '+range.score+'      Streak '+range.streak+quiverText(),mark:wind+(R.best[i]?'      best '+R.best[i]:'')+coins('      Coins '+state.coins)+fpsText(),wind};
 }
@@ -1302,7 +1323,7 @@ $('modeRange').onclick=()=>setMode('range');$('modeRoam').onclick=()=>setMode('r
 function stageList(){
  const sel=$('stageSel'),R=state.range;
  if(sel.options.length!==STAGES.length){sel.innerHTML='';STAGES.forEach(()=>sel.add(document.createElement('option')));}
- STAGES.forEach((st,i)=>{const n=R.stars[i]||0;sel.options[i].value=i;sel.options[i].disabled=RELEASE&&i>R.open;sel.options[i].textContent=(i+1)+'.  '+st.name+(st.spirits?'  (shades)':'')+(n?'   '+'★'.repeat(n)+'☆'.repeat(3-n):'')+(R.best[i]?'   best '+R.best[i]:'');});
+ STAGES.forEach((st,i)=>{const n=R.stars[i]||0;sel.options[i].value=i;sel.options[i].disabled=RELEASE&&i>R.open;sel.options[i].textContent=(i+1)+'.  '+st.name+(st.spirits?'  (shades)':'')+(n?'   '+'★'.repeat(n)+'☆'.repeat(3-n):'')+(R.best[i]?'   best '+R.best[i]:'')+(n&&ribbonFor(st)?(R.ribbon&&R.ribbon[i]?'   ◆':'   ◇'):'');});
  sel.value=range.on?range.stage:clamp(R.open,0,STAGES.length-1);
 }
 function stageGo(i){
@@ -2053,7 +2074,7 @@ function clothRender(face){
   h+='<button class="link" data-do="settings">Settings</button>';
  }else if(cloth.face==='stages'){
   h='<button class="link back" data-do="home">◀ Back</button><h3>Stages</h3><div class="list">';
-  STAGES.forEach((st,i)=>{const n=R.stars[i]||0,shut=RELEASE&&i>R.open;h+='<button class="stage" data-stage="'+i+'"'+(shut?' disabled':'')+'><span>'+(i+1)+'.  '+esc(st.name)+'</span><span>'+(shut?'locked':'★'.repeat(n)+'☆'.repeat(3-n))+'</span></button>';});
+  STAGES.forEach((st,i)=>{const n=R.stars[i]||0,shut=RELEASE&&i>R.open;h+='<button class="stage" data-stage="'+i+'"'+(shut?' disabled':'')+'><span>'+(i+1)+'.  '+esc(st.name)+'</span><span>'+(shut?'locked':'★'.repeat(n)+'☆'.repeat(3-n)+(n&&ribbonFor(st)?(R.ribbon&&R.ribbon[i]?' ◆':' ◇'):''))+'</span></button>';});
   h+='</div>';
  }else{
   h='<button class="link back" data-do="home">◀ Back</button><h3>Settings</h3>';
@@ -2082,6 +2103,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

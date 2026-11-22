@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><title>cloth menu</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The cloth menu (design/first-menu.md): the faces for a new and a returning player, Stages, Settings, the headset
+// version chosen by pointing, and that none of it appears with its switches off.
+const errors=[],KEY="brackenford-trials-v1";
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+const returning=()=>localStorage.setItem(KEY,JSON.stringify({bells:[],marks:[],lanterns:[],shots:40,longest:30,pos:null,done:false,lesson:0,coins:0,hand:"right",draw:"two",mode:"range",range:{open:3,best:[600,500,300],stars:[3,2,1]}}));
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,8))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function run(){
+ const o={};
+ // a new player
+ {wipe();const w=await game("?menu=1"),d=w.document,q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)];
+  o.fresh={cloth:!q("#cloth").hidden,card:q("#card").hidden,title:q("#cloth h2").textContent,main:q("#cloth .main").textContent,buttons:all("#cloth button").map(b=>b.textContent),barsHidden:w.getComputedStyle(q("#top")).display==="none"};
+  q("#cloth .main").click();await sleep(500);o.fresh.playing=w.vale.playing;o.fresh.menuGone=q("#start").hidden;o.fresh.barsBack=w.getComputedStyle(q("#top")).display!=="none";
+  o.fresh.ok=o.fresh.cloth&&o.fresh.card&&o.fresh.title==="Bow & Shadow"&&o.fresh.main==="Begin"&&o.fresh.buttons.join("|")==="Begin|Settings"&&o.fresh.barsHidden&&o.fresh.playing&&o.fresh.menuGone&&o.fresh.barsBack;}
+ // a returning player, the stage list and the settings
+ {wipe();returning();const w=await game("?menu=1"),d=w.document,q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)],press=t=>all("#cloth button").find(b=>b.textContent.trim()===t).click();
+  o.back={main:q("#cloth .main").textContent,stars:q("#cloth .tally").textContent,where:q("#cloth .where").textContent,buttons:all("#cloth button").map(b=>b.textContent)};
+  press("Stages");const rows=all("#cloth .stage");o.back.rows=rows.length;o.back.locked=rows.filter(b=>b.disabled).length;o.back.firstRow=rows[0].textContent;
+  press("◀ Back");press("Settings");press("Left");o.back.hand=JSON.parse(localStorage.getItem(KEY)).hand;press("Single-handed");o.back.draw=JSON.parse(localStorage.getItem(KEY)).draw;
+  press("Start over");o.back.asksTwice=all("#cloth button").some(b=>/Press again/.test(b.textContent));o.back.notErasedYet=!!localStorage.getItem(KEY);
+  press("◀ Back");press("Stages");all("#cloth .stage")[1].click();await sleep(500);o.back.stageChosen=w.vale.range.stage;o.back.playing=w.vale.playing;
+  o.back.ok=o.back.main==="Continue"&&o.back.stars==="★ 6 of 51"&&/Stage 4/.test(o.back.where)&&o.back.buttons.includes("Stages")&&o.back.rows===17&&o.back.locked===13&&o.back.hand==="left"&&o.back.draw==="one"&&o.back.asksTwice&&o.back.notErasedYet&&o.back.stageChosen===1&&o.back.playing;}
+ // the headset version, with a stand-in headset
+ {wipe();returning();const w=await game("?menu=1&vrmenu=1"),v=w.vale,T=v.T,m=v.vrMenu,V=(x,y,z)=>new T.Vector3(x,y,z),h=v.hands[1];
+  v.begin(false);v.tick(1/60);v.fake.on=true;v.tick(1/60);v.vrMenuOpen();v.tick(1/60);
+  const eye=v.camera.getWorldPosition(V()),at=m.root.position.clone();
+  const point=id=>{const s=m.spots.find(x=>x.id===id),to=m.root.localToWorld(V(((s.x+s.w/2)/m.W-.5)*m.wide,(.5-(s.y+s.h/2)/m.H)*m.tall,0)),from=eye.clone().add(V(.2,-.4,0));
+   h.raySpace.position.copy(h.raySpace.parent.worldToLocal(from.clone()));h.raySpace.updateMatrix();h.raySpace.updateMatrixWorld(true);h.raySpace.lookAt(from.clone().multiplyScalar(2).sub(to));h.raySpace.updateMatrix();h.raySpace.updateMatrixWorld(true);   // a controller's place is set by its matrix
+   v.vrMenuStep();return m.hover;};
+  o.vr={on:v.VRMENU,open:m.open,shown:m.root.visible,metresAway:+Math.hypot(at.x-eye.x,at.z-eye.z).toFixed(2),belowEye:+(eye.y-at.y).toFixed(2),size:[m.wide,m.tall],spots:m.spots.map(s=>s.id)};
+  o.vr.hoverContinue=point("continue");o.vr.rayShown=m.rays[1].visible;
+  o.vr.hoverStages=point("stages");v.vrMenuPress(h);o.vr.face=m.face;o.vr.stageSpots=m.spots.filter(s=>s.id.startsWith("stage")).length;
+  point("stage1");v.vrMenuPress(h);o.vr.stage=v.range.stage;o.vr.closedByStage=!m.open;
+  v.vrMenuOpen();point("settings");v.vrMenuPress(h);point("handL");v.vrMenuPress(h);o.vr.hand=JSON.parse(localStorage.getItem(KEY)).hand;point("home");v.vrMenuPress(h);
+  point("continue");v.vrMenuPress(h);o.vr.closedByContinue=!m.open&&!m.root.visible;
+  o.vr.ok=o.vr.on&&o.vr.open&&o.vr.shown&&Math.abs(o.vr.metresAway-2.4)<.05&&Math.abs(o.vr.belowEye-.1)<.02&&o.vr.hoverContinue==="continue"&&o.vr.rayShown&&o.vr.hoverStages==="stages"&&o.vr.face==="stages"&&o.vr.stageSpots===4&&o.vr.stage===1&&o.vr.closedByStage&&o.vr.hand==="left"&&o.vr.closedByContinue;}
+ // switches off
+ {wipe();returning();const w=await game("?menu=0"),d=w.document;o.off={cloth:d.querySelector("#frame").hidden,card:!d.querySelector("#card").hidden,bodyClass:d.body.className,MENU:w.vale.MENU,VRMENU:w.vale.VRMENU};
+  o.off.ok=o.off.cloth&&o.off.card&&o.off.bodyClass===""&&o.off.MENU===false&&o.off.VRMENU===false;}
+ {wipe();returning();const w=await game("?menu=1"),v=w.vale;v.vrMenuOpen();o.vrOff={VRMENU:v.VRMENU,open:v.vrMenu.open,built:!!v.vrMenu.root};o.vrOff.ok=o.vrOff.VRMENU===false&&!o.vrOff.open&&!o.vrOff.built;}
+ wipe();
+ o.allOk=o.fresh.ok&&o.back.ok&&o.vr.ok&&o.off.ok&&o.vrOff.ok&&errors.length===0;o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors));
+</script>

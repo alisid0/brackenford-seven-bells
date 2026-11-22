@@ -2,7 +2,7 @@
 
 The developer asked (22 November 2026) why the menu designed earlier was never built, and then said: "discuss with the other agents how the first menu of the game is supposed to look". This page is the outcome. Gemini's side is in `design/first-menu-spec.md` and `design/first-menu-reply.md`; ChatGPT's is recorded here, since it cannot write to the repository; Claude ran the exchange and checked it against the game.
 
-**Status: agreed between the three models. Not yet approved by the developer. Nothing is built; the game still opens on the old title card.**
+**Status: approved by the developer on 22 November 2026 ("Approve, build it"). The first-release version is built on `release-prep`; see "What is built" at the end. Not yet on the test site or the public site.**
 
 Pictures: `assets/concepts/first-menu-1-new-player.jpg`, `first-menu-2-returning-vr.jpg`, `first-menu-3-overlook-map.jpg`. The earlier approved picture is `title-menu-final.jpg`.
 
@@ -69,3 +69,20 @@ Until then, with one place, **Stages** opens a plain list of the stages that are
 - **Pointing is new.** The game has no controller pointer today; everything in VR is chosen by shooting or by the sticks. A pointer has to be built for this menu.
 - **The star total.** "14 of 51" in the pictures counts three stars on each of the 17 release stages.
 - The old rule "pictures only until after release" was the two models' caution, not the developer's instruction. Building this needs only the developer's word.
+
+## What is built (22 November 2026)
+
+| Piece | State | Switch |
+|---|---|---|
+| The cloth banner on the flat page: new-player face, returning face, Stages list, Settings cloth | Built; `tests/menu.html` passes; looked at on a desktop-size and a phone-size screen | `menu` in `src/config.json`, on. `?menu=0` brings the old card back |
+| A new player entering VR lands on stage 1 with no menu | Already how the game behaved; unchanged | - |
+| The banner inside the headset at 2.4 m, chosen by pointing and pressing a trigger: Continue, Stages, Settings (bow hand, draw mode) | Built and passing its test with a stand-in controller. **Never run on a headset** | `vrmenu`, **off**. `?vrmenu=1` turns it on for a returning player |
+
+Not built, and why:
+
+- **Posture and Replays in VR** on the Settings cloth: neither setting exists in the game yet, so they are left off rather than shown doing nothing.
+- **Daily Trial** button: the daily trial does not exist yet.
+- **A way to open the menu again from inside VR** (a pause or wrist control). Today the headset banner appears once, on entering VR.
+- **Moving cloth corners and the menu's own sounds.**
+- **"Willowbank"** under Continue: the place's name is not confirmed, so the line reads "Stage 4 · First shade".
+- The live range behind the cloth is today's range, not the redesigned first place with its deck and channel.

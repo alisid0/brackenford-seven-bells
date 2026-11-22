@@ -1731,6 +1731,7 @@ function grabClimb(h){
 // Single-handed: hold any trigger and the bow draws by itself; let go and the arrow flies straight out of the bow.
 // Tracked hands have no trigger, so they always take the string.
 function startDraw(h){
+ if(vrMenu.open)return;   // no arrows while the cloth menu is up
  if(replay.on){range.skip=true;return;}
  if(!h.pose||!bowHand||!bowHand.pose||charging||hands.some(x=>x.climb))return;
  const atString=h!==bowHand&&h.pinch.getWorldPosition(V()).distanceTo(bow.localToWorld(V(restX(),REST,.14)))<.33;
@@ -1751,7 +1752,7 @@ function endDraw(h){
 for(const h of hands){ // controllers; tracked hands are read in senseHand instead
  h.raySpace.addEventListener('squeezestart',()=>{if(!h.source?.hand&&!grabClimb(h))takeBow(h);});
  h.raySpace.addEventListener('squeezeend',()=>{if(!h.source?.hand)h.climb=null;});
- h.raySpace.addEventListener('selectstart',()=>{if(!h.source?.hand)startDraw(h);});
+ h.raySpace.addEventListener('selectstart',()=>{if(vrMenu.open){vrMenuPress(h);return;}if(!h.source?.hand)startDraw(h);});
  h.raySpace.addEventListener('selectend',()=>{if(!h.source?.hand)endDraw(h);});
 }
 // Hand tracking. A fist on the bow takes it; a pinch or fist on the string draws, opening the hand looses;
@@ -1884,7 +1885,7 @@ function leaveVR(){
 async function initXR(){
  if(!navigator.xr)return;
  const supported=await navigator.xr.isSessionSupported('immersive-vr').catch(()=>false);
- if(!supported)return;$('vr').hidden=false;
+ if(!supported)return;$('vr').hidden=false;cloth.vrOk=true;clothRender();
  $('vr').onclick=async()=>{try{
   audioStart();const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
   const floor=await session.requestReferenceSpace('local-floor').then(()=>true,()=>false);
@@ -1892,8 +1893,81 @@ async function initXR(){
   $('hud').style.display='none';$('start').hidden=true;playing=false;cancel();keys.clear();
   localEyeOffset=floor?0:1.6;rig.rotation.y=look.yaw;camera.position.set(0,0,0);camera.rotation.set(0,0,0);rig.position.y=groundAt(rig.position.x,rig.position.z)+localEyeOffset;
   if(range.on)say('Stage '+(range.stage+1)+'  ·  '+STAGES[range.stage].name,5);else say(state.lesson<5?'The training yard is close by  ·  follow the gold needle':'Seven bells sleep in the vale',6);vrVy=0;lastPanel=null;for(const h of hands)h.climb=null;
-  session.addEventListener('end',()=>{const restore=leaveVR();restore();$('hud').style.display='';$('play').textContent='Return to the vale';$('start').hidden=false;save();},{once:true});
+  if(VRMENU&&clothReturning())setTimeout(vrMenuOpen,600);   // once the headset has given its first pose
+  session.addEventListener('end',()=>{vrMenuClose();const restore=leaveVR();restore();$('hud').style.display='';$('play').textContent='Return to the vale';$('start').hidden=false;save();},{once:true});
  }catch(e){$('start').hidden=false;say('VR could not start. '+e.message,5);}};
+}
+
+// ---- The cloth menu inside the headset (design/first-menu.md). Its own switch, off until it has been tried on a
+// headset: "vrmenu" in src/config.json, or ?vrmenu=1. It needs the cloth menu ("menu") to be on as well.
+//   A returning player who enters VR faces the cloth 2.4 m ahead, 2.0 m wide and 1.15 m high, centred just below the
+//   eyes wherever they are (so it is lower for a seated player). A new player never sees it: they land on stage 1.
+//   Chosen by pointing a controller at a button and pressing its trigger; arrows cannot be drawn while it is up.
+const VRMENU=(QUERY.has('menu')?QUERY.get('menu')==='1':!!CONFIG.menu)&&(QUERY.has('vrmenu')?QUERY.get('vrmenu')==='1':!!CONFIG.vrmenu);
+const vrMenu={open:false,face:'home',root:null,cv:null,ctx:null,tex:null,spots:[],hover:null,rays:[],W:1024,H:590,wide:2,tall:1.15,away:2.4};
+function vrMenuBuild(){
+ if(vrMenu.root)return;
+ const m=vrMenu,cv=document.createElement('canvas');cv.width=m.W;cv.height=m.H;m.cv=cv;m.ctx=cv.getContext('2d');m.tex=new T.CanvasTexture(cv);if('colorSpace'in m.tex)m.tex.colorSpace=T.SRGBColorSpace;
+ m.root=new T.Group();m.root.visible=false;scene.add(m.root);
+ m.root.add(new T.Mesh(new T.PlaneGeometry(m.wide,m.tall),new T.MeshBasicMaterial({map:m.tex})));
+ const back=new T.Mesh(new T.PlaneGeometry(m.wide,m.tall),new T.MeshBasicMaterial({color:'#e9d8ac'}));back.rotation.y=Math.PI;m.root.add(back);   // the cloth's plain back
+ for(const s of[-1,1])stick(m.root,V(s*(m.wide/2+.09),-2.2,0),V(s*(m.wide/2+.09),m.tall/2+.22,0),.05,'#7a5a3c');
+ stick(m.root,V(-m.wide/2-.2,m.tall/2+.1,0),V(m.wide/2+.2,m.tall/2+.1,0),.04,'#7a5a3c');
+ for(const h of hands){const line=new T.Line(new T.BufferGeometry().setFromPoints([V(),V(0,0,-1)]),new T.LineBasicMaterial({color:'#fff4d6'}));line.visible=false;h.raySpace.add(line);m.rays.push(line);}
+}
+function vrMenuDraw(){
+ const m=vrMenu,c=m.ctx,R=state.range,PLUM='#4A2943',RED='#b3202f',CREAM='#f6e6bd';m.spots=[];
+ const text=(s,x,y,size,col=PLUM,bold=true,align='center')=>{c.font=(bold?'700 ':'400 ')+size+'px Georgia, serif';c.fillStyle=col;c.textAlign=align;c.textBaseline='middle';c.fillText(s,x,y);};
+ const pennant=(x,y,w,h,fill,line)=>{const k=h*.38;c.beginPath();c.moveTo(x+k,y);c.lineTo(x+w-k,y);c.lineTo(x+w,y+h/2);c.lineTo(x+w-k,y+h);c.lineTo(x+k,y+h);c.lineTo(x,y+h/2);c.closePath();c.fillStyle=fill;c.fill();if(line){c.lineWidth=4;c.strokeStyle=line;c.stroke();}};
+ const spot=(id,x,y,w,h,label,size,main)=>{const on=m.hover===id;pennant(x,y,w,h,main?(on?'#d43348':RED):(on?'#fff8e2':CREAM),main?null:PLUM);if(on){c.lineWidth=6;c.strokeStyle='#ffd86b';c.strokeRect(x-6,y-6,w+12,h+12);}text(label,x+w/2,y+h/2+2,size,main?'#fbefd0':PLUM);m.spots.push({id,x,y,w,h});};
+ c.fillStyle=CREAM;c.fillRect(0,0,m.W,m.H);c.lineWidth=8;c.strokeStyle=RED;c.strokeRect(16,16,m.W-32,m.H-32);
+ if(m.face==='home'){
+  const i=clothStage(),stars=R.stars.reduce((a,b)=>a+(b||0),0);
+  text(RELEASE?CONFIG.title:'The Seven Bells',m.W/2,92,76);text('★ '+stars+' of '+STAGES.length*3,m.W/2,162,40);
+  spot('continue',292,206,440,110,'Continue',64,true);text('Stage '+(i+1)+'  ·  '+STAGES[i].name,m.W/2,350,36,PLUM,false);
+  spot('stages',232,400,260,80,'Stages',48);spot('settings',532,400,260,80,'Settings',48);
+ }else if(m.face==='stages'){
+  spot('home',40,36,190,64,'◀ Back',40);text('Stages',m.W/2,68,52);
+  const n=STAGES.length,rows=Math.ceil(n/3),h=Math.min(64,(m.H-150)/rows),w=306;
+  STAGES.forEach((st,k)=>{const col=Math.floor(k/rows),x=40+col*(w+12),y=120+(k%rows)*h,shut=RELEASE&&k>R.open,id='stage'+k,on=m.hover===id,s=R.stars[k]||0;
+   c.fillStyle=on?'#fff8e2':'#f1dfb2';c.fillRect(x,y,w,h-6);if(on){c.lineWidth=4;c.strokeStyle='#ffd86b';c.strokeRect(x,y,w,h-6);}
+   c.globalAlpha=shut?.4:1;text((k+1)+'. '+st.name,x+10,y+(h-6)/2+1,Math.min(26,h*.45),PLUM,false,'left');text(shut?'':'★'.repeat(s),x+w-8,y+(h-6)/2+1,22,RED,true,'right');c.globalAlpha=1;
+   if(!shut)m.spots.push({id,x,y,w,h:h-6});});
+ }else{
+  spot('home',40,36,190,64,'◀ Back',40);text('Settings',m.W/2,68,52);
+  text('Bow hand',70,200,44,PLUM,true,'left');spot('handR',420,160,250,84,'Right',44,state.hand==='right');spot('handL',700,160,250,84,'Left',44,state.hand==='left');
+  text('Draw mode',70,340,44,PLUM,true,'left');spot('drawTwo',420,300,250,84,'Two hands',40,state.draw==='two');spot('drawOne',700,300,250,84,'One hand',40,state.draw==='one');
+  text('Grip swaps the bow hand  ·  right stick click swaps the draw',m.W/2,470,30,PLUM,false);
+ }
+ m.tex.needsUpdate=true;
+}
+function vrMenuOpen(){
+ if(!VRMENU)return;vrMenuBuild();const m=vrMenu,p=head().getWorldPosition(V());
+ let ux=YARD.ux,uz=YARD.uz;if(!range.on){const d=head().getWorldDirection(V());const l=hyp(d.x,d.z)||1;ux=d.x/l;uz=d.z/l;}
+ m.root.position.set(p.x+ux*m.away,p.y-.1,p.z+uz*m.away);m.root.lookAt(p.x,m.root.position.y,p.z);m.root.updateMatrixWorld(true);
+ m.open=true;m.face='home';m.hover=null;m.root.visible=true;cancel();vrMenuDraw();
+}
+function vrMenuClose(){const m=vrMenu;m.open=false;if(m.root)m.root.visible=false;for(const l of m.rays)l.visible=false;}
+// where a hand's ray meets the cloth: the spot under it, or null
+function vrMenuAim(h,k){
+ const m=vrMenu,line=m.rays[k];if(!h.pose&&!fake.on){if(line)line.visible=false;return null;}
+ h.raySpace.updateMatrixWorld(true);const o=m.root.worldToLocal(h.raySpace.getWorldPosition(V())),end=m.root.worldToLocal(h.raySpace.localToWorld(V(0,0,-1))),d=end.sub(o);
+ if(d.z>=-1e-4||o.z<=0){if(line)line.visible=false;return null;}
+ const t=-o.z/d.z,x=o.x+d.x*t,y=o.y+d.y*t;if(line){line.visible=true;line.scale.z=Math.min(t,6);}
+ if(Math.abs(x)>m.wide/2||Math.abs(y)>m.tall/2)return null;
+ const u=(x/m.wide+.5)*m.W,v=(.5-y/m.tall)*m.H;return m.spots.find(s=>u>=s.x&&u<=s.x+s.w&&v>=s.y&&v<=s.y+s.h)||null;
+}
+function vrMenuStep(){
+ const m=vrMenu;if(!m.open)return;let over=null;hands.forEach((h,k)=>{if(h===bowHand&&hands.some(x=>x!==h&&x.pose))  {if(m.rays[k])m.rays[k].visible=false;return;}const s=vrMenuAim(h,k);if(s&&!over)over=s.id;});
+ if(over!==m.hover){m.hover=over;vrMenuDraw();if(over)note(880,.05,'sine',.03);}
+}
+function vrMenuPress(h){
+ const m=vrMenu,k=hands.indexOf(h),s=vrMenuAim(h,k);if(!s)return;const id=s.id;note(660,.12,'triangle',.06,0,990);buzz(h,.4,30);
+ if(id==='continue'){vrMenuClose();say('Stage '+(range.stage+1)+'  ·  '+STAGES[range.stage].name,4);return;}
+ if(id==='home'||id==='stages'||id==='settings'){m.face=id;m.hover=null;vrMenuDraw();return;}
+ if(id==='handR'||id==='handL'){setHand(id==='handR'?'right':'left');vrMenuDraw();return;}
+ if(id==='drawTwo'||id==='drawOne'){setDraw(id==='drawTwo'?'two':'one');vrMenuDraw();return;}
+ if(id.startsWith('stage')){stageGo(+id.slice(5));vrMenuClose();say('Stage '+(range.stage+1)+'  ·  '+STAGES[range.stage].name,4);}
 }
 
 // ---------------------------------------------------------------- loop
@@ -1915,7 +1989,7 @@ function tick(dt,frame){
  updateDeer(dt,feetNow.x,feetNow.z);updateGrass(feetNow.x,feetNow.z);
  scene.updateMatrixWorld();
  zoom+=(charge-zoom)*Math.min(1,dt*10);
- if(vr)vrPose();else desktopPose();
+ if(vr)vrPose();else desktopPose();if(vr)vrMenuStep();
  bow.updateMatrixWorld();stepArrows(dt);stepBits(dt);
  $('ret').classList.toggle('hit',elapsed<hitFlash);$('ret').style.visibility=replay.on?'hidden':'';
  (vr?head():camera).getWorldPosition(eyeNow);updateSky(dt,eyeNow);stepPops(dt,replay.on&&!vr?cine.position:eyeNow);
@@ -1940,7 +2014,62 @@ if(RELEASE){
  document.querySelector('#top .eyebrow').textContent=CONFIG.subtitle||'';document.querySelector('#card .eyebrow').textContent=(CONFIG.subtitle||'')+(CONFIG.world?'  ·  a tale of '+CONFIG.world:'');
  $('aboutRange').textContent=CONFIG.blurb;for(const e of document.querySelectorAll('.roam'))e.hidden=true;
 }
-flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);
-window.vale={fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+// ---- The cloth menu (design/first-menu.md): the first thing a player meets. One switch: "menu" in src/config.json, or
+// ?menu=1 / ?menu=0. With it off the old title card is used and nothing here runs. The old card stays in the page,
+// hidden, and the cloth's buttons press its buttons, so everything the card did still works the same way.
+//   home:     a new player sees the title, one red button and Settings; a returning one sees stars, Continue and Stages
+//   stages:   the stages that are open, with their stars
+//   settings: bow hand, draw mode, the controls, Start over (asks twice), and on test builds the playtest summary
+const MENU=QUERY.has('menu')?QUERY.get('menu')==='1':!!CONFIG.menu;
+const cloth={face:'home',sure:0,vrOk:false,quest:/OculusBrowser|Quest/i.test(navigator.userAgent)};
+function clothReturning(){return state.range.stars.some(n=>n>0)||state.shots>0;}
+function clothStage(){return clamp(range.on?range.stage:state.range.open,0,STAGES.length-1);}
+function clothRender(face){
+ if(!MENU)return;const el=$('cloth');if(!el)return;
+ if(face)cloth.face=face;const R=state.range,esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ const title=esc(RELEASE?CONFIG.title:'The Seven Bells'),sub=esc(RELEASE?CONFIG.subtitle||'':'Brackenford'),pick=(on,a,b)=>'<span class="pair"><button data-do="'+a[0]+'" class="'+(on?'on':'')+'">'+a[1]+'</button><button data-do="'+b[0]+'" class="'+(on?'':'on')+'">'+b[1]+'</button></span>';
+ let h='';
+ if(cloth.face==='home'){
+  const back=clothReturning(),stars=R.stars.reduce((a,b)=>a+(b||0),0),i=clothStage();
+  h='<h2 class="'+(back?'small':'')+'">'+title+'</h2>';
+  if(back)h+='<p class="tally">★ '+stars+' of '+STAGES.length*3+'</p>';
+  else h+=(sub?'<p class="sub">'+sub+'</p>':'')+'<p class="line">A fantasy archery game</p>';
+  const vrFirst=cloth.vrOk&&cloth.quest,word=back?'Continue':'Begin';
+  h+='<button class="main" data-do="'+(vrFirst?'vr':'play')+'">'+(vrFirst?'Enter VR':word)+'</button>';
+  if(back)h+='<p class="where">Stage '+(i+1)+'  ·  '+esc(STAGES[i].name)+'</p>';
+  h+='<div class="row">'+(cloth.vrOk?'<button class="plain" data-do="'+(vrFirst?'play':'vr')+'">'+(vrFirst?'Play on screen':'Enter VR')+'</button>':'')+(back?'<button class="plain" data-do="stages">Stages</button>':'')+'</div>';
+  h+='<button class="link" data-do="settings">Settings</button>';
+ }else if(cloth.face==='stages'){
+  h='<button class="link back" data-do="home">◀ Back</button><h3>Stages</h3><div class="list">';
+  STAGES.forEach((st,i)=>{const n=R.stars[i]||0,shut=RELEASE&&i>R.open;h+='<button class="stage" data-stage="'+i+'"'+(shut?' disabled':'')+'><span>'+(i+1)+'.  '+esc(st.name)+'</span><span>'+(shut?'locked':'★'.repeat(n)+'☆'.repeat(3-n))+'</span></button>';});
+  h+='</div>';
+ }else{
+  h='<button class="link back" data-do="home">◀ Back</button><h3>Settings</h3>';
+  h+='<p class="set"><span>Bow hand</span>'+pick(state.hand==='right',['handR','Right'],['handL','Left'])+'</p>';
+  h+='<p class="set"><span>Draw mode</span>'+pick(state.draw==='two',['drawTwo','Two-handed'],['drawOne','Single-handed'])+'</p>';
+  h+='<h4>Controls</h4><ul><li>Hold the left mouse button to draw the bow; let go to loose.</li><li>Let go early, or roll the mouse wheel while drawing, for a softer shot.</li><li>After a stage: N next, R again, B back. Esc brings back this menu.</li><li>In VR: trigger draws and looses, grip swaps the bow hand, right stick click swaps the draw mode.</li></ul>';
+  h+='<div class="row"><button class="plain" data-do="wipe">'+(cloth.sure>performance.now()?'Press again to erase all progress':'Start over')+'</button>'+(REPLAY?'<button class="plain" data-do="tally">Copy playtest summary</button>':'')+'</div>';
+ }
+ el.innerHTML=h;
+}
+if(MENU&&$('cloth')){
+ document.body.classList.add('menu');$('frame').hidden=false;$('cloth').hidden=false;$('card').hidden=true;
+ const press=id=>$(id).click();
+ $('cloth').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset.do;
+  if(b.dataset.stage!==undefined){stageGo(+b.dataset.stage);clothRender('home');press('play');return;}
+  if(d==='play'){press('play');return;}
+  if(d==='vr'){press('vr');return;}
+  if(d==='home'||d==='stages'||d==='settings'){cloth.sure=0;clothRender(d);return;}
+  if(d==='handR'||d==='handL'||d==='drawTwo'||d==='drawOne'){press(d);clothRender();return;}
+  if(d==='wipe'){if(cloth.sure>performance.now())press('wipe');else{cloth.sure=performance.now()+5000;clothRender();}return;}
+  if(d==='tally'){press('tally');b.textContent='Copied';setTimeout(()=>clothRender(),1500);}
+ });
+ // whenever the menu comes back (Esc, leaving VR) it opens on its home face, and the game's own bars step aside
+ new MutationObserver(()=>{const open=!$('start').hidden;document.body.classList.toggle('menu-open',open);if(open)clothRender('home');}).observe($('start'),{attributes:true,attributeFilter:['hidden']});
+ document.body.classList.toggle('menu-open',!$('start').hidden);
+}
+flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
+window.vale={MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

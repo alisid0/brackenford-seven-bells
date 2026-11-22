@@ -20,7 +20,15 @@ const clamp=T.MathUtils.clamp, lerp=T.MathUtils.lerp, smooth=T.MathUtils.smooths
 const canvas=$('view'), scene=new T.Scene(), camera=new T.PerspectiveCamera(68,1,.05,1600);
 const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.xr.enabled=true;
-scene.fog=new T.FogExp2(0xb4cfd3,.0031);
+// ---- Stage 3, lighting and colour (design/willowbank-art-pass.md). One switch: "grade" in src/config.json, or
+// ?grade=1 / ?grade=0. On: the day no longer turns; a fixed late-afternoon sun stands behind the archer's left shoulder
+// (120 degrees left of the shooting direction, 25 degrees up: Gemini's direction, agreed by ChatGPT), warm key and cool
+// fill, haze from 110 m to 480 m, and ChatGPT's colours for sky, clouds, meadow and water. Off: everything as before.
+const GRADE=QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade;
+const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
+ haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
+ hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33]};   // the valley's rim in three bands by height (metres), the highest the lightest
+scene.fog=GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
 const rig=new T.Group();scene.add(rig);rig.add(camera);camera.rotation.order='YXZ';camera.position.set(0,1.65,0);
 const sun=new T.DirectionalLight(0xffe5bb,2.1), hemi=new T.HemisphereLight(0xfff1cc,0x8fa37c,1.5);scene.add(sun,hemi);
 const mats=new Map();
@@ -118,14 +126,15 @@ const pathMask=new Uint8Array(W*W), mapBase=document.createElement('canvas');map
 {
  const pos=new Float32Array(W*W*3),col=new Float32Array(W*W*3),idx=new Uint32Array(N*N*6);
  const img=mapBase.getContext('2d').createImageData(W,W);
- const cA=new T.Color('#8fa45c'),cB=new T.Color('#6b8c47'),cDry=new T.Color('#b3ad6a'),cSand=new T.Color('#d2c08a'),cRock=new T.Color('#8d8a80'),cSnow=new T.Color('#e9ece6'),cDirt=new T.Color('#b08f62'),cBed=new T.Color('#5d7168'),cWater=new T.Color('#4f8f9e'),c=new T.Color(),m=new T.Color();
+ const cA=new T.Color(GRADE?LOOK.meadow:'#8fa45c'),cB=new T.Color(GRADE?LOOK.meadowShade:'#6b8c47'),cDry=new T.Color(GRADE?LOOK.meadowLit:'#b3ad6a'),cSand=new T.Color('#d2c08a'),cRock=new T.Color('#8d8a80'),cSnow=new T.Color('#e9ece6'),cDirt=new T.Color('#b08f62'),cBed=new T.Color('#5d7168'),cWater=new T.Color(GRADE?LOOK.lake:'#4f8f9e'),c=new T.Color(),m=new T.Color();
  for(let j=0;j<W;j++)for(let i=0;i<W;i++){
   const k=j*W+i,x=-HALF+i*CELL,z=-HALF+j*CELL,h=H[k];
   const sl=hyp(H[j*W+Math.min(N,i+1)]-H[j*W+Math.max(0,i-1)],H[Math.min(N,j+1)*W+i]-H[Math.max(0,j-1)*W+i])/(2*CELL);
   c.copy(cA).lerp(cB,smooth(fbm(x/60+5,z/60+8,3),.35,.65)).lerp(cDry,smooth(fbm(x/25,z/25,2),.55,.8)*.6);
   if(h<1.2)c.lerp(cSand,1-smooth(h,.3,1.2));
   if(h<0)c.lerp(cBed,smooth(-h,0,3));
-  c.lerp(cRock,smooth(sl,.55,.95));c.lerp(cSnow,smooth(h,44,58));
+  if(GRADE){c.lerp(cRock,smooth(sl,.55,.95)*(1-smooth(h,6,9)));[LOOK.hillNear,LOOK.hillMid,LOOK.hillFar].forEach((k,n)=>c.lerp(m.set(k),smooth(h,LOOK.hillAt[n]-1,LOOK.hillAt[n]+1)));}
+  else{c.lerp(cRock,smooth(sl,.55,.95));c.lerp(cSnow,smooth(h,44,58));}
   if(h>.3){const pd=pathDist(x,z);if(pd<3.6){c.lerp(cDirt,1-smooth(pd,1.6,3.6));if(pd<2.8)pathMask[k]=1;}}
   pos.set([x,h,z],k*3);col.set([c.r,c.g,c.b],k*3);
   m.copy(c);if(h<0)m.lerp(cWater,.75);m.convertLinearToSRGB();
@@ -136,7 +145,7 @@ const pathMask=new Uint8Array(W*W), mapBase=document.createElement('canvas');map
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));geo.setIndex(new T.BufferAttribute(idx,1));geo.computeVertexNormals();
  scene.add(new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1})));
  mapBase.getContext('2d').putImageData(img,0,0);
- const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:'#4f8f9e',transparent:true,opacity:.8,roughness:.3}));
+ const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
  water.rotation.x=-Math.PI/2;scene.add(water);
 }
 const onPath=(x,z)=>pathMask[Math.round(clamp((z+HALF)/CELL,0,N))*W+Math.round(clamp((x+HALF)/CELL,0,N))]===1;
@@ -185,6 +194,11 @@ const sunDisc=new T.Mesh(new T.CircleGeometry(38,24),new T.MeshBasicMaterial({co
 const clouds=[];
 {
  const cm=new T.MeshBasicMaterial({color:0xffffff,fog:false,transparent:true,opacity:.86}),cg=new T.IcosahedronGeometry(1,1);
+ if(GRADE){   // cream faces, dusty undersides
+  const p=cg.attributes.position,k=new Float32Array(p.count*3),up=new T.Color(LOOK.cloud),under=new T.Color(LOOK.cloudUnder),c=new T.Color();
+  for(let i=0;i<p.count;i+=3){const y=(p.getY(i)+p.getY(i+1)+p.getY(i+2))/3;c.copy(under).lerp(up,clamp(y*2+.6,0,1));for(let v=0;v<3;v++)k.set([c.r,c.g,c.b],(i+v)*3);}
+  cg.setAttribute('color',new T.Float32BufferAttribute(k,3));cm.vertexColors=true;cm.opacity=.95;
+ }
  for(let i=0;i<16;i++){
   const g=new T.Group();g.position.set((rng()-.5)*1700,170+rng()*110,(rng()-.5)*1700);
   for(let k=0;k<4;k++){const b=new T.Mesh(cg,cm);b.position.set((rng()-.5)*60,(rng()-.5)*6,(rng()-.5)*30);b.scale.set(26+rng()*26,7+rng()*6,18+rng()*16);g.add(b);}
@@ -195,6 +209,18 @@ const DAY=[[0,'#5d8fc9','#f2c9a0','#ffc994',1.5,1.15],[.18,'#4d93d6','#b9d6dd','
  .map(k=>[k[0],new T.Color(k[1]),new T.Color(k[2]),new T.Color(k[3]),k[4],k[5]]);
 let dayT=.24;const DAY_SECONDS=840, sunDir=V();
 function updateSky(dt,eye){
+ if(GRADE){
+  if(!sunDir.lengthSq()){
+   const a=LOOK.sunLeft*Math.PI/180,e=LOOK.sunUp*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);   // turned to the left of the lane: forward*cos - right*sin
+   sunDir.set((YARD.ux*cs-YARD.rx*sn)*Math.cos(e),Math.sin(e),(YARD.uz*cs-YARD.rz*sn)*Math.cos(e));
+   sky.material.uniforms.top.value.set(LOOK.skyTop);sky.material.uniforms.hor.value.set(LOOK.skyHorizon);scene.fog.color.set(LOOK.haze);
+   sun.color.set(LOOK.sun);sun.intensity=LOOK.sunStrength;hemi.color.set(LOOK.fill);hemi.groundColor.set(LOOK.fillGround);hemi.intensity=LOOK.fillStrength;
+   sun.position.copy(sunDir).multiplyScalar(100);sunDisc.material.color.set(LOOK.sun);
+  }
+  sky.position.copy(eye);sunDisc.position.copy(eye).addScaledVector(sunDir,1150);sunDisc.lookAt(eye);
+  for(const c of clouds){c.position.x+=dt*2.2;if(c.position.x>900)c.position.x=-900;}
+  return;
+ }
  dayT=(dayT+dt/DAY_SECONDS)%1;let i=1;while(DAY[i][0]<dayT)i++;const a=DAY[i-1],b=DAY[i],f=(dayT-a[0])/(b[0]-a[0]);
  sky.material.uniforms.top.value.copy(a[1]).lerp(b[1],f);sky.material.uniforms.hor.value.copy(a[2]).lerp(b[2],f);
  scene.fog.color.copy(sky.material.uniforms.hor.value);
@@ -247,7 +273,7 @@ const dummy=new T.Object3D(), tint=new T.Color();
  }
  scene.add(rocks);
 }
-const TILE=72, tufts=[], grass=new T.InstancedMesh(new T.ConeGeometry(.06,.34,3).translate(0,.17,0),material('#71883f'),3600);
+const TILE=72, tufts=[], grass=new T.InstancedMesh(new T.ConeGeometry(.06,.34,3).translate(0,.17,0),material(GRADE?LOOK.tuft:'#71883f'),3600);   // graded: short and close to the ground's colour, so tall dark shapes are left to cover that matters
 grass.frustumCulled=false;scene.add(grass);
 for(let i=0;i<grass.count;i++)tufts.push([rng()*TILE,rng()*TILE,.6+rng()*1.1,rng()*6]);
 let grassX=1e9,grassZ=1e9;
@@ -255,7 +281,7 @@ function updateGrass(px,pz){
  if(hyp(px-grassX,pz-grassZ)<3)return;grassX=px;grassZ=pz;
  for(let i=0;i<tufts.length;i++){
   const t=tufts[i],x=t[0]+TILE*Math.round((px-t[0])/TILE),z=t[1]+TILE*Math.round((pz-t[1])/TILE),g=groundAt(x,z);
-  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)||(WORLD2&&inRange2(x,z))?0:t[2]);dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
+  dummy.position.set(x,g,z);dummy.rotation.set(0,t[3],0);dummy.scale.setScalar(g<.5||onPath(x,z)||(WORLD2&&inRange2(x,z))?0:t[2]*(GRADE?LOOK.tuftSize:1));dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);
  }
  grass.instanceMatrix.needsUpdate=true;
 }
@@ -2424,6 +2450,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

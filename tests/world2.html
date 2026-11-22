@@ -7,7 +7,7 @@ const Q=new URLSearchParams(location.search),save=Q.get("save"),errors=[];
 for(const k of["brackenford-seven-bells-v1","brackenford-trials-v1"])localStorage.removeItem(k);
 function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,10))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
 async function run(){
- const w=await game("?release=0&world=2"),v=w.vale,T=v.T,r=v.range,Y=v.YARD,L=v.LANE,R=n=>+n.toFixed(3),V=(x,y,z)=>new T.Vector3(x,y,z),out={on:v.WORLD2};
+ const w=await game("?release=0&world=2"+(Q.get("grade")?"&grade="+Q.get("grade"):"")),v=w.vale,T=v.T,r=v.range,Y=v.YARD,L=v.LANE,R=n=>+n.toFixed(3),V=(x,y,z)=>new T.Vector3(x,y,z),out={on:v.WORLD2};
  const steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
  const at=(a,rt,y=0)=>V(Y.x+Y.ux*a+Y.rx*rt,L.base+y,Y.z+Y.uz*a+Y.rz*rt),ground=(a,rt)=>{const p=at(a,rt);return v.groundAt(p.x,p.z)-L.base;};
  const stage=name=>{const i=v.STAGES.findIndex(s=>s.name===name);if(i<0)throw new Error("no stage "+name);v.setStage(i);steps(50);};
@@ -34,7 +34,7 @@ async function run(){
  {stage("Creepers");let moved=0;const sp=v.spirits.find(s=>s.base.visible),p0=sp.base.position.clone();for(let i=0;i<600;i++)steps(1);moved=sp.base.position.distanceTo(p0);
   out.creeper={moved:R(moved),onTheGround:R(sp.base.position.y-L.base),ok:moved>2&&Math.abs(sp.base.position.y-L.base)<.05};}
  if(save){
-  const put=async(name,url)=>{const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+  const tag=Q.get("grade")==="1"?"grade-":"",put=async(name,url)=>{name=tag+name;const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
   const from=(look,pos)=>{const c=v.camera,p0=c.position.clone(),q0=c.quaternion.clone();c.parent.updateMatrixWorld(true);c.position.copy(c.parent.worldToLocal(pos.clone()));c.lookAt(look);const url=v.shot();c.position.copy(p0);c.quaternion.copy(q0);return url;};
   stage("Master of the line");await put("world2-player-far",v.shot());
   stage("First marks");await put("world2-player-near",v.shot());

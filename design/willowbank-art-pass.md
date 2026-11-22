@@ -77,4 +77,10 @@ After the developer said to skip it, the audit came through anyway (the develope
 
 **Not done from the audit:** red-and-cream stripes on the wind pennant; the old world's dirt paths and a stray puddle; rocks and trees on the far rim. The left blossom tree was moved to (31, 13.5 left) to keep it out of the new cove, which the audit did not ask for.
 
-**Stage 3 numbers disagree.** Gemini: sun 120 degrees left of the lane, 28 degrees up, linear fog from 95 m to 360 m. ChatGPT: sun 45 degrees left, 22 degrees up, haze from 110 m to 650 m. Both keep the 70 m target clear. To be settled between them before stage 3 starts.
+**Stage 3 numbers settled** (22 November): Gemini's sun direction, 120 degrees left of the shooting direction, so the target faces are lit and the sun is out of the aiming view; 25 degrees up; ChatGPT's colours throughout; linear haze from 110 m to 480 m. ChatGPT agreed in one message. Its order of fixes: the grey-green horizon band, then the neutral noon light, then the flat yellow-green ground.
+
+## Stage 3, first pass (built, switch `grade`, off by default)
+
+`?grade=1` or `"grade": true` in `src/config.json`. All values are in `LOOK` in `src/game.js`. On: the day stops turning and a fixed late-afternoon sun stands behind the archer's left shoulder; peach key `#FFD1A0`, cool fill `#BCC8E0`; sky `#7798BD` over `#E4B7AA`; cream clouds with dusty undersides; mauve haze `#BBAAB9` from 110 to 480 m; the meadow in `#91A454`, `#A5B662` and `#788D48`; the lake `#527F9A`; grass tufts shorter and close to the ground's colour; the valley's rim coloured in three bands by height (`#788950`, `#89748F`, `#A28AA5`) in place of grey rock and snow. Strengths were raised from ChatGPT's figures (key 3.4, fill 1.7 in this engine's units) because a sun 25 degrees up lights flat ground less than half as much as the old high sun did. Pictures: `assets/renders/grade-world2-*.jpg` beside the ungraded `world2-*.jpg`.
+
+**Not done:** no cast shadows; the lane's own lawn colour, the props, trees and water edge are not regraded; no gold accents on the bell lip or bullseye; the rim reads as one plum wall with soft bands, not three separate ridges; ChatGPT has not judged it; not seen in a headset.

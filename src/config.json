@@ -10,6 +10,8 @@
   "peal": true,
   "watch": true,
   "ram": true,
+  "grade": false,
+  "grade": false,
   "coins": false,
   "blurb": "A fantasy archery game. Stand at the line, draw your bow and shoot through seventeen trials of distance, wind, moving targets and shades that hide and bolt. Hits in a row build a streak, and letting go just as the draw completes is a perfect release.",
   "order": [1, 2, 3, 21, 6, 8, 22, 4, 10, 23, 7, 26, 14, 24, 16, 27, 29]

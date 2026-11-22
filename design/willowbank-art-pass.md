@@ -59,3 +59,7 @@ It opened all six renders. Written down by Claude.
 | Water | Lake `#527F9A`, creek `#648FA7`, sun-facing edge `#9ABBC4` as a few broken opaque shapes |
 
 **Where the glow goes:** locked gold `#F0C75A` on the restored bell's lip and the small centre of the bullseye; a few short cool highlights on the water's sun-facing edge. All flat and opaque. **Kept matte on purpose:** the silent bell, thorns, the targets' outer rings, banner trim, blossoms, broad water. Saturated ember `#E02E32` stays with the shades' eyes so they remain the strongest warm points.
+
+## Gemini's audit: waiting
+
+Gemini was asked to audit this pass against its plan (sightlines for all 29 stages, the old world's leftovers to hide, what stage 2 still lacks, and the sun and fog numbers for stage 3) as `design/willowbank-art-audit.md` on branch `gemini/willowbank-audit`. Its app stopped at an approval prompt whose text was hidden behind another window, so Claude did not approve it. The audit arrives once the developer answers that prompt in Antigravity. Stage 2 is not called done until it has been read.

@@ -297,3 +297,5 @@ At the developer's request Gemini joined the creative work and the three models 
 - **Agreed for a first prototype after Trials ships:** three single-target arrows (frost, wind, fire), as charges per run, behind one flag. Score Attack before Endless. The plain mixed-reality Window before anything more.
 - **Left for the developer:** the fire arrow's name (Kiln or Singe); whether arrows in the air at Score Attack's buzzer count; whether Score Attack gets a Bonus Bell; and whether any of this starts before the Trials playtest.
 - **Not done:** nothing in this round is built or tested. One thing to know about the screen: another window covered part of Gemini's reply in Antigravity, so Claude asked Gemini to save that reply as a file and read it from git.
+
+**Decision, 22 November 2026:** the fire arrow is called **Kiln**. Still open: arrows in the air at Score Attack's buzzer, the Bonus Bell, and whether any of round 1 starts before the Trials playtest.

@@ -35,7 +35,7 @@ Each acts on one thing, reuses a system the game already has, and costs nothing 
 |---|---|---|---|---|
 | **Frost** ("Rime") | A hit holds one sliding or pop-up target's timer still. One freeze per target. | The freezing shot scores nothing; a charge is spent | A broad sky-blue bracket locks around the target; the stop itself is the cue | All three. **Length not settled:** ChatGPT 0.8 s, Gemini 1.8 s (a redraw is about 1.0 s and the arrow's flight about 0.4 s at 25 m). Start at 1.8 s and tune in play |
 | **Wind** ("Gale") | This arrow takes half the sideways wind | Its ring value is capped at 60 | A short cream trail with three plum bands | All three. Gemini withdrew "ignores all wind and nudges crows" |
-| **Fire** (name not settled) | A hit on a grass clump clears it for the rest of the stage, so what hid there is in the open | Scores nothing itself; a charge is spent | Three broad cream chevrons rise and fade; no flame, no ember red, no gold | All three on the rule and cue |
+| **Fire** ("Kiln") | A hit on a grass clump clears it for the rest of the stage, so what hid there is in the open | Scores nothing itself; a charge is spent | Three broad cream chevrons rise and fade; no flame, no ember red, no gold | All three on the rule and cue |
 
 - Special shots are **charges per run**, spent on release whether it hits or misses. No shop and no unlocks.
 - Behind one flag, off in the release. In Arcade they must draw nothing from the shared random sequence.
@@ -52,7 +52,7 @@ Each acts on one thing, reuses a system the game already has, and costs nothing 
 - **Before anyone promises anything:** a passthrough session in the Quest Browser at 72 frames a second or better on the busiest slot, the opening drifting no more than 5 cm in three minutes, and a clean fall-back to VR (Gemini's gate).
 
 ## For the developer to decide
-1. **The fire arrow's name:** Kiln (ChatGPT) or Singe (Gemini). It cannot be Ember; that colour and word belong to the shades.
+1. ~~The fire arrow's name~~ **Decided 22 November 2026: Kiln** (ChatGPT's name; Gemini had proposed Singe).
 2. **Arrows in the air when Score Attack's 180 seconds run out:** count them if they were loosed in time (Gemini, and Claude agrees) or void them (ChatGPT).
 3. **A Bonus Bell in Score Attack** when a slot is cleared early (Gemini). ChatGPT objects that it breaks the fixed schedule that makes two players' runs comparable.
 4. **Whether to start any of this before the Trials playtest.** All three models say Trials ships first.

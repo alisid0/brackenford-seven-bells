@@ -80742,9 +80742,11 @@ if(GRADE&&WORLD2){
  // (near green, middle plum, the rim itself the lightest). Real shapes, so they shift against each other as the head moves.
  const hills=new T.Group();scene.add(hills);
  LOOK.ridges.forEach(([dist,tall,wide,n],row)=>{for(let i=0;i<n;i++){
-  const a=(-80+160*(i+.5)/n+(r()-.5)*8)*Math.PI/180,d=dist*(1+(r()-.5)*.12),x=YARD.x+(YARD.ux*Math.cos(a)+YARD.rx*Math.sin(a))*d,z=YARD.z+(YARD.uz*Math.cos(a)+YARD.rz*Math.sin(a))*d,g=groundAt(x,z);
+  // ChatGPT's two moves: the middle hill straight behind the lane goes 30 m left, clear of the far targets; the near hill behind the village is a quarter lower, so the tower roof breaks the skyline
+  const deg=-80+160*(i+.5)/n+(r()-.5)*8,a=deg*Math.PI/180,aside=row===1&&Math.abs(deg)<9?30:0,low=row===0&&deg>6&&deg<30?.75:1;
+  const d=dist*(1+(r()-.5)*.12),x=YARD.x+(YARD.ux*Math.cos(a)+YARD.rx*Math.sin(a))*d-YARD.rx*aside,z=YARD.z+(YARD.uz*Math.cos(a)+YARD.rz*Math.sin(a))*d-YARD.rz*aside,g=groundAt(x,z);
   if(g<.6)continue;   // not out in the lake
-  for(let k=0;k<2;k++){const m=mesh(hills,new T.IcosahedronGeometry(1,1),row?LOOK.hillMid:LOOK.hillNear,V(x+(r()-.5)*wide*.7,g-tall*.2,z+(r()-.5)*wide*.7));m.scale.set(wide*(.7+r()*.5),tall*(.75+r()*.5),wide*(.55+r()*.4));m.rotation.y=r()*3;}
+  for(let k=0;k<2;k++){const m=mesh(hills,new T.IcosahedronGeometry(1,1),row?LOOK.hillMid:LOOK.hillNear,V(x+(r()-.5)*wide*.7,g-tall*.2,z+(r()-.5)*wide*.7));m.scale.set(wide*(.7+r()*.5),tall*low*(.75+r()*.5),wide*(.55+r()*.4));m.rotation.y=r()*3;}
  }});
  // broken pale glints on the water along the creek's far bank, the one that faces the sun and the archer
  for(let rt=-26,i=0;rt<36;i++){const len=.6+1.6*Math.abs(Math.sin(i*2.1)),wide=.1+.1*Math.abs(Math.sin(i*1.7));if(i%3!==2)box(R,P(LANE.creek+1.05-wide/2,rt+len/2,.085),V(len,.012,wide),LOOK.glint);rt+=len+.5+1.2*Math.abs(Math.sin(i*.9));}

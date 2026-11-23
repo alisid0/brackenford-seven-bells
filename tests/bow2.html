@@ -41,7 +41,13 @@ async function run(){
   const settled=draw(.6,.5,true),sent=v.lab.shot.dir;
   o.jerk={raw:R(v.lab.shot.shake),sentOff:R(sent.angleTo(settled)*57.2958),labSent:v.lab.shot.sent==null?null:R(v.lab.shot.sent)};
   // the same jerk with the switch off flies wide: done below in a v1 page
-  o.board=v.rangeInfo().text;}
+  o.board=v.rangeInfo().text;
+  // Settings: Short and Long fix the draw length and stop the learning; Reset goes back to Auto and starts again from eye height
+  v.setReach("short");o.setting={short:R(v.bowFull())};draw(.62,.5,false);draw(.62,.5,false);draw(.62,.5,false);draw(.62,.5,false);o.setting.shortHeld=R(v.bow2.full);
+  v.setReach("long");o.setting.long=R(v.bowFull());v.setReach("auto");o.setting.reset=R(v.bowFull());
+  o.setting.saved=JSON.parse(w.localStorage.getItem("brackenford-seven-bells-v1")||"{}").reach;
+  // and it is on the flat menu's Settings face, only with bow2 on
+  w.document.querySelector('#cloth [data-do="settings"]')?.click();o.setting.menu=[...w.document.querySelectorAll('#cloth [data-do^="reach-"]')].map(b=>b.textContent);}
  {const w=await game("?release=0&lab=1&bow2=0"),v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
   v.begin(false);steps(5);o.off={on:v.BOW2,s50:v.arrowSpeed(.5),g:v.BOW.g};
   {const e=eye().add(V(v.YARD.rx*6,0,v.YARD.rz*6)),f=V(v.YARD.ux,0,v.YARD.uz);v.loose(e,f,1);const q=v.projectiles[v.projectiles.length-1];let drop=null;
@@ -62,6 +68,7 @@ async function run(){
   haptics:o.haptics.stringNotches===8&&o.haptics.fullString&&o.haptics.fullBow&&o.haptics.nock&&o.haptics.looseBowPerfect,
   jerkRemoved:o.jerk.raw>2.5&&o.jerk.sentOff<.6,
   labShowsBoth:/\(sent [0-9.]+°\)/.test(o.board)&&/v2/.test(o.board),
+  setting:o.setting.short===.46&&o.setting.shortHeld===.46&&o.setting.long===.64&&Math.abs(o.setting.reset-.569)<.01&&o.setting.saved==='auto'&&o.setting.menu.join('|')==='Auto|Short 46 cm|Long 64 cm|Reset',
   offUnchanged:o.off.on===false&&o.off.s50===43&&o.off.g===7&&Math.abs(o.off.drop30-.83)<.06&&o.off.jerkSentOff>2,
   noErrors:errors.length===0};
  o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;

@@ -354,10 +354,10 @@ function playtest(){
   attempts:sum('tries'),finished:sum('done'),clears:sum('clears'),retriesAfterClear:sum('again'),nearMisses:tally.near,nearMissThenAgain:tally.nearAgain,
   stages:Object.fromEntries(st.map(([n,s])=>[n,{tries:s.tries,abandoned:s.tries-s.done,clears:s.clears,retriesAfterClear:s.again,bestStars:s.stars}]))};
 }
-const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',mode:'range',range:{open:0,best:[],stars:[]}};
-try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';if(s.range)state.range={watchBest:s.range.watchBest|0,runs:s.range.runs|0,bell1:s.range.bell1?1:0,open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[],named:s.range.named&&typeof s.range.named==='object'?s.range.named:null};
+const state={bells:new Set(),marks:new Set(),lanterns:new Set(),shots:0,longest:0,pos:null,done:false,lesson:0,coins:0,hand:'right',draw:'two',reach:'auto',mode:'range',range:{open:0,best:[],stars:[]}};
+try{const s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){state.bells=new Set(s.bells);state.marks=new Set(s.marks);state.lanterns=new Set(s.lanterns);state.shots=s.shots|0;state.longest=s.longest|0;state.pos=s.pos;state.done=!!s.done;state.lesson=clamp(s.lesson|0,0,5);state.mode=s.mode==='roam'?'roam':'range';state.hand=s.hand==='left'?'left':'right';state.draw=s.draw==='one'?'one':'two';state.reach=s.reach==='short'||s.reach==='long'?s.reach:'auto';if(s.range)state.range={watchBest:s.range.watchBest|0,runs:s.range.runs|0,bell1:s.range.bell1?1:0,open:s.range.open|0,best:s.range.best||[],stars:s.range.stars||[],named:s.range.named&&typeof s.range.named==='object'?s.range.named:null};
  state.coins=typeof s.coins==='number'?Math.max(0,s.coins|0):state.range.stars.reduce((a,b)=>a+(b||0)*25,0)+Math.round(state.range.best.reduce((a,b)=>a+(b||0),0)/20);}}catch{}
-function save(){try{rangeNames();localStorage.setItem(SAVE,JSON.stringify({bells:[...state.bells],marks:[...state.marks],lanterns:[...state.lanterns],shots:state.shots,longest:state.longest,pos:state.pos,done:state.done,lesson:state.lesson,coins:state.coins,hand:state.hand,draw:state.draw,mode:state.mode,range:state.range}));}catch{}}
+function save(){try{rangeNames();localStorage.setItem(SAVE,JSON.stringify({bells:[...state.bells],marks:[...state.marks],lanterns:[...state.lanterns],shots:state.shots,longest:state.longest,pos:state.pos,done:state.done,lesson:state.lesson,coins:state.coins,hand:state.hand,draw:state.draw,reach:state.reach,mode:state.mode,range:state.range}));}catch{}}
 
 // ---------------------------------------------------------------- hamlet, shrines, targets
 const bronze='#ae783e', timber='#825435', cream='#e5c67e', red='#ae493d', stone='#9a968a', gold='#f0c75a';
@@ -1974,11 +1974,16 @@ const bow2={full:0,learned:[],up:0,down:0,peak:0,t0:0,buf:[],earlyAt:0,hi:false,
 function arrowSpeed(power){return BOW2?(power<BOW.minLoose?0:18+44*Math.pow(clamp(power/.96,0,1),1.25)):24+power*38;}
 // the player's full draw (section 1): first a guess from how high their eyes are, then learned from honest draws
 function bowFull(){
+ if(state.reach==='short')return bow2.full=.46;
+ if(state.reach==='long')return bow2.full=.64;
  if(bow2.full)return bow2.full;
  const eyeY=head().getWorldPosition(V()).y-(rig.position.y-localEyeOffset);
  bow2.full=localEyeOffset||eyeY<1.15?BOW.seated:clamp(eyeY*BOW.eyeK,.44,.66);return bow2.full;
 }
+// a fixed draw length from Settings, or Auto (eye height, then learning); choosing any of them starts the learning afresh
+function setReach(r){state.reach=r;bow2.full=0;bow2.learned=[];bow2.up=0;bow2.down=0;save();}
 function bowLearn(peak,hold){
+ if(state.reach!=='auto')return;
  if(!(hold>=.35&&peak>=.36&&peak<=.72))return;   // only a real draw teaches it
  const L=bow2.learned,med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1];};L.push(peak);if(L.length>5)L.shift();
  if(peak>bow2.full/.95){bow2.up++;bow2.down=0;}else if(peak>=.72*bow2.full&&peak<=.92*bow2.full){bow2.down++;bow2.up=0;}else{bow2.up=0;bow2.down=0;}
@@ -2515,7 +2520,8 @@ function vrMenuDraw(){
   spot('home',40,36,190,64,'◀ Back',40);text('Settings',m.W/2,68,52);
   text('Bow hand',70,200,44,PLUM,true,'left');spot('handR',420,160,250,84,'Right',44,state.hand==='right');spot('handL',700,160,250,84,'Left',44,state.hand==='left');
   text('Draw mode',70,340,44,PLUM,true,'left');spot('drawTwo',420,300,250,84,'Two hands',40,state.draw==='two');spot('drawOne',700,300,250,84,'One hand',40,state.draw==='one');
-  text('Grip swaps the bow hand  ·  right stick click swaps the draw',m.W/2,470,30,PLUM,false);
+  if(BOW2){text('Draw length',70,450,40,PLUM,true,'left');spot('reachAuto',330,415,190,70,'Auto',34,state.reach==='auto');spot('reachShort',540,415,190,70,'Short',34,state.reach==='short');spot('reachLong',750,415,190,70,'Long',34,state.reach==='long');}
+  else text('Grip swaps the bow hand  ·  right stick click swaps the draw',m.W/2,470,30,PLUM,false);
  }
  m.tex.needsUpdate=true;
 }
@@ -2545,6 +2551,7 @@ function vrMenuPress(h){
  if(id==='home'||id==='stages'||id==='settings'){m.face=id;m.hover=null;vrMenuDraw();return;}
  if(id==='handR'||id==='handL'){setHand(id==='handR'?'right':'left');vrMenuDraw();return;}
  if(id==='drawTwo'||id==='drawOne'){setDraw(id==='drawTwo'?'two':'one');vrMenuDraw();return;}
+ if(id==='reachAuto'||id==='reachShort'||id==='reachLong'){setReach(id.slice(5).toLowerCase());vrMenuDraw();return;}
  if(id.startsWith('stage')){stageGo(+id.slice(5));vrMenuClose();say('Stage '+(range.stage+1)+'  ·  '+STAGES[range.stage].name,4);}
 }
 
@@ -2627,6 +2634,7 @@ function clothRender(face){
   h='<button class="link back" data-do="home">◀ Back</button><h3>Settings</h3>';
   h+='<p class="set"><span>Bow hand</span>'+pick(state.hand==='right',['handR','Right'],['handL','Left'])+'</p>';
   h+='<p class="set"><span>Draw mode</span>'+pick(state.draw==='two',['drawTwo','Two-handed'],['drawOne','Single-handed'])+'</p>';
+  if(BOW2)h+='<p class="set"><span>Draw length</span><span class="pair">'+['auto','short','long'].map(r=>'<button data-do="reach-'+r+'" class="'+(state.reach===r?'on':'')+'">'+{auto:'Auto',short:'Short 46 cm',long:'Long 64 cm'}[r]+'</button>').join('')+'</span><button class="plain" data-do="reach-reset">Reset</button></p>';
   h+='<h4>Controls</h4><ul><li>Hold the left mouse button to draw the bow; let go to loose.</li><li>Let go early, or roll the mouse wheel while drawing, for a softer shot.</li><li>After a stage: N next, R again, B back. Esc brings back this menu.</li><li>In VR: trigger draws and looses, grip swaps the bow hand, right stick click swaps the draw mode.</li></ul>';
   h+='<div class="row"><button class="plain" data-do="wipe">'+(cloth.sure>performance.now()?'Press again to erase all progress':'Start over')+'</button>'+(REPLAY?'<button class="plain" data-do="tally">Copy playtest summary</button>':'')+'</div>';
  }
@@ -2643,6 +2651,7 @@ if(MENU&&$('cloth')){
   if(d==='vr'){press('vr');return;}
   if(d==='home'||d==='stages'||d==='settings'){cloth.sure=0;clothRender(d);return;}
   if(d==='handR'||d==='handL'||d==='drawTwo'||d==='drawOne'){press(d);clothRender();return;}
+  if(d&&d.startsWith('reach-')){setReach(d==='reach-reset'?'auto':d.slice(6));clothRender();return;}
   if(d==='wipe'){if(cloth.sure>performance.now())press('wipe');else{cloth.sure=performance.now()+5000;clothRender();}return;}
   if(d==='tally'){press('tally');b.textContent='Copied';setTimeout(()=>clothRender(),1500);}
  });
@@ -2651,6 +2660,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},recentre,headYaw,YARD,rangeSigns,BOW2,BOW,bow2,arrowSpeed,bowFull,get charge(){return charge;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},setReach,recentre,headYaw,YARD,rangeSigns,BOW2,BOW,bow2,arrowSpeed,bowFull,get charge(){return charge;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

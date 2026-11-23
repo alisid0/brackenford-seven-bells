@@ -80263,10 +80263,20 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.xr.enabled=true
 const GRADE=QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade;
 const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',lawnFace:'#7D9C41',ringRed:'#AE493D',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
  haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
- hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33]};   // the valley's rim in three bands by height (metres), the highest the lightest
+ hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33],
+ ridges:[[150,15,55,7],[235,30,80,8]],   // two rows of hills built in front of the rim: [metres from the line, height, width, how many across the view]
+ shadow:.55,                              // how much of the sun a cast shadow takes away: .55 darkens level ground by about a quarter
+ glint:'#9ABBC4'};
+const SHADOWS=GRADE&&LOOK.shadow>0&&QUERY.get('shadows')!=='0';   // ?shadows=0 keeps the graded look without cast shadows
+const shaded=o=>{if(SHADOWS)o.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});return o;};
+   // the valley's rim in three bands by height (metres), the highest the lightest
 scene.fog=GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
 const rig=new T.Group();scene.add(rig);rig.add(camera);camera.rotation.order='YXZ';camera.position.set(0,1.65,0);
 const sun=new T.DirectionalLight(0xffe5bb,2.1), hemi=new T.HemisphereLight(0xfff1cc,0x8fa37c,1.5);scene.add(sun,hemi);
+if(SHADOWS){
+ renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+ const c=sun.shadow.camera;c.left=c.bottom=-80;c.right=c.top=80;c.near=1;c.far=420;sun.shadow.bias=-.0004;sun.shadow.normalBias=.06;sun.shadow.intensity=LOOK.shadow;scene.add(sun.target);
+}
 const mats=new Map();
 function material(color){
  if(!mats.has(color)) mats.set(color,new T.MeshStandardMaterial({color,flatShading:true,roughness:.95}));
@@ -80379,7 +80389,7 @@ const pathMask=new Uint8Array(W*W), mapBase=document.createElement('canvas');map
  }
  let q=0;for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*W+i,b=a+1,cc=a+W,d=cc+1;idx.set([a,cc,b,b,cc,d],q);q+=6;}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));geo.setIndex(new T.BufferAttribute(idx,1));geo.computeVertexNormals();
- scene.add(new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1})));
+ {const land=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1}));land.receiveShadow=SHADOWS;scene.add(land);}
  mapBase.getContext('2d').putImageData(img,0,0);
  const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
  water.rotation.x=-Math.PI/2;scene.add(water);
@@ -80451,7 +80461,8 @@ function updateSky(dt,eye){
    sunDir.set((YARD.ux*cs-YARD.rx*sn)*Math.cos(e),Math.sin(e),(YARD.uz*cs-YARD.rz*sn)*Math.cos(e));
    sky.material.uniforms.top.value.set(LOOK.skyTop);sky.material.uniforms.hor.value.set(LOOK.skyHorizon);scene.fog.color.set(LOOK.haze);
    sun.color.set(LOOK.sun);sun.intensity=LOOK.sunStrength;hemi.color.set(LOOK.fill);hemi.groundColor.set(LOOK.fillGround);hemi.intensity=LOOK.fillStrength;
-   sun.position.copy(sunDir).multiplyScalar(100);sunDisc.material.color.set(LOOK.sun);
+   {const[cx,cz]=yardAt(40,4);sun.target.position.set(cx,groundAt(cx,cz),cz);sun.position.copy(sun.target.position).addScaledVector(sunDir,200);sun.target.updateMatrixWorld();}   // aimed at the middle of the range, so the shadow map covers it
+   sunDisc.material.color.set(LOOK.sun);
   }
   sky.position.copy(eye);sunDisc.position.copy(eye).addScaledVector(sunDir,1150);sunDisc.lookAt(eye);
   for(const c of clouds){c.position.x+=dt*2.2;if(c.position.x>900)c.position.x=-900;}
@@ -80689,7 +80700,7 @@ const oldWorld=scene.children.slice(window.__oldFrom|0).filter(o=>o!==yardBits);
 function oldWorldShow(){const hide=WORLD2&&range.on;if(hide===oldHidden)return;oldHidden=hide;for(const o of oldWorld){if(hide){oldWas.set(o,o.visible);o.visible=false;}else if(oldWas.has(o))o.visible=oldWas.get(o);}}
 // ---- the new range's lane, creek, terraces, rail, stall, footbridge and blossom trees (see WORLD2 above)
 if(WORLD2){
- const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);
+ const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);scene.userData.range2=R;
  const P=(along,right,y=0)=>V(-right,y,along);   // a place given as metres along the lane, to the right, and up
  const LAWN=GRADE?LOOK.lawn:'#99B44E',EDGE='#8DA748',FACE=GRADE?LOOK.lawnFace:'#829B47',WATER='#5897BE',SAND='#B8A275',ROCK='#9a968c',BLOSSOM='#F299B5';   // ChatGPT's colours, set after it saw the first build
  // the lane: a lighter strip of mown grass from the line to the far end
@@ -80724,6 +80735,21 @@ if(WORLD2){
 }
 // the trainer's board beside the shooting line
 // with the new layout the board is a cream cloth banner with a plum border and plum lettering (cloth is for what is read)
+// ---- stage 3 on Willowbank: what the lighting pass adds to the range itself
+if(GRADE&&WORLD2){
+ const R=scene.userData.range2,P=(along,right,y=0)=>V(-right,y,along),r=mulberry(77);
+ // two rows of low hills between the village and the valley's rim, so the skyline is three overlapping ridges
+ // (near green, middle plum, the rim itself the lightest). Real shapes, so they shift against each other as the head moves.
+ const hills=new T.Group();scene.add(hills);
+ LOOK.ridges.forEach(([dist,tall,wide,n],row)=>{for(let i=0;i<n;i++){
+  const a=(-80+160*(i+.5)/n+(r()-.5)*8)*Math.PI/180,d=dist*(1+(r()-.5)*.12),x=YARD.x+(YARD.ux*Math.cos(a)+YARD.rx*Math.sin(a))*d,z=YARD.z+(YARD.uz*Math.cos(a)+YARD.rz*Math.sin(a))*d,g=groundAt(x,z);
+  if(g<.6)continue;   // not out in the lake
+  for(let k=0;k<2;k++){const m=mesh(hills,new T.IcosahedronGeometry(1,1),row?LOOK.hillMid:LOOK.hillNear,V(x+(r()-.5)*wide*.7,g-tall*.2,z+(r()-.5)*wide*.7));m.scale.set(wide*(.7+r()*.5),tall*(.75+r()*.5),wide*(.55+r()*.4));m.rotation.y=r()*3;}
+ }});
+ // broken pale glints on the water along the creek's far bank, the one that faces the sun and the archer
+ for(let rt=-26,i=0;rt<36;i++){const len=.6+1.6*Math.abs(Math.sin(i*2.1)),wide=.1+.1*Math.abs(Math.sin(i*1.7));if(i%3!==2)box(R,P(LANE.creek+1.05-wide/2,rt+len/2,.085),V(len,.012,wide),LOOK.glint);rt+=len+.5+1.2*Math.abs(Math.sin(i*.9));}
+ shaded(R);
+}
 const BOARD=WORLD2?{cloth:'#f6e6bd',edge:'#4A2943',text:'#4A2943',mark:'#6D3362'}:{cloth:'#273c34',edge:'#bcaa7a',text:'#ffebbd',mark:'#f0c75a'};   // mark: the wind and best-score line (gold on the old board; plum on cloth, where gold is kept for rewards)
 const board=(()=>{
  const c=document.createElement('canvas');c.width=1024;c.height=640;const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;
@@ -80921,7 +80947,7 @@ for(let k=0;k<3;k++){
  const root=new T.Group(),tilt=new T.Group(),face=new T.Group();scene.add(root);root.add(tilt);tilt.add(face);root.visible=false;
  const item={kind:'range',root:face,base:root,tilt,kick:-10,meshes:[],scale:1.2,up:true};
  for(const[r,dz,c]of[[.68,0,'#bf9959'],[.50,.038,GRADE?LOOK.ringRed:red],[.37,.072,cream],[.23,.11,GRADE?LOOK.ringRed:red],[.10,.15,gold]]){const o=mesh(face,new T.CylinderGeometry(r,r,.045,28),c,V(0,0,dz));o.rotation.x=Math.PI/2;o.userData.target=item;item.meshes.push(o);}
- item.post=stick(tilt,V(0,0,-.06),V(0,1,-.06),.06,timber);
+ item.post=stick(tilt,V(0,0,-.06),V(0,1,-.06),.06,timber);shaded(root);
  targets.push(item);rangeRounds.push(item);
 }
 for(const[id,text,right]of[['back','◀  BACK',-3.6],['again','AGAIN',0],['next','NEXT  ▶',3.6]]){
@@ -81724,7 +81750,7 @@ const peal={root:null,target:{kind:'peal'},mesh:null,rungAt:-99,rung:false,chevr
 function pealBuild(){
  if(!PEAL||peal.root)return;
  const[x,z]=yardAt(PEAL_AT[0],PEAL_AT[1]),b=PROPS.belfry(T,{state:state.range.bell1?'restored':'silent'});
- b.position.set(x,groundAt(x,z),z);b.rotation.y=Math.atan2(YARD.x-x,YARD.z-z);b.visible=false;scene.add(b);peal.root=b;peal.rung=!!state.range.bell1;
+ b.position.set(x,groundAt(x,z),z);b.rotation.y=Math.atan2(YARD.x-x,YARD.z-z);b.visible=false;scene.add(b);peal.root=b;shaded(b);peal.rung=!!state.range.bell1;
  // what an arrow strikes: a plain shape round the bell, unseen
  const m=new T.Mesh(new T.CylinderGeometry(.36,.36,.9,8),new T.MeshBasicMaterial({visible:false}));m.position.set(0,-.45,0);m.userData.target=peal.target;b.userData.bell.add(m);peal.mesh=m;
  // three open chevrons that spread from the lip when it rings, so the ring reads with the sound off
@@ -82686,7 +82712,7 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};
 </script></body></html>

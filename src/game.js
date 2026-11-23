@@ -32,7 +32,12 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.xr.enabled=true
 //            read by name and given jobs. Off: only triggers, grips and thumbsticks do anything, as before.
 const LAB=QUERY.get('lab')==='1',PADS=LAB||(QUERY.has('pads')?QUERY.get('pads')==='1':!!CONFIG.pads);
 const lab={started:false,shot:null,aims:[],drawNow:0,pad:null};
-const GRADE=!LAB&&(QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade);
+//   "grey" in src/config.json, or ?grey=1: the skeleton. The whole game, every stage, Bell Watch and the menus, plays in
+//            the lab's plain look: grey ground and sky, no trees, grass, clouds or old-world buildings, the range's own
+//            shapes in shades of grey. Targets, the bell and the shades keep their colours: they are what you play
+//            against. It is for getting the game working end to end before its looks. The lab is always grey.
+const GREY=LAB||(QUERY.has('grey')?QUERY.get('grey')==='1':!!CONFIG.grey);
+const GRADE=!GREY&&(QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade);
 const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',lawnFace:'#7D9C41',ringRed:'#AE493D',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
  haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
  hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33],
@@ -42,7 +47,7 @@ const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',la
 const SHADOWS=GRADE&&LOOK.shadow>0&&QUERY.get('shadows')!=='0';   // ?shadows=0 keeps the graded look without cast shadows
 const shaded=o=>{if(SHADOWS)o.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});return o;};
    // the valley's rim in three bands by height (metres), the highest the lightest
-scene.fog=LAB?new T.Fog('#c9ccd0',200,900):GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
+scene.fog=GREY?new T.Fog('#c9ccd0',200,900):GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
 const rig=new T.Group();scene.add(rig);rig.add(camera);camera.rotation.order='YXZ';camera.position.set(0,1.65,0);
 const sun=new T.DirectionalLight(0xffe5bb,2.1), hemi=new T.HemisphereLight(0xfff1cc,0x8fa37c,1.5);scene.add(sun,hemi);
 if(SHADOWS){
@@ -99,7 +104,7 @@ const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
 //   The lane is 16 m wide and runs 76 m from the line. The ground is levelled under it. A creek crosses at 38 m.
 //   Beyond the creek the lane steps up in four terraces from 43 m, so distance reads without shadows; no stage
 //   stands a target on a step's edge.
-const WORLD2=LAB||QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2);   // Willowbank Range, the art pass (stage 2). Off unless asked for: ?world=2, or "world": 2 in src/config.json
+const WORLD2=GREY||QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2);   // Willowbank Range, the art pass (stage 2). Off unless asked for: ?world=2, or "world": 2 in src/config.json
 const LANE={half:8,from:-3,to:76,creek:38,steps:[[43,.7],[53,1.4],[63,2.1],[72,2.8]],base:0};
 const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
 // the whole footprint of the new range: lane and shoulders, the creek's band, and the footbridge
@@ -161,9 +166,9 @@ const pathMask=new Uint8Array(W*W), mapBase=document.createElement('canvas');map
  }
  let q=0;for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*W+i,b=a+1,cc=a+W,d=cc+1;idx.set([a,cc,b,b,cc,d],q);q+=6;}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));geo.setIndex(new T.BufferAttribute(idx,1));geo.computeVertexNormals();
- {const land=new T.Mesh(geo,new T.MeshStandardMaterial(LAB?{color:'#9a9da1',flatShading:true,roughness:1}:{vertexColors:true,flatShading:true,roughness:1}));land.receiveShadow=SHADOWS;scene.add(land);}
+ {const land=new T.Mesh(geo,new T.MeshStandardMaterial(GREY?{color:'#9a9da1',flatShading:true,roughness:1}:{vertexColors:true,flatShading:true,roughness:1}));land.receiveShadow=SHADOWS;scene.add(land);}
  mapBase.getContext('2d').putImageData(img,0,0);
- const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:LAB?'#7f8589':GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
+ const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:GREY?'#7f8589':GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
  water.rotation.x=-Math.PI/2;scene.add(water);
 }
 const onPath=(x,z)=>pathMask[Math.round(clamp((z+HALF)/CELL,0,N))*W+Math.round(clamp((x+HALF)/CELL,0,N))]===1;
@@ -227,7 +232,7 @@ const DAY=[[0,'#5d8fc9','#f2c9a0','#ffc994',1.5,1.15],[.18,'#4d93d6','#b9d6dd','
  .map(k=>[k[0],new T.Color(k[1]),new T.Color(k[2]),new T.Color(k[3]),k[4],k[5]]);
 let dayT=.24;const DAY_SECONDS=840, sunDir=V();
 function updateSky(dt,eye){
- if(LAB){   // flat grey sky, plain white light from behind and above, nothing moving
+ if(GREY){   // flat grey sky, plain white light from behind and above, nothing moving
   if(!sunDir.lengthSq()){
    sunDir.set(-YARD.ux*.5,.8,-YARD.uz*.5).normalize();sky.material.uniforms.top.value.set('#aeb2b7');sky.material.uniforms.hor.value.set('#c9ccd0');scene.fog.color.set('#c9ccd0');
    sun.color.set('#ffffff');sun.intensity=2;hemi.color.set('#ffffff');hemi.groundColor.set('#8c9094');hemi.intensity=1.5;sun.position.copy(sunDir).multiplyScalar(100);
@@ -302,7 +307,7 @@ const dummy=new T.Object3D(), tint=new T.Color();
 }
 const TILE=72, tufts=[], grass=new T.InstancedMesh(new T.ConeGeometry(.06,.34,3).translate(0,.17,0),material(GRADE?LOOK.tuft:'#71883f'),3600);   // graded: short and close to the ground's colour, so tall dark shapes are left to cover that matters
 grass.frustumCulled=false;scene.add(grass);
-if(LAB)for(const o of scene.children)if(o.isInstancedMesh)o.visible=false;   // the lab has no trees, rocks or grass
+if(GREY)for(const o of scene.children)if(o.isInstancedMesh)o.visible=false;   // grey: no trees, rocks or grass
 for(let i=0;i<grass.count;i++)tufts.push([rng()*TILE,rng()*TILE,.6+rng()*1.1,rng()*6]);
 let grassX=1e9,grassZ=1e9;
 function updateGrass(px,pz){
@@ -478,7 +483,7 @@ const moverMid=yardAt(16,-7);
 }
 // everything the old world put into the scene above (hamlet, bell shrines, straw rounds, drills, climbing wall and tower): hidden while shooting on Willowbank
 const oldWorld=scene.children.slice(window.__oldFrom|0).filter(o=>o!==yardBits);let oldHidden=false;const oldWas=new Map();
-function oldWorldShow(){const hide=WORLD2&&range.on;if(hide===oldHidden)return;oldHidden=hide;for(const o of oldWorld){if(hide){oldWas.set(o,o.visible);o.visible=false;}else if(oldWas.has(o))o.visible=oldWas.get(o);}}
+function oldWorldShow(){const hide=(WORLD2&&range.on)||GREY;if(hide===oldHidden)return;oldHidden=hide;for(const o of oldWorld){if(hide){oldWas.set(o,o.visible);o.visible=false;}else if(oldWas.has(o))o.visible=oldWas.get(o);}}
 // ---- the new range's lane, creek, terraces, rail, stall, footbridge and blossom trees (see WORLD2 above)
 if(WORLD2){
  const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);scene.userData.range2=R;R.visible=!LAB;
@@ -523,6 +528,11 @@ if(LAB){
  const G=new T.Group(),P=(along,right,y=0)=>V(-right,y,along);G.position.set(YARD.x,LANE.base,YARD.z);G.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(G);
  box(G,P(20,0,.01),V(16,.02,48),'#b4b7ba');box(G,P(0,0,.03),V(3,.02,.12),'#22262a');
  for(let a=5;a<=40;a+=5){box(G,P(a,0,.025),V(16,.012,a%10?.04:.1),'#5b5f63');if(a%10===0)for(const s of[-1,1])box(G,P(a,s*8.3,a/20),V(.12,a/10,.12),'#5b5f63');}
+}
+// the skeleton's range: every shape on it in a grey of the same lightness as its colour, so steps and banks still read
+if(GREY&&!LAB){
+ const greys=new Map(),grey=c=>{const k=Math.round((c.r*.3+c.g*.59+c.b*.11)*20);if(!greys.has(k))greys.set(k,new T.MeshStandardMaterial({color:new T.Color().setScalar(.25+k/20*.6),flatShading:true,roughness:1}));return greys.get(k);};
+ scene.userData.range2.traverse(o=>{if(o.isMesh&&o.material&&o.material.color)o.material=grey(o.material.color);});
 }
 function labStart(){if(!range.on)setMode('range');if(replay.on)endReplay();setStage(-2);}
 // how far the aim moved in the last moments before the arrow left: the worst angle, in degrees, between the direction
@@ -2556,6 +2566,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><title>skeleton</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The skeleton (?grey=1): the whole game, end to end, in the plain unrendered look. From the first menu, through a
+// stage to its result and on to the next, through a full Bell Watch run with its ram to the end and again, and into
+// the lab, with no scenery anywhere and nothing broken. ?save=1 takes pictures for assets/renders.
+const errors=[],KEY="brackenford-trials-v1",save=new URLSearchParams(location.search).get("save");
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function run(){
+ const o={};
+ {wipe();const w=await game("?grey=1"),v=w.vale,T=v.T,r=v.range,d=w.document,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),dd=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*dd*dd+2*h*s*s)))/(g*dd));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((dd/55+.4)*60));};
+  const put=async(name,url)=>{if(!save)return;const blob=await (await fetch(url)).blob();try{await fetch("http://127.0.0.1:8767/put/"+name+".jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}};
+  const scenery=()=>({trees:v.scene.children.filter(x=>x.isInstancedMesh).some(x=>x.visible),grade:v.GRADE});
+  // 1 the first menu
+  const buttons=[...d.querySelectorAll("#cloth button")].map(b=>b.textContent.trim().split("  ")[0]);
+  o.menu={grey:v.GREY,lab:v.LAB,buttons,...scenery()};
+  d.querySelector("#cloth .main").click();await sleep(400);steps(5);
+  // 2 stage 1 to its result
+  o.stage1={stage:r.stage,name:v.STAGES[r.stage].name,phase:r.phase,arrows:r.arrows};
+  await put("skeleton-stage1",v.shot());
+  const t1=v.rangeRounds.filter(x=>x.base.visible);for(let k=0;k<5;k++)fire(t1[0].root.getWorldPosition(V()));
+  for(let i=0;i<1500&&r.phase!=="results";i++)steps(1);
+  o.result1={phase:r.phase,stars:r.stars,score:r.score,next:v.rangeSigns.next.base.visible,board:v.rangeInfo().title};
+  // 3 shoot NEXT, on to stage 2, and play it
+  r.pending="next";for(let i=0;i<300&&r.stage===0;i++)steps(1);steps(30);
+  o.stage2={stage:r.stage,name:v.STAGES[r.stage].name,phase:r.phase,targets:v.rangeRounds.filter(x=>x.base.visible).map(x=>Math.round(x.along))};
+  const t2=v.rangeRounds.filter(x=>x.base.visible);for(let k=0;k<20&&r.arrows>0;k++)fire(t2[k%t2.length].root.getWorldPosition(V()));
+  for(let i=0;i<1500&&r.phase!=="results";i++)steps(1);o.result2={phase:r.phase,stars:r.stars};
+  // 4 a far stage on the terraces: its targets stand on visible ground
+  let far=0,reach=0;v.STAGES.forEach((s,i)=>{const m=Math.max(0,...(s.marks||[]).map(x=>x[0]));if(m>reach){reach=m;far=i;}});v.setStage(far);steps(30);
+  const ground=v.scene.userData.range2;o.far={stage:far,reach,name:v.STAGES[far].name,rangeVisible:ground.visible,meshes:(()=>{let n=0,grey=0;ground.traverse(m=>{if(m.isMesh){n++;const c=m.material.color;if(Math.abs(c.r-c.g)<.01&&Math.abs(c.g-c.b)<.01)grey++;}});return{n,grey};})()};
+  await put("skeleton-far",v.shot());
+  // 5 Bell Watch, a full run with the ram, to the end and again
+  v.watchStart();steps(60);o.watch={stage:r.stage,phase:r.phase,bell:!!v.peal.root&&v.peal.root.visible!==false,ram:v.RAM_ON};
+  const before=r.score;for(let i=0;i<60*26&&!v.ram.base.visible;i++)steps(1);o.watch.ramCame=v.ram.base.visible;
+  await put("skeleton-watch",v.shot());
+  for(let i=0;i<12000&&r.phase==="play";i++)steps(1);steps(10);
+  o.watchEnd={phase:r.phase,runs:JSON.parse(localStorage.getItem(KEY)).range.runs};
+  r.pending="again";for(let i=0;i<300&&r.phase==="results";i++)steps(1);o.watchAgain={phase:r.phase,score:r.score};
+  // 6 back to the stages
+  v.setStage(0);steps(30);o.back={stage:r.stage,name:v.STAGES[r.stage].name,arrows:r.arrows,...scenery()};}
+ {wipe();const w=await game("?lab=1"),v=w.vale;v.begin(false);for(let i=0;i<5;i++)v.tick(1/60);o.lab={grey:v.GREY,stage:v.range.stage};}
+ {wipe();const w=await game("?grey=0"),v=w.vale;o.off={grey:v.GREY,trees:v.scene.children.filter(x=>x.isInstancedMesh).some(x=>x.visible)};}
+ wipe();
+ o.checks={
+  menu:o.menu.grey===true&&o.menu.lab===false&&o.menu.buttons.join("|")==="Begin|Bell Watch|Settings"&&!o.menu.trees&&o.menu.grade===false,
+  stage1:o.stage1.stage===0&&o.stage1.name==="First marks"&&o.stage1.phase==="play"&&o.stage1.arrows===5,
+  result1:o.result1.phase==="results"&&o.result1.stars>=1&&o.result1.next===true,
+  stage2:o.stage2.stage===1&&o.stage2.phase==="play"&&o.stage2.targets.length>=1&&o.result2.phase==="results",
+  farOnGreyGround:o.far.stage>=0&&o.far.reach>=40&&o.far.rangeVisible&&o.far.meshes.n>10&&o.far.meshes.grey===o.far.meshes.n,
+  bellWatch:o.watch.stage===-1&&o.watch.phase==="play"&&o.watch.bell&&o.watch.ramCame&&o.watchEnd.phase==="results"&&o.watchEnd.runs===1&&o.watchAgain.phase==="play"&&o.watchAgain.score===0,
+  back:o.back.stage===0&&o.back.arrows===5&&!o.back.trees,
+  lab:o.lab.grey===true&&o.lab.stage===-2,
+  off:o.off.grey===false&&o.off.trees===true,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

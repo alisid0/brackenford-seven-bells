@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>bow, second version</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The bow and arrow, second version (?bow2=1, design/arrow-mechanics-v2.md), against Gemini's own pass bars: the
+// speed curve and the least draw that looses; the drop at 30 m with real gravity and air; full draw fitted to the
+// player's eye height and learned from honest draws; a trigger-finger jerk at the release removed from the shot while
+// the raw shake still shows; the 1.2 s sweet spot; the haptics table; and with the switch off, nothing changed.
+const errors=[];
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const pad=log=>({buttons:Array.from({length:6},()=>({pressed:false})),axes:[0,0,0,0],hapticActuators:[{pulse:(s,ms)=>log.push([+s.toFixed(2),ms])}]});
+async function run(){
+ const o={};
+ {const w=await game("?release=0&lab=1&bow2=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  v.begin(false);steps(5);
+  o.speed={on:v.BOW2,s10:v.arrowSpeed(.1),s15:R(v.arrowSpeed(.15)),s50:R(v.arrowSpeed(.5)),s96:R(v.arrowSpeed(.96)),s100:R(v.arrowSpeed(1))};
+  // a level full-draw shot, 6 m to the side of the targets: how far it has dropped when it is 30 m down the lane
+  {const e=eye().add(V(v.YARD.rx*6,0,v.YARD.rz*6)),f=V(v.YARD.ux,0,v.YARD.uz);v.loose(e,f,1);const q=v.projectiles[v.projectiles.length-1];let drop=null;
+   for(let i=0;i<120&&drop===null;i++){v.tick(1/90);const along=(q.o.position.x-e.x)*v.YARD.ux+(q.o.position.z-e.z)*v.YARD.uz;if(along>=30)drop=e.y-q.o.position.y;}
+   o.flight={drop30:R(drop),speedAt30:R(q.velocity.length())};}
+  {const n=v.projectiles.length;v.loose(eye(),V(v.YARD.ux,0,v.YARD.uz),.12);o.flight.tooLittleLooses=v.projectiles.length>n;}
+  steps(60);
+  // simulated controllers; the bow goes to the left hand
+  const log0=[],log1=[];v.fake.on=true;[log0,log1].forEach((l,i)=>{const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad(l)};h.grip.matrixAutoUpdate=true;});
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);steps(3);
+  const at=z=>v.rig.worldToLocal(v.bow.localToWorld(V(0,v.REST,.14+z)));
+  const draw=(reach,hold,jerk)=>{v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+   for(let k=1;k<=20;k++){v.hands[1].grip.position.copy(at((reach-.14)*k/20));steps(1);}steps(Math.round(hold*60));
+   const settled=v.lab.aims[v.lab.aims.length-1][1].clone();
+   if(jerk){v.hands[1].grip.position.copy(at(reach-.14).add(V(.06,0,0)));steps(3);}
+   v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);return settled;};
+  // full draw is first fitted from eye height (1.65 m here: 0.345 x 1.65 = 0.57 m)
+  o.reach={first:R(v.bowFull())};
+  log0.length=0;log1.length=0;draw(.57,.5,false);
+  o.reach.chargeAtFirst=R(v.lab.shot.power);o.reach.speed=R(v.lab.shot.speed);
+  o.haptics={stringNotches:log1.filter(p=>p[1]===14).length,fullString:log1.some(p=>p[0]===.78&&p[1]===28),fullBow:log0.some(p=>p[0]===.45&&p[1]===24),nock:log1.some(p=>p[0]===.22&&p[1]===18),looseBowPerfect:log0.some(p=>p[0]===.92&&p[1]===85)};
+  o.sweet={inside:v.projectiles[v.projectiles.length-1].perfect===true};
+  // held past 1.2 s: still a full-speed shot, just not a perfect one; a soft creak marks the moment
+  log0.length=0;draw(.57,1.45,false);o.sweet.after=v.projectiles[v.projectiles.length-1].perfect===false;o.sweet.afterSpeed=R(v.lab.shot.speed);o.sweet.creak=log0.some(p=>p[0]===.14&&p[1]===20);
+  // a player who pulls longer teaches it: after three honest draws past it, full draw moves out toward theirs
+  const f0=v.bow2.full;for(let k=0;k<4;k++)draw(.65,.5,false);o.reach.learned=R(v.bow2.full);o.reach.grew=v.bow2.full>f0+.01&&v.bow2.full<=.68;
+  // the jerk test: the raw shake still shows, but what is sent stays where the aim had settled
+  const settled=draw(.6,.5,true),sent=v.lab.shot.dir;
+  o.jerk={raw:R(v.lab.shot.shake),sentOff:R(sent.angleTo(settled)*57.2958),labSent:v.lab.shot.sent==null?null:R(v.lab.shot.sent)};
+  // the same jerk with the switch off flies wide: done below in a v1 page
+  o.board=v.rangeInfo().text;}
+ {const w=await game("?release=0&lab=1&bow2=0"),v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  v.begin(false);steps(5);o.off={on:v.BOW2,s50:v.arrowSpeed(.5),g:v.BOW.g};
+  {const e=eye().add(V(v.YARD.rx*6,0,v.YARD.rz*6)),f=V(v.YARD.ux,0,v.YARD.uz);v.loose(e,f,1);const q=v.projectiles[v.projectiles.length-1];let drop=null;
+   for(let i=0;i<120&&drop===null;i++){v.tick(1/90);const along=(q.o.position.x-e.x)*v.YARD.ux+(q.o.position.z-e.z)*v.YARD.uz;if(along>=30)drop=e.y-q.o.position.y;}o.off.drop30=R(drop);}
+  steps(30);v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad([])};h.grip.matrixAutoUpdate=true;}
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);steps(3);
+  const at=z=>v.rig.worldToLocal(v.bow.localToWorld(V(0,v.REST,.14+z)));
+  v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);for(let k=1;k<=20;k++){v.hands[1].grip.position.copy(at(.46*k/20));steps(1);}steps(30);
+  const settled=v.lab.aims[v.lab.aims.length-1][1].clone();v.hands[1].grip.position.copy(at(.46).add(V(.06,0,0)));steps(3);v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);
+  o.off.jerkSentOff=R(v.lab.shot.dir.angleTo(settled)*57.2958);}
+ o.checks={
+  speedCurve:o.speed.on&&o.speed.s10===0&&Math.abs(o.speed.s15-22.3)<.3&&Math.abs(o.speed.s50-37.5)<.6&&o.speed.s96===62&&o.speed.s100===62,
+  leastDraw:o.flight.tooLittleLooses===false,
+  realGravity:Math.abs(o.flight.drop30-1.22)<.08&&o.flight.speedAt30<58.5&&o.flight.speedAt30>56,
+  reachFromEyes:Math.abs(o.reach.first-.569)<.01&&o.reach.chargeAtFirst>=.96&&o.reach.speed===62,
+  reachLearned:o.reach.grew,
+  sweetSpot:o.sweet.inside&&o.sweet.after&&o.sweet.afterSpeed===62&&o.sweet.creak,
+  haptics:o.haptics.stringNotches===8&&o.haptics.fullString&&o.haptics.fullBow&&o.haptics.nock&&o.haptics.looseBowPerfect,
+  jerkRemoved:o.jerk.raw>2.5&&o.jerk.sentOff<.6,
+  labShowsBoth:/\(sent [0-9.]+°\)/.test(o.board)&&/v2/.test(o.board),
+  offUnchanged:o.off.on===false&&o.off.s50===43&&o.off.g===7&&Math.abs(o.off.drop30-.83)<.06&&o.off.jerkSentOff>2,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

@@ -37,6 +37,10 @@ const lab={started:false,shot:null,aims:[],drawNow:0,pad:null};
 //            shapes in shades of grey. Targets, the bell and the shades keep their colours: they are what you play
 //            against. It is for getting the game working end to end before its looks. The lab is always grey.
 const GREY=LAB||(QUERY.has('grey')?QUERY.get('grey')==='1':!!CONFIG.grey);
+//   "bow2" in src/config.json, or ?bow2=1: the bow and arrow, second version (Gemini's design/arrow-mechanics-v2.md).
+//            Full draw fitted to the player's reach, a speed curve with a plateau at full draw, real gravity and light air,
+//            a release that ignores the jerk of the trigger finger, a longer sweet spot, and a haptics table. Off: as before.
+const BOW2=QUERY.has('bow2')?QUERY.get('bow2')==='1':!!CONFIG.bow2;
 const GRADE=!GREY&&(QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade);
 const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',lawnFace:'#7D9C41',ringRed:'#AE493D',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
  haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
@@ -538,29 +542,62 @@ function labStart(){if(!range.on)setMode('range');if(replay.on)endReplay();setSt
 // how far the aim moved in the last moments before the arrow left: the worst angle, in degrees, between the direction
 // it was loosed along and where it pointed 60 to 200 ms earlier. Only a headset draw has it.
 function labShake(dir){let worst=null;for(const[t,d]of lab.aims){const age=elapsed-t;if(age<.06||age>.2)continue;const a=d.angleTo(dir)*180/Math.PI;if(worst===null||a>worst)worst=a;}return worst;}
+// how far what was sent differs from where the aim had settled 120 to 200 ms before the release
+function labErr(dir){const v=V();let n=0;for(const[t,d]of lab.aims){const age=elapsed-t;if(age>=.12&&age<=.2){v.add(d);n++;}}return n?v.normalize().angleTo(dir)*180/Math.PI:null;}
 function labText(k){
  const s=lab.shot,p=lab.pad&&elapsed-lab.pad.at<3?lab.pad:null;
- if(k===0)return s?'Draw '+Math.round(s.power*100)+'%'+(s.draw?'  '+Math.round(s.draw*100)+' cm':'')+'      Speed '+s.speed.toFixed(1)+' m/s      Up '+s.elev.toFixed(1)+'°'+(s.shake!==null?'      Shake '+s.shake.toFixed(1)+'°':''):'Loose an arrow  ·  the board shows what it did';
+ if(k===0)return s?'Draw '+Math.round(s.power*100)+'%'+(s.draw?'  '+Math.round(s.draw*100)+' cm':'')+'      Speed '+s.speed.toFixed(1)+' m/s      Up '+s.elev.toFixed(1)+'°'+(s.shake!==null?'      Shake '+s.shake.toFixed(1)+'°'+(s.sent!=null?' (sent '+s.sent.toFixed(1)+'°)':''):'')+(BOW2?'      v2':''):'Loose an arrow  ·  the board shows what it did';
  return(s&&s.result?s.result:'Targets at 10, 20 and 30 m')+(p?'      '+p.hand+' '+p.button+': '+p.action:'');
 }
 // ---- Meta Quest face buttons, by name. In the browser a Touch controller reports: 0 trigger, 1 grip, 3 thumbstick
 // click, 4 the lower face button (A on the right, X on the left), 5 the upper one (B on the right, Y on the left).
 // The menu button on the left and the Meta button on the right are kept by the headset and never reach a web page.
-// Jobs go by what the hand is doing, not by left or right, so a left-handed archer gets the same layout mirrored:
-//   string hand   lower: start this stage again        upper: switch between two-handed and single-handed draw
-//   bow hand      lower: next special arrow            upper: open or close the menu
-const PAD_NAMES={left:['X','Y'],right:['A','B']},PAD_MAP={string:['again','draw'],bow:['arrow','menu']};
+// Jobs go by what the hand is doing, not by left or right, so a left-handed archer gets the same layout mirrored
+// (Gemini's settled map, design/arrow-mechanics-v2.md section 8):
+//   string hand   lower: start again (a second press within 1.2 s while playing)   upper: next stage, on the result
+//                 stick: turn in 30 degree steps        stick pressed: two-handed or single-handed draw
+//   bow hand      lower: next special arrow             upper: open or close the menu
+//                 stick: walk, off the range only       stick held 0.6 s: face down the lane again (a tap: run, off the range)
+const PAD_NAMES={left:['X','Y'],right:['A','B']},PAD_MAP={string:['again','next'],bow:['arrow','menu']};
 function padStep(h,gp){
  const side=h.source.handedness,role=h===bowHand?'bow':'string';
  for(let k=0;k<2;k++){const down=!!gp.buttons[4+k]?.pressed,was=!!h['pad'+k];h['pad'+k]=down;if(down&&!was)padDo(PAD_MAP[role][k],side,(PAD_NAMES[side]||[])[k]||'button '+(4+k),h);}
 }
+// the thumbsticks under the settled map: by bow hand and string hand, not by left and right
+function padSticks(h,sx,sy,click,dt,eye,off){
+ if(h===bowHand){
+  if(click){if(!h.clickAt)h.clickAt=elapsed;if(!h.centred&&elapsed-h.clickAt>=.6){h.centred=true;recentre();buzz(h,.35,30);say('Facing down the lane',2);lab.pad={hand:h.source.handedness,button:'stick',action:'centre',at:elapsed};}}
+  else{if(h.clickAt&&!h.centred&&!range.on)running=!running;h.clickAt=0;h.centred=false;}
+  const mag=hyp(sx,sy);
+  if(mag>.18&&!range.on){   // walking is for off the range; on it the stick does nothing, so it cannot skip a stage by accident
+   const yaw=headYaw(),sp=(running?7.5:3.6)*Math.min(1,mag)*(charging?.5:1)*(groundAt(eye.x,eye.z)<-.4?.5:1)*dt/mag,s=Math.sin(yaw),c=Math.cos(yaw);
+   const[nx,nz]=tryMove(eye.x+(s*sy+c*sx)*sp,eye.z+(c*sy-s*sx)*sp,rig.position.y-off);walked(hyp(nx-eye.x,nz-eye.z));
+   rig.position.x+=nx-eye.x;rig.position.z+=nz-eye.z;eye.x=nx;eye.z=nz;
+  }else running=running&&mag>.05;
+ }else{
+  if(click&&!h.ran&&!charging){setDraw(state.draw==='one'?'two':'one');say(state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string',3);lab.pad={hand:h.source.handedness,button:'stick',action:'draw',at:elapsed};}h.ran=click;
+  if(Math.abs(sx)>.65&&!h.turned&&!charging){
+   const a=-Math.sign(sx)*Math.PI/6,ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,s=Math.sin(a),c=Math.cos(a);
+   rig.rotation.y+=a;rig.position.x=eye.x+ox*c+oz*s;rig.position.z=eye.z-ox*s+oz*c;h.turned=true;
+  }else if(Math.abs(sx)<.3)h.turned=false;
+ }
+}
+// turn so the head faces straight down the lane, and on the range step back onto the shooting line
+function recentre(){
+ const eye=head().getWorldPosition(V()),a=Math.atan2(-YARD.ux,-YARD.uz)-headYaw(),ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,s=Math.sin(a),c=Math.cos(a);
+ rig.rotation.y+=a;rig.position.x=eye.x+ox*c+oz*s;rig.position.z=eye.z-ox*s+oz*c;rig.updateMatrixWorld(true);
+ if(range.on){const e=head().getWorldPosition(V());rig.position.x+=YARD.x-e.x;rig.position.z+=YARD.z-e.z;rig.updateMatrixWorld(true);}
+}
 function padDo(action,side,button,h){
  let said='';
- if(action==='again'){if(range.on&&!charging){if(replay.on)endReplay();if(STAGES[range.stage].watch)watchStart();else setStage(range.stage);said='Started again';}}
- else if(action==='draw'){if(!charging){setDraw(state.draw==='one'?'two':'one');said=state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string';}}
+ if(action==='again'){if(range.on&&!charging){
+  const st=STAGES[range.stage],mid=range.phase==='play'&&!st.lab&&(range.fired>0||st.watch);
+  if(mid&&!(lab.againAt&&elapsed-lab.againAt<=1.2)){lab.againAt=elapsed;said='Press again to start over';}   // a stray thumb never throws away a run
+  else{lab.againAt=0;if(replay.on)endReplay();if(st.watch)watchStart();else setStage(range.stage);said='Started again';}}}
+ else if(action==='next'){if(range.on&&range.phase==='results'&&rangeSigns.next.base.visible){range.pending='next';said='Next stage';}else said=range.on&&range.phase==='results'?'No next stage yet':'Next stage opens on the result';}
  else if(action==='arrow'){if(ARROWS&&range.on&&!charging){quiverStep(1);said='Arrow  ·  '+quiver.kind;}else said='No special arrows here';}
  else if(action==='menu'){if(VRMENU){if(vrMenu.open)vrMenuClose();else vrMenuOpen();said=vrMenu.open?'Menu':'Menu closed';}else said='The headset menu is switched off';}
- lab.pad={hand:side,button,action,at:elapsed};if(said)say(said,2.5);buzz(h,.3,25);
+ lab.pad={hand:side,button,action,at:elapsed};if(said)say(said,2.5);buzz(h,.25,20);
 }
 if(GRADE&&WORLD2){
  const R=scene.userData.range2,P=(along,right,y=0)=>V(-right,y,along),r=mulberry(77);
@@ -1928,6 +1965,37 @@ function arrow(){
 }
 const preview=arrow();scene.add(preview);preview.visible=false;const pool=[],projectiles=[];
 const ray=new T.Raycaster(), GRAV=7, FWD=V(0,0,-1), tmpDir=V();
+// rest: string-hand distance that is no draw; full* and eyeK: full draw fitted to the player (section 1); minLoose: less
+// draw than this looses nothing; g and drag: gravity and air (section 3); sweet: seconds after full draw that a release is
+// perfect; fullAt and rearm: when full draw counts, and how far back down it must come to count again (section 5)
+const BOW=BOW2?{rest:.12,fullMin:.42,fullMax:.68,eyeK:.345,seated:.52,minLoose:.15,g:9.81,drag:.0025,sweet:1.2,fullAt:.96,rearm:.8}:{rest:.12,full:.52,minLoose:.1,g:GRAV,drag:0,sweet:.9,fullAt:.95,rearm:.85};
+const bow2={full:0,learned:[],up:0,down:0,peak:0,t0:0,buf:[],earlyAt:0,hi:false,notch:1,closed:false,breathAt:0,raw:null};
+// launch speed from draw (section 2): v2 is a gentle curve from 18 to 62 m/s, flat over the last 4 percent of the draw
+function arrowSpeed(power){return BOW2?(power<BOW.minLoose?0:18+44*Math.pow(clamp(power/.96,0,1),1.25)):24+power*38;}
+// the player's full draw (section 1): first a guess from how high their eyes are, then learned from honest draws
+function bowFull(){
+ if(bow2.full)return bow2.full;
+ const eyeY=head().getWorldPosition(V()).y-(rig.position.y-localEyeOffset);
+ bow2.full=localEyeOffset||eyeY<1.15?BOW.seated:clamp(eyeY*BOW.eyeK,.44,.66);return bow2.full;
+}
+function bowLearn(peak,hold){
+ if(!(hold>=.35&&peak>=.36&&peak<=.72))return;   // only a real draw teaches it
+ const L=bow2.learned,med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1];};L.push(peak);if(L.length>5)L.shift();
+ if(peak>bow2.full/.95){bow2.up++;bow2.down=0;}else if(peak>=.72*bow2.full&&peak<=.92*bow2.full){bow2.down++;bow2.up=0;}else{bow2.up=0;bow2.down=0;}
+ if(bow2.up>=3)bow2.full+=(.95*med(L)-bow2.full)*.35;else if(bow2.down>=3)bow2.full+=(.98*med(L.slice(-3))-bow2.full)*.35;
+ bow2.full=clamp(bow2.full,BOW.fullMin,BOW.fullMax);
+}
+// the release (section 4): the aim from just before the trigger finger's jerk, and the most draw of the last tenth of a second
+function bowRelease(){
+ const tc=bow2.earlyAt&&elapsed-bow2.earlyAt<=.08?bow2.earlyAt:elapsed,B=bow2.buf.filter(s=>s[0]<=tc+1e-6),win=B.filter(s=>s[0]>=tc-.12);
+ let spike=null;for(let k=1;k<win.length;k++){const dt=win[k][0]-win[k-1][0];if(dt>0&&win[k][1].angleTo(win[k-1][1])*57.2958/dt>45){spike=win[k][0];break;}}
+ const avg=(a,b)=>{const v=V();let n=0;for(const s of B)if(s[0]>=a&&s[0]<b){v.add(s[1]);n++;}return n?v.normalize():null;};
+ let dir,end;
+ if(spike!==null){end=spike;dir=avg(spike-.045,spike)||(B.filter(s=>s[0]<spike).pop()||[0,aimVR()])[1].clone();}
+ else{end=tc;dir=avg(tc-.045,tc+1e-6)||aimVR();}
+ let power=0;for(const s of B)if(s[0]>=end-.1&&s[0]<=end+1e-6)power=Math.max(power,s[2]);
+ return{dir,power:power||charge,spike:spike!==null};
+}
 let charging=false,charge=0,startTime=0,twang=-9,twangPower=0,zoom=0,hitFlash=0,drawStep=0;
 // After a release: kick is the slow recoil of the bow, snap the fast ringing of the string.
 function recoil(){
@@ -1945,16 +2013,17 @@ function buzz(h,strength,ms){try{h?.source?.gamepad?.hapticActuators?.[0]?.pulse
 function cancel(){charging=false;charge=0;$('ret').classList.remove('draw');$('fill').style.width='0';}
 function recycle(i){const q=projectiles[i];q.o.visible=false;pool.push(q.o);projectiles.splice(i,1);}
 function loose(origin,dir,power,perfect=false){
- if(power<.1||(range.on&&(range.phase==='replay'||(range.phase==='play'&&range.arrows<=0)))){cancel();return;}
+ if(power<BOW.minLoose||(range.on&&(range.phase==='replay'||(range.phase==='play'&&range.arrows<=0)))){if(BOW2&&power<BOW.minLoose)buzz(drawHand||quickHand,.12,15);cancel();return;}
  if(projectiles.length>48)recycle(0);
  const o=pool.pop()||arrow();scene.add(o);o.visible=true;o.position.copy(origin);o.quaternion.setFromUnitVectors(FWD,dir);
  o.userData.body.rotation.set(0,0,0);o.userData.streak.visible=true;o.userData.streak.scale.z=.001;
- projectiles.push({o,origin:origin.clone(),velocity:dir.clone().multiplyScalar(24+power*38),life:0,stuck:false,power,roll:Math.random()*6,stuckAt:0,jolt:0,spent:false,flat:false});
+ projectiles.push({o,origin:origin.clone(),velocity:dir.clone().multiplyScalar(arrowSpeed(power)),life:0,stuck:false,power,roll:Math.random()*6,stuckAt:0,jolt:0,spent:false,flat:false});
  rangeLoosed(projectiles[projectiles.length-1],perfect);
- if(LAB){lab.shot=projectiles[projectiles.length-1].lab={power,speed:24+power*38,elev:Math.asin(clamp(dir.y,-1,1))*180/Math.PI,draw:lab.drawNow,shake:labShake(dir),t0:elapsed,result:''};lab.aims.length=0;lab.drawNow=0;}
+ if(LAB){lab.shot=projectiles[projectiles.length-1].lab={power,speed:arrowSpeed(power),elev:Math.asin(clamp(dir.y,-1,1))*180/Math.PI,draw:lab.drawNow,shake:labShake(bow2.raw||dir),sent:BOW2&&bow2.raw?labErr(dir):null,dir:dir.clone(),t0:elapsed,result:''};lab.aims.length=0;lab.drawNow=0;}
  state.shots++;twang=elapsed;twangPower=power;
  note(210,.1,'triangle',.09,0,85);note(98,.24,'sawtooth',.03*power,0,72);thump(900,.12,.12);thump(2600,.3,.05*power);
- buzz(bowHand,.4+.6*power,90);buzz(drawHand,.5,40);cancel();
+ if(BOW2){const s=drawHand||quickHand;if(perfect){buzz(bowHand,.92,85);if(s!==bowHand)buzz(s,.55,38);}else{buzz(bowHand,.35+.5*power,75);if(s!==bowHand)buzz(s,.3+.2*power,32);}}
+ else{buzz(bowHand,.4+.6*power,90);buzz(drawHand,.5,40);}cancel();
 }
 // Small flat-shaded chips thrown up where an arrow lands.
 const bits=[],bitGeo=new T.BoxGeometry(1,1,1);
@@ -1974,6 +2043,7 @@ function stepBits(dt){
  }
 }
 function hit(t,q){
+ if(BOW2&&xrOn()&&q.ranged!==false){const big=t.kind==='peal'||t.ram;buzz(bowHand,big?.55:.28,big?45:26);if(big)buzz(drawHand,.25,28);}
  if(t.kind==='peal'){pealHit(q);return;}
  if(t.kind==='grass'){kilnClear(t,q);return;}
  if(t.kind==='range'||t.kind==='spirit'){rangeHit(t,q);return;}
@@ -2007,7 +2077,7 @@ function stepArrows(dt){
   const q=projectiles[i],u=q.o.userData;q.life+=dt;
   if(q.life>(q.stuck?50:14)){recycle(i);continue;}
   if(q.stuck){const t=elapsed-q.stuckAt;if(!q.flat&&t<1.2)u.body.rotation.x=q.jolt*.15*Math.exp(-6*t)*Math.sin(52*t);continue;}
-  q.velocity.y-=GRAV*dt;
+  if(BOW.drag){const s=q.velocity.length();q.velocity.addScaledVector(q.velocity,-BOW.drag*s*dt);}q.velocity.y-=BOW.g*dt;
   if(q.windy){const push=range.wind*1.4*dt*(q.kind==='gale'?ARROW_RULE.galeWind:1);q.velocity.x+=YARD.rx*push;q.velocity.z+=YARD.rz*push;}   // a crosswind pushes the arrow sideways all the way down the lane
   const speed=q.velocity.length(),dir=tmpDir.copy(q.velocity).divideScalar(speed),distance=speed*dt,p=q.o.position;
   let contact=null;
@@ -2138,7 +2208,7 @@ document.addEventListener('mousemove',e=>{
  if(!playing||xrOn())return;look.yaw-=e.movementX*.0023;look.pitch=clamp(look.pitch-e.movementY*.0023,-1.45,1.45);
 });
 canvas.addEventListener('mousedown',e=>{if(e.button!==0||!playing||xrOn()||climb)return;if(replay.on){range.skip=true;return;}charging=true;drawHold=null;startTime=elapsed;$('ret').classList.add('draw');note(64,.7,'sawtooth',.012,0,118);});
-window.addEventListener('mouseup',e=>{if(e.button!==0||!charging||xrOn())return;desktopPose();const held=elapsed-startTime;loose(preview.position,aimDesktop(),charge,drawHold===null&&held>=.85&&held<=1.3);});
+window.addEventListener('mouseup',e=>{if(e.button!==0||!charging||xrOn())return;desktopPose();const held=elapsed-startTime;loose(preview.position,aimDesktop(),charge,drawHold===null&&held>=.85&&held<=.85+(BOW2?BOW.sweet:.45));});
 canvas.addEventListener('wheel',e=>{if(!charging||xrOn())return;e.preventDefault();drawHold=clamp((drawHold===null?charge:drawHold)-Math.sign(e.deltaY)*.07,.1,1);},{passive:false});
 window.addEventListener('blur',()=>{cancel();keys.clear();});
 function setMap(open){
@@ -2210,7 +2280,7 @@ function vrStatus(){
 }
 function takeBow(h){
  if(!h.pose||h===drawHand)return;
- if(h!==bowHand&&h.hold.getWorldPosition(V()).distanceTo(bow.position)<.42){bowHand=h;drawHand=null;cancel();audioStart();thump(600,.08,.1);}
+ if(h!==bowHand&&h.hold.getWorldPosition(V()).distanceTo(bow.position)<.42){bowHand=h;drawHand=null;cancel();audioStart();thump(600,.08,.1);if(BOW2)buzz(h,.3,22);}
 }
 // A hand closed on a climbing face holds on there; moving that hand then moves you instead.
 function grabClimb(h){
@@ -2231,15 +2301,18 @@ function startDraw(h){
  else if(atString){drawHand=h;h.pinch.getWorldPosition(drawAt);}
  else{if(!h.source?.hand)say(h===bowHand?'Use the trigger on your other hand, at the string':'Bring this hand to the string first',2.2);return;}
  charging=true;drawStep=0;fullAt=0;note(64,.7,'sawtooth',.012,0,118);
+ if(BOW2){Object.assign(bow2,{peak:0,t0:elapsed,buf:[],earlyAt:0,hi:false,notch:1,closed:false,breathAt:0,raw:null});if(drawHand===h){buzz(h,.22,18);buzz(bowHand,.1,14);}}
 }
 function endDraw(h){
  if(h===quickHand){
   quickHand=null;
-  if(charging&&bowHand?.pose){vrPose();const held=elapsed-quickAt;loose(preview.position,V(0,0,-1).transformDirection(bow.matrixWorld),charge,held>=.85&&held<=1.3);}else cancel();
+  if(charging&&bowHand?.pose){vrPose();const held=elapsed-quickAt;loose(preview.position,V(0,0,-1).transformDirection(bow.matrixWorld),charge,held>=.85&&held<=.85+(BOW2?BOW.sweet:.45));}else cancel();
   return;
  }
  if(h!==drawHand)return;
- if(charging&&h.pose&&bowHand?.pose){vrPose();loose(preview.position,aimVR(),charge,!!fullAt&&charge>=.95&&elapsed-fullAt<=.9);}else cancel();drawHand=null;
+ if(charging&&h.pose&&bowHand?.pose){vrPose();
+  if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(preview.position,r.dir,r.power,!!fullAt&&r.power>=.95&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
+  else loose(preview.position,aimVR(),charge,!!fullAt&&charge>=.95&&elapsed-fullAt<=.9);}else cancel();drawHand=null;
 }
 for(const h of hands){ // controllers; tracked hands are read in senseHand instead
  h.raySpace.addEventListener('squeezestart',()=>{if(!h.source?.hand&&!grabClimb(h))takeBow(h);});
@@ -2295,7 +2368,8 @@ function vrLocomotion(dt,frame){
   if(!h.pose)h.climb=null;
   if(bare){handGestures(h,dt,eye,climbing);continue;}
   const gp=h.source?.gamepad;if(!gp||climbing)continue;
-  const ax=gp.axes,sx=ax.length>=4?ax[2]:ax[0]||0,sy=ax.length>=4?ax[3]:ax[1]||0,click=!!gp.buttons[3]?.pressed;if(PADS)padStep(h,gp);
+  if(BOW2&&h===drawHand&&charging){const tv=gp.buttons[0]?.value;if(tv>=.85){bow2.hi=true;bow2.earlyAt=0;}else if(bow2.hi&&tv<.8&&!bow2.earlyAt)bow2.earlyAt=elapsed;}
+  const ax=gp.axes,sx=ax.length>=4?ax[2]:ax[0]||0,sy=ax.length>=4?ax[3]:ax[1]||0,click=!!gp.buttons[3]?.pressed;if(PADS){padStep(h,gp);padSticks(h,sx,sy,click,dt,eye,off);continue;}
   if(h.source.handedness==='left'){
    if(click&&!h.ran)running=!running;h.ran=click;
    const mag=hyp(sx,sy);
@@ -2352,14 +2426,25 @@ function vrPose(){
  if(charging&&drawHand&&bowHand){
   // The string hand is followed with a little smoothing, so jitter close to the face does not shake the aim.
   // The bow then turns to lie along the arrow, keeping only its lean from the wrist, so twisting the bow hand does not turn the shot.
-  const hp=drawAt.lerp(drawHand.pinch.getWorldPosition(V()),1-Math.exp(-frameDt*28));charge=clamp((hp.distanceTo(bow.position)-.12)/.4,0,1);
+  const hp=drawAt.lerp(drawHand.pinch.getWorldPosition(V()),1-Math.exp(-frameDt*28)),reach=hp.distanceTo(bow.position);
+  if(BOW2){bowFull();bow2.peak=Math.max(bow2.peak,reach);charge=clamp((reach-BOW.rest)/(bow2.full-BOW.rest),0,1);}else charge=clamp((reach-.12)/.4,0,1);
   dir=aimVR();
   const lean=V(0,1,0).applyQuaternion(bow.quaternion);if(Math.abs(lean.dot(dir))<.95){bow.quaternion.setFromRotationMatrix(steady.lookAt(ZERO,dir,lean));bow.updateMatrixWorld();dir=aimVR();}
   if(LAB){lab.drawNow=hp.distanceTo(bow.position);lab.aims.push([elapsed,dir.clone()]);while(lab.aims.length&&elapsed-lab.aims[0][0]>.3)lab.aims.shift();}
   nock=bow.worldToLocal(hp.clone());flex=.2*charge;
+  if(BOW2){
+   bow2.buf.push([elapsed,dir.clone(),charge]);while(bow2.buf.length&&elapsed-bow2.buf[0][0]>.22)bow2.buf.shift();
+   // a notch every tenth from 20 to 90 percent, with 2 percent either side so resting on one never chatters; the bow creaks at 40, 60 and 80
+   if(bow2.notch<9&&charge>=(bow2.notch+1)/10+.02){bow2.notch++;buzz(drawHand,.12+.28*charge,14);if(bow2.notch%2===0&&bow2.notch>=4)buzz(bowHand,.08+.14*charge,12);}
+   else if(bow2.notch>1&&charge<bow2.notch/10-.02)bow2.notch--;
+   if(charge>=BOW.fullAt){if(!fullAt){fullAt=elapsed;bow2.closed=false;bow2.breathAt=0;buzz(drawHand,.78,28);buzz(bowHand,.45,24);}}else if(charge<BOW.rearm)fullAt=0;
+   if(fullAt){const held=elapsed-fullAt;
+    if(held>BOW.sweet&&!bow2.closed){bow2.closed=true;buzz(bowHand,.14,20);note(92,.25,'triangle',.03,0,80);}   // the sweet spot has passed: a soft creak, nothing more
+    if(held>2&&elapsed>=bow2.breathAt){bow2.breathAt=elapsed+.9;buzz(bowHand,.08,18);}}   // a held bow breathes: no effect on the aim
+  }else{
   const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(drawHand,.15+.3*charge,14);}
   // a perfect release is one made soon after reaching full draw; a strong pulse marks the moment
-  if(charge>=.95){if(!fullAt){fullAt=elapsed;buzz(drawHand,.9,30);buzz(bowHand,.5,30);}}else if(charge<.85)fullAt=0;
+  if(charge>=.95){if(!fullAt){fullAt=elapsed;buzz(drawHand,.9,30);buzz(bowHand,.5,30);}}else if(charge<.85)fullAt=0;}
  }else dir=V(0,0,-1).transformDirection(bow.matrixWorld);
  if(charging&&quickHand&&bowHand){
   // quick draw: the string comes back by itself while the trigger is held, the last of the pull slowest
@@ -2566,6 +2651,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},recentre,headYaw,YARD,rangeSigns,BOW2,BOW,bow2,arrowSpeed,bowFull,get charge(){return charge;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

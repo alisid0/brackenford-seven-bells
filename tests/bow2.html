@@ -11,6 +11,7 @@ async function run(){
  const o={};
  {const w=await game("?release=0&lab=1&bow2=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
   v.begin(false);steps(5);
+  o.stages={long:v.STAGES.find(x=>x.name==='Long wind').wind.join(),storm:v.STAGES.find(x=>x.name==='Storm lane').wind.join(),master:v.STAGES.find(x=>x.name==='Master of the line').wind.join()};
   o.speed={on:v.BOW2,s10:v.arrowSpeed(.1),s15:R(v.arrowSpeed(.15)),s50:R(v.arrowSpeed(.5)),s96:R(v.arrowSpeed(.96)),s100:R(v.arrowSpeed(1))};
   // a level full-draw shot, 6 m to the side of the targets: how far it has dropped when it is 30 m down the lane
   {const e=eye().add(V(v.YARD.rx*6,0,v.YARD.rz*6)),f=V(v.YARD.ux,0,v.YARD.uz);v.loose(e,f,1);const q=v.projectiles[v.projectiles.length-1];let drop=null;
@@ -32,7 +33,7 @@ async function run(){
   log0.length=0;log1.length=0;draw(.57,.5,false);
   o.reach.chargeAtFirst=R(v.lab.shot.power);o.reach.speed=R(v.lab.shot.speed);
   o.haptics={stringNotches:log1.filter(p=>p[1]===14).length,fullString:log1.some(p=>p[0]===.78&&p[1]===28),fullBow:log0.some(p=>p[0]===.45&&p[1]===24),nock:log1.some(p=>p[0]===.22&&p[1]===18),looseBowPerfect:log0.some(p=>p[0]===.92&&p[1]===85)};
-  o.sweet={inside:v.projectiles[v.projectiles.length-1].perfect===true};
+  o.sweet={inside:v.projectiles[v.projectiles.length-1].perfect===true,goldTrail:v.projectiles[v.projectiles.length-1].o.userData.streak.scale.x===1.25};
   // held past 1.2 s: still a full-speed shot, just not a perfect one; a soft creak marks the moment
   log0.length=0;draw(.57,1.45,false);o.sweet.after=v.projectiles[v.projectiles.length-1].perfect===false;o.sweet.afterSpeed=R(v.lab.shot.speed);o.sweet.creak=log0.some(p=>p[0]===.14&&p[1]===20);
   // a player who pulls longer teaches it: after three honest draws past it, full draw moves out toward theirs
@@ -64,6 +65,8 @@ async function run(){
   realGravity:Math.abs(o.flight.drop30-1.22)<.08&&o.flight.speedAt30<58.5&&o.flight.speedAt30>56,
   reachFromEyes:Math.abs(o.reach.first-.569)<.01&&o.reach.chargeAtFirst>=.96&&o.reach.speed===62,
   reachLearned:o.reach.grew,
+  stagesAdjusted:o.stages.long==='4.5,0'&&o.stages.storm==='2,6'&&o.stages.master==='-3,4',
+  goldTrail:o.sweet.goldTrail,
   sweetSpot:o.sweet.inside&&o.sweet.after&&o.sweet.afterSpeed===62&&o.sweet.creak,
   haptics:o.haptics.stringNotches===8&&o.haptics.fullString&&o.haptics.fullBow&&o.haptics.nock&&o.haptics.looseBowPerfect,
   jerkRemoved:o.jerk.raw>2.5&&o.jerk.sentOff<.6,

@@ -80802,7 +80802,7 @@ function padStep(h,gp){
 // the thumbsticks under the settled map: by bow hand and string hand, not by left and right
 function padSticks(h,sx,sy,click,dt,eye,off){
  if(h===bowHand){
-  if(click){if(!h.clickAt)h.clickAt=elapsed;if(!h.centred&&elapsed-h.clickAt>=.6){h.centred=true;recentre();buzz(h,.35,30);say('Facing down the lane',2);lab.pad={hand:h.source.handedness,button:'stick',action:'centre',at:elapsed};}}
+  if(click){if(!h.clickAt)h.clickAt=elapsed;if(!h.centred&&!charging&&elapsed-h.clickAt>=.6){h.centred=true;recentre();buzz(h,.35,30);say('Facing down the lane',2);lab.pad={hand:h.source.handedness,button:'stick',action:'centre',at:elapsed};}}
   else{if(h.clickAt&&!h.centred&&!range.on)running=!running;h.clickAt=0;h.centred=false;}
   const mag=hyp(sx,sy);
   if(mag>.18&&!range.on){   // walking is for off the range; on it the stick does nothing, so it cannot skip a stage by accident
@@ -80811,7 +80811,7 @@ function padSticks(h,sx,sy,click,dt,eye,off){
    rig.position.x+=nx-eye.x;rig.position.z+=nz-eye.z;eye.x=nx;eye.z=nz;
   }else running=running&&mag>.05;
  }else{
-  if(click&&!h.ran&&!charging){setDraw(state.draw==='one'?'two':'one');say(state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string',3);lab.pad={hand:h.source.handedness,button:'stick',action:'draw',at:elapsed};}h.ran=click;
+  if(click&&!h.ran&&!charging){setDraw(state.draw==='one'?'two':'one');say(state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string',3);buzz(h,.25,20);lab.pad={hand:h.source.handedness,button:'stick',action:'draw',at:elapsed};}h.ran=click;
   if(Math.abs(sx)>.65&&!h.turned&&!charging){
    const a=-Math.sign(sx)*Math.PI/6,ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,s=Math.sin(a),c=Math.cos(a);
    rig.rotation.y+=a;rig.position.x=eye.x+ox*c+oz*s;rig.position.z=eye.z-ox*s+oz*c;h.turned=true;
@@ -80957,6 +80957,11 @@ const ALL_STAGES=[
  {name:'Flight line',arrows:10,wind:[3,0],marks:[],spirits:[{t:'cross',lane:15},{t:'cross',lane:21},{t:'cross',lane:27}]},
  {name:'Blighted meadow',arrows:10,marks:[],spirits:[{t:'sit',at:[13,-4],alt:[15,-6],back:5},{t:'hide',at:[19,4]},{t:'run',area:[20,27,-6,6]},{t:'perch',at:[16,1,2.6],back:5},{t:'cross',lane:24}]}];
 // The release plays a chosen few of these in its own order (stage numbers, from one); every stage stays here, none is deleted.
+if(BOW2)for(const s of ALL_STAGES){   // design/bow2-audit.md: the same drift as before under real gravity and air
+ if(s.name==='Long wind')s.wind=[4.5,0];
+ if(s.name==='Storm lane')s.wind=[2,6];
+ if(s.name==='Master of the line'){s.wind=[-3,4];s.marks[0][3]=[4,.45];}
+}
 const STAGES=RELEASE&&CONFIG.order.length?CONFIG.order.map(n=>ALL_STAGES[n-1]):ALL_STAGES;
 // ---- Bell Watch: the main game, first playable. One switch: "watch" in src/config.json, or ?watch=1 / ?watch=0.
 //   Three minutes on the range with arrows that never run out. Shades keep coming: when one is banished another
@@ -81833,6 +81838,7 @@ function rangeHit(t,q){
  if(q.final)range.lastShot=shot;                                     // or the final arrow of the stage, wherever it hit
  // each hit in a streak plays the next note up
  const f=392*2**([0,2,4,7,9,12,14,16,19,21,24][Math.min(range.streak-1,10)]/12);note(f,.35,'sine',.13);note(f*2,.25,'sine',.05,.03);
+ if(BOW2&&xrOn()){const big=(ring===100&&!spirit)||!!t.ram;buzz(bowHand,big?.55:.28,big?45:26);if(big)buzz(hands.find(h=>h!==bowHand&&h.pose),.25,28);}
  if(ring===100&&!spirit){burst(at,'#ffd86b',22,1.5,1.4);note(f*1.5,.5,'sine',.1,.08);}
  popup('+'+pts,at.clone().add(V(0,.5*t.scale,0)),ring===100||spirit?'#ffd86b':'#fff1c4');
  say((spirit?'Shade banished  ·  ':ring===100?'Bullseye  ·  ':'')+(q.perfect?'Perfect release  ·  ':'')+(range.streak>1?'Streak '+range.streak:dist+' m'),1.6);
@@ -82186,6 +82192,11 @@ const streakGeo=(()=>{
  for(const[x,y]of[[w,0],[0,w]]){pos.push(-x,-y,0, x,y,0, -x,-y,1, x,y,1);uv.push(0,0, 1,0, 0,1, 1,1);}
  g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex([0,1,2,2,1,3,4,5,6,6,5,7]);return g;
 })();
+const streakGold=(()=>{
+ const c=document.createElement('canvas');c.width=4;c.height=64;const g=c.getContext('2d'),fade=g.createLinearGradient(0,64,0,0);
+ fade.addColorStop(0,'rgba(255,233,168,.95)');fade.addColorStop(1,'rgba(255,233,168,0)');g.fillStyle=fade;g.fillRect(0,0,4,64);
+ return new T.MeshBasicMaterial({map:new T.CanvasTexture(c),transparent:true,depthWrite:false,side:T.DoubleSide,opacity:.9});
+})();
 const streakMat=(()=>{
  const c=document.createElement('canvas');c.width=4;c.height=64;const g=c.getContext('2d'),fade=g.createLinearGradient(0,64,0,0);
  fade.addColorStop(0,'rgba(255,250,232,.9)');fade.addColorStop(1,'rgba(255,250,232,0)');g.fillStyle=fade;g.fillRect(0,0,4,64);
@@ -82205,6 +82216,21 @@ const ray=new T.Raycaster(), GRAV=7, FWD=V(0,0,-1), tmpDir=V();
 // draw than this looses nothing; g and drag: gravity and air (section 3); sweet: seconds after full draw that a release is
 // perfect; fullAt and rearm: when full draw counts, and how far back down it must come to count again (section 5)
 const BOW=BOW2?{rest:.12,fullMin:.42,fullMax:.68,eyeK:.345,seated:.52,minLoose:.15,g:9.81,drag:.0025,sweet:1.2,fullAt:.96,rearm:.8}:{rest:.12,full:.52,minLoose:.1,g:GRAV,drag:0,sweet:.9,fullAt:.95,rearm:.85};
+const tmpV0=V(),tmpMid=V();
+// one pulse each to the string hand and the bow hand; on a single-handed draw they are the same controller, so the stronger wins
+function bowBuzz(s,ss,sm,b,bs,bm){if(s&&s===b){buzz(s,Math.max(ss||0,bs||0),Math.max(sm||0,bm||0));return;}if(ss)buzz(s,ss,sm);if(bs)buzz(b,bs,bm);}
+// what the hands feel through a v2 draw (section 7): notches every tenth from 20 to 90 percent with 2 percent of give on the
+// way down, the bow creaking at 40, 60 and 80, a snap at full draw, a creak when the sweet spot closes, a breath while held
+function bowFeel(s,full){
+ if(bow2.notch<9&&charge>=(bow2.notch+1)/10){bow2.notch++;bowBuzz(s,.12+.28*charge,14,bowHand,bow2.notch%2===0&&bow2.notch>=4?.08+.14*charge:0,12);}
+ else if(bow2.notch>1&&charge<bow2.notch/10-.02)bow2.notch--;
+ if(full){if(!fullAt){fullAt=elapsed;bow2.closed=false;bow2.breathAt=0;bowBuzz(s,.78,28,bowHand,.45,24);}}else if(charge<BOW.rearm)fullAt=0;
+ if(fullAt){const held=elapsed-fullAt;
+  if(held>BOW.sweet&&!bow2.closed){bow2.closed=true;buzz(bowHand,.14,20);note(92,.25,'triangle',.03,0,80);}   // the sweet spot has passed: a soft creak, nothing more
+  if(held>2&&elapsed>=bow2.breathAt){bow2.breathAt=elapsed+.9;buzz(bowHand,.08,18);}}   // a held bow breathes: no effect on the aim
+}
+// keep one sample per moment: a second call in the same frame replaces the first, so no step is ever measured over no time
+function pushSample(list,sample){const last=list[list.length-1];if(last&&last[0]===sample[0])list[list.length-1]=sample;else list.push(sample);}
 const bow2={full:0,learned:[],up:0,down:0,peak:0,t0:0,buf:[],earlyAt:0,hi:false,notch:1,closed:false,breathAt:0,raw:null};
 // launch speed from draw (section 2): v2 is a gentle curve from 18 to 62 m/s, flat over the last 4 percent of the draw
 function arrowSpeed(power){return BOW2?(power<BOW.minLoose?0:18+44*Math.pow(clamp(power/.96,0,1),1.25)):24+power*38;}
@@ -82221,7 +82247,7 @@ function setReach(r){state.reach=r;bow2.full=0;bow2.learned=[];bow2.up=0;bow2.do
 function bowLearn(peak,hold){
  if(state.reach!=='auto')return;
  if(!(hold>=.35&&peak>=.36&&peak<=.72))return;   // only a real draw teaches it
- const L=bow2.learned,med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1];};L.push(peak);if(L.length>5)L.shift();
+ const L=bow2.learned,med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1];};if(peak>=.72*bow2.full){L.push(peak);if(L.length>5)L.shift();}
  if(peak>bow2.full/.95){bow2.up++;bow2.down=0;}else if(peak>=.72*bow2.full&&peak<=.92*bow2.full){bow2.down++;bow2.up=0;}else{bow2.up=0;bow2.down=0;}
  if(bow2.up>=3)bow2.full+=(.95*med(L)-bow2.full)*.35;else if(bow2.down>=3)bow2.full+=(.98*med(L.slice(-3))-bow2.full)*.35;
  bow2.full=clamp(bow2.full,BOW.fullMin,BOW.fullMax);
@@ -82258,6 +82284,7 @@ function loose(origin,dir,power,perfect=false){
  if(projectiles.length>48)recycle(0);
  const o=pool.pop()||arrow();scene.add(o);o.visible=true;o.position.copy(origin);o.quaternion.setFromUnitVectors(FWD,dir);
  o.userData.body.rotation.set(0,0,0);o.userData.streak.visible=true;o.userData.streak.scale.z=.001;
+ if(BOW2){const gold=perfect;o.userData.streak.material=gold?streakGold:streakMat;o.userData.streak.scale.x=gold?1.25:1;}
  projectiles.push({o,origin:origin.clone(),velocity:dir.clone().multiplyScalar(arrowSpeed(power)),life:0,stuck:false,power,roll:Math.random()*6,stuckAt:0,jolt:0,spent:false,flat:false});
  rangeLoosed(projectiles[projectiles.length-1],perfect);
  if(LAB){lab.shot=projectiles[projectiles.length-1].lab={power,speed:arrowSpeed(power),elev:Math.asin(clamp(dir.y,-1,1))*180/Math.PI,draw:lab.drawNow,shake:labShake(bow2.raw||dir),sent:BOW2&&bow2.raw?labErr(dir):null,dir:dir.clone(),t0:elapsed,result:''};lab.aims.length=0;lab.drawNow=0;}
@@ -82284,7 +82311,7 @@ function stepBits(dt){
  }
 }
 function hit(t,q){
- if(BOW2&&xrOn()&&q.ranged!==false){const big=t.kind==='peal'||t.ram;buzz(bowHand,big?.55:.28,big?45:26);if(big)buzz(drawHand,.25,28);}
+ if(BOW2&&xrOn()&&t.kind!=='range'&&t.kind!=='spirit'){const big=t.kind==='peal'||t.kind==='bell';buzz(bowHand,big?.55:.28,big?45:26);if(big)buzz(hands.find(h=>h!==bowHand&&h.pose),.25,28);}
  if(t.kind==='peal'){pealHit(q);return;}
  if(t.kind==='grass'){kilnClear(t,q);return;}
  if(t.kind==='range'||t.kind==='spirit'){rangeHit(t,q);return;}
@@ -82310,17 +82337,18 @@ function hit(t,q){
  refresh();save();
 }
 function settle(q,dir,deep){
- q.jolt=clamp(q.velocity.length()/55,.3,1);q.stuck=true;q.stuckAt=elapsed;
+ q.jolt=BOW2?clamp(q.velocity.length()/58,.25,1):clamp(q.velocity.length()/55,.3,1);q.stuck=true;q.stuckAt=elapsed;
  const u=q.o.userData;u.streak.visible=false;if(u.gale)u.gale.visible=false;u.body.rotation.set(0,0,q.roll);if(deep)q.o.position.addScaledVector(dir,deep);
 }
 function stepArrows(dt){
  for(let i=projectiles.length-1;i>=0;i--){
   const q=projectiles[i],u=q.o.userData;q.life+=dt;
   if(q.life>(q.stuck?50:14)){recycle(i);continue;}
-  if(q.stuck){const t=elapsed-q.stuckAt;if(!q.flat&&t<1.2)u.body.rotation.x=q.jolt*.15*Math.exp(-6*t)*Math.sin(52*t);continue;}
+  if(q.stuck){const t=elapsed-q.stuckAt;if(!q.flat&&t<1.2)u.body.rotation.x=BOW2?(t<.9?q.jolt*.16*Math.exp(-7*t)*Math.sin(58*t):0):q.jolt*.15*Math.exp(-6*t)*Math.sin(52*t);continue;}
+  if(BOW2)tmpV0.copy(q.velocity);
   if(BOW.drag){const s=q.velocity.length();q.velocity.addScaledVector(q.velocity,-BOW.drag*s*dt);}q.velocity.y-=BOW.g*dt;
   if(q.windy){const push=range.wind*1.4*dt*(q.kind==='gale'?ARROW_RULE.galeWind:1);q.velocity.x+=YARD.rx*push;q.velocity.z+=YARD.rz*push;}   // a crosswind pushes the arrow sideways all the way down the lane
-  const speed=q.velocity.length(),dir=tmpDir.copy(q.velocity).divideScalar(speed),distance=speed*dt,p=q.o.position;
+  const mv=BOW2?tmpMid.copy(tmpV0).add(q.velocity).multiplyScalar(.5):q.velocity,speed=mv.length(),dir=tmpDir.copy(mv).divideScalar(speed),distance=speed*dt,p=q.o.position;
   let contact=null;
   if(!q.spent){ray.set(p,dir);ray.far=distance+.01;contact=range.on?ray.intersectObjects(rangeMeshes,false).find(c=>{const t=c.object.userData.target;return!(t.tilt&&t.tilt.rotation.x<-.6);}):ray.intersectObjects(hitMeshes,false)[0];}   // a pop-up lying down cannot be hit
   if(ARROWS&&q.kind==='kiln'&&!q.spent&&!q.done){
@@ -82334,8 +82362,10 @@ function stepArrows(dt){
   if(q.spent){q.roll+=dt*13;u.body.rotation.set(q.roll,0,0);}
   else{
    // the shaft fishtails as it leaves the string, then steadies and spins
-   const w=q.power*.08*Math.exp(-4.5*q.life);q.roll+=dt*(8+speed*.2);
-   u.body.rotation.set(w*.5*Math.sin(29*q.life),w*Math.sin(36*q.life),q.roll);u.streak.scale.z=clamp(speed*.04,.2,2.4)*Math.min(1,q.life/.1);
+   if(BOW2){const w=(.06+.08*q.power)*Math.exp(-7.5*q.life);q.roll+=dt*(10+speed*.25);
+    u.body.rotation.set(w*.35*Math.cos(31*q.life),w*Math.sin(42*q.life),q.roll);u.streak.scale.z=clamp((speed-14)*.045,.15,2.2)*Math.min(1,q.life/.06)*clamp((2-q.life)/.5,0,1);}
+   else{const w=q.power*.08*Math.exp(-4.5*q.life);q.roll+=dt*(8+speed*.2);
+   u.body.rotation.set(w*.5*Math.sin(29*q.life),w*Math.sin(36*q.life),q.roll);u.streak.scale.z=clamp(speed*.04,.2,2.4)*Math.min(1,q.life/.1);}
   }
   let gone=0;
   walk:while(gone<limit){
@@ -82428,7 +82458,7 @@ function desktopPose(){
  if(Math.abs(fov-camera.fov)>.01){camera.fov=fov;camera.updateProjectionMatrix();}
  camera.rotation.set(look.pitch+r.kick*.012,look.yaw,0);camera.updateMatrixWorld();
  const q=camera.quaternion,eye=camera.getWorldPosition(V());
- const tired=charging&&charge>=1?Math.min(1,(elapsed-startTime-.85)/2)*.0022:0;
+ const tired=!BOW2&&charging&&charge>=1?Math.min(1,(elapsed-startTime-.85)/2)*.0022:0;
  const side=state.hand==='left'?-1:1;bowSide(side);   // a left-handed archer holds the bow on the right of the view
  bow.scale.setScalar(.73);bow.visible=!climb&&!replay.on;
  bow.position.copy(eye).add(V(side*(-.26+.07*zoom)+Math.sin(elapsed*31)*tired,-.28+.05*zoom+Math.sin(elapsed*43)*tired,-.63-r.kick*.05).applyQuaternion(q));
@@ -82542,7 +82572,7 @@ function startDraw(h){
  else if(atString){drawHand=h;h.pinch.getWorldPosition(drawAt);}
  else{if(!h.source?.hand)say(h===bowHand?'Use the trigger on your other hand, at the string':'Bring this hand to the string first',2.2);return;}
  charging=true;drawStep=0;fullAt=0;note(64,.7,'sawtooth',.012,0,118);
- if(BOW2){Object.assign(bow2,{peak:0,t0:elapsed,buf:[],earlyAt:0,hi:false,notch:1,closed:false,breathAt:0,raw:null});if(drawHand===h){buzz(h,.22,18);buzz(bowHand,.1,14);}}
+ if(BOW2){Object.assign(bow2,{peak:0,t0:elapsed,buf:[],earlyAt:0,hi:false,notch:1,closed:false,breathAt:0,raw:null});if(drawHand===h)bowBuzz(h,.22,18,bowHand,.1,14);else if(quickHand===h)buzz(h,.22,18);}
 }
 function endDraw(h){
  if(h===quickHand){
@@ -82552,7 +82582,7 @@ function endDraw(h){
  }
  if(h!==drawHand)return;
  if(charging&&h.pose&&bowHand?.pose){vrPose();
-  if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(preview.position,r.dir,r.power,!!fullAt&&r.power>=.95&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
+  if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(preview.position,r.dir,r.power,!!fullAt&&r.power>=BOW.fullAt-.005&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
   else loose(preview.position,aimVR(),charge,!!fullAt&&charge>=.95&&elapsed-fullAt<=.9);}else cancel();drawHand=null;
 }
 for(const h of hands){ // controllers; tracked hands are read in senseHand instead
@@ -82671,17 +82701,11 @@ function vrPose(){
   if(BOW2){bowFull();bow2.peak=Math.max(bow2.peak,reach);charge=clamp((reach-BOW.rest)/(bow2.full-BOW.rest),0,1);}else charge=clamp((reach-.12)/.4,0,1);
   dir=aimVR();
   const lean=V(0,1,0).applyQuaternion(bow.quaternion);if(Math.abs(lean.dot(dir))<.95){bow.quaternion.setFromRotationMatrix(steady.lookAt(ZERO,dir,lean));bow.updateMatrixWorld();dir=aimVR();}
-  if(LAB){lab.drawNow=hp.distanceTo(bow.position);lab.aims.push([elapsed,dir.clone()]);while(lab.aims.length&&elapsed-lab.aims[0][0]>.3)lab.aims.shift();}
+  if(LAB){lab.drawNow=hp.distanceTo(bow.position);pushSample(lab.aims,[elapsed,dir.clone()]);while(lab.aims.length&&elapsed-lab.aims[0][0]>.3)lab.aims.shift();}
   nock=bow.worldToLocal(hp.clone());flex=.2*charge;
   if(BOW2){
-   bow2.buf.push([elapsed,dir.clone(),charge]);while(bow2.buf.length&&elapsed-bow2.buf[0][0]>.22)bow2.buf.shift();
-   // a notch every tenth from 20 to 90 percent, with 2 percent either side so resting on one never chatters; the bow creaks at 40, 60 and 80
-   if(bow2.notch<9&&charge>=(bow2.notch+1)/10+.02){bow2.notch++;buzz(drawHand,.12+.28*charge,14);if(bow2.notch%2===0&&bow2.notch>=4)buzz(bowHand,.08+.14*charge,12);}
-   else if(bow2.notch>1&&charge<bow2.notch/10-.02)bow2.notch--;
-   if(charge>=BOW.fullAt){if(!fullAt){fullAt=elapsed;bow2.closed=false;bow2.breathAt=0;buzz(drawHand,.78,28);buzz(bowHand,.45,24);}}else if(charge<BOW.rearm)fullAt=0;
-   if(fullAt){const held=elapsed-fullAt;
-    if(held>BOW.sweet&&!bow2.closed){bow2.closed=true;buzz(bowHand,.14,20);note(92,.25,'triangle',.03,0,80);}   // the sweet spot has passed: a soft creak, nothing more
-    if(held>2&&elapsed>=bow2.breathAt){bow2.breathAt=elapsed+.9;buzz(bowHand,.08,18);}}   // a held bow breathes: no effect on the aim
+   pushSample(bow2.buf,[elapsed,dir.clone(),charge]);while(bow2.buf.length&&elapsed-bow2.buf[0][0]>.22)bow2.buf.shift();
+   bowFeel(drawHand,charge>=BOW.fullAt);
   }else{
   const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(drawHand,.15+.3*charge,14);}
   // a perfect release is one made soon after reaching full draw; a strong pulse marks the moment
@@ -82690,9 +82714,11 @@ function vrPose(){
  if(charging&&quickHand&&bowHand){
   // quick draw: the string comes back by itself while the trigger is held, the last of the pull slowest
   const u=Math.min(1,(elapsed-quickAt)/.85);charge=1-(1-u)*(1-u);nock=V(restX(),REST,.14+charge*.33);flex=.2*charge;
-  const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(quickHand,.15+.3*charge,14);}
-  if(u>=1&&!fullAt){fullAt=elapsed;buzz(quickHand,.9,30);if(bowHand!==quickHand)buzz(bowHand,.5,30);}
+  if(BOW2)bowFeel(quickHand,u>=1);
+  else{const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(quickHand,.15+.3*charge,14);}
+  if(u>=1&&!fullAt){fullAt=elapsed;buzz(quickHand,.9,30);if(bowHand!==quickHand)buzz(bowHand,.5,30);}}
  }
+ if(BOW2&&charging&&fullAt&&elapsed-fullAt>2)nock.x+=Math.sin(elapsed*47)*.0015;   // looks only: the aim is already fixed
  setString(nock,flex);poseArrow(dir,!!bowHand&&!slung&&!replay.on);plaque.mesh.visible=true;plaque.set(vrStatus());
  const s=state.lesson<5?YARD:nearestBell(eye.x,eye.z);needle.visible=!!s&&!slung&&!range.on;   // the needle leads to the yard until training is done
  if(s){plaque.mesh.getWorldPosition(needle.position);needle.position.y+=.1;needle.rotation.set(0,Math.atan2(-(s.x-eye.x),-(s.z-eye.z)),0);}
@@ -82707,6 +82733,7 @@ async function initXR(){
  if(!supported)return;$('vr').hidden=false;cloth.vrOk=true;clothRender();
  $('vr').onclick=async()=>{try{
   audioStart();const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
+  if(BOW2&&state.reach==='auto'){bow2.full=0;bow2.learned=[];bow2.up=0;bow2.down=0;}
   const floor=await session.requestReferenceSpace('local-floor').then(()=>true,()=>false);
   renderer.xr.setReferenceSpaceType(floor?'local-floor':'local');await renderer.xr.setSession(session);
   $('hud').style.display='none';$('start').hidden=true;playing=false;cancel();keys.clear();
@@ -82815,7 +82842,7 @@ function tick(dt,frame){
  bow.updateMatrixWorld();stepArrows(dt);stepBits(dt);
  $('ret').classList.toggle('hit',elapsed<hitFlash);$('ret').style.visibility=replay.on?'hidden':'';
  (vr?head():camera).getWorldPosition(eyeNow);updateSky(dt,eyeNow);stepPops(dt,replay.on&&!vr?cine.position:eyeNow);
- $('fill').classList.toggle('sweet',!vr&&charging&&drawHold===null&&elapsed-startTime>=.85&&elapsed-startTime<=1.3);
+ $('fill').classList.toggle('sweet',!vr&&charging&&drawHold===null&&elapsed-startTime>=.85&&elapsed-startTime<=.85+(BOW2?BOW.sweet:.45));
  if(!vr){const txt=charging?'Draw '+Math.round(charge*100)+'%'+(drawHold!==null?'  ·  held with the wheel':''):'';if($('pow').textContent!==txt)$('pow').textContent=txt;}
  if(windGain)windGain.gain.value=.03+.02*Math.sin(elapsed*.23)+clamp(eyeNow.y/60,0,1)*.05;
  if(!vr){

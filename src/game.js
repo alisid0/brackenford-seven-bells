@@ -24,7 +24,15 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.xr.enabled=true
 // ?grade=1 / ?grade=0. On: the day no longer turns; a fixed late-afternoon sun stands behind the archer's left shoulder
 // (120 degrees left of the shooting direction, 25 degrees up: Gemini's direction, agreed by ChatGPT), warm key and cool
 // fill, haze from 110 m to 480 m, and ChatGPT's colours for sky, clouds, meadow and water. Off: everything as before.
-const GRADE=QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade;
+// ---- Mechanics first (design/controls-and-arrows.md). Two switches, both off unless asked for.
+//   ?lab=1   the mechanics lab: a plain grey test range with no scenery, three targets at 10, 20 and 30 m, arrows
+//            that never run out, and a read-out of every shot on the scoreboard and on the bow. It is for getting the
+//            bow, the arrow and the controls right before any art is spent on them. It turns "pads" on.
+//   "pads" in src/config.json, or ?pads=1 / ?pads=0: the face buttons of the Meta Quest controllers (A, B, X, Y) are
+//            read by name and given jobs. Off: only triggers, grips and thumbsticks do anything, as before.
+const LAB=QUERY.get('lab')==='1',PADS=LAB||(QUERY.has('pads')?QUERY.get('pads')==='1':!!CONFIG.pads);
+const lab={started:false,shot:null,aims:[],drawNow:0,pad:null};
+const GRADE=!LAB&&(QUERY.has('grade')?QUERY.get('grade')==='1':!!CONFIG.grade);
 const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',lawnFace:'#7D9C41',ringRed:'#AE493D',cloud:'#F6E6BD',cloudUnder:'#D8BAC2',sun:'#FFD1A0',sunStrength:3.4,fill:'#BCC8E0',fillGround:'#9C977C',fillStrength:1.7,
  haze:'#BBAAB9',hazeFrom:110,hazeTo:480,meadow:'#91A454',meadowLit:'#A5B662',meadowShade:'#788D48',lake:'#527F9A',tuft:'#8A9F50',tuftSize:.6,sunLeft:120,sunUp:25,
  hillNear:'#788950',hillMid:'#89748F',hillFar:'#A28AA5',hillAt:[9,20,33],
@@ -34,7 +42,7 @@ const LOOK={skyTop:'#7798BD',skyHorizon:'#E4B7AA',skyBlueBy:16,lawn:'#A6B956',la
 const SHADOWS=GRADE&&LOOK.shadow>0&&QUERY.get('shadows')!=='0';   // ?shadows=0 keeps the graded look without cast shadows
 const shaded=o=>{if(SHADOWS)o.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});return o;};
    // the valley's rim in three bands by height (metres), the highest the lightest
-scene.fog=GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
+scene.fog=LAB?new T.Fog('#c9ccd0',200,900):GRADE?new T.Fog(LOOK.haze,LOOK.hazeFrom,LOOK.hazeTo):new T.FogExp2(0xb4cfd3,.0031);
 const rig=new T.Group();scene.add(rig);rig.add(camera);camera.rotation.order='YXZ';camera.position.set(0,1.65,0);
 const sun=new T.DirectionalLight(0xffe5bb,2.1), hemi=new T.HemisphereLight(0xfff1cc,0x8fa37c,1.5);scene.add(sun,hemi);
 if(SHADOWS){
@@ -91,7 +99,7 @@ const YARD={x:-24,z:-22,ux:-.5,uz:-.866,rx:.866,rz:-.5};
 //   The lane is 16 m wide and runs 76 m from the line. The ground is levelled under it. A creek crosses at 38 m.
 //   Beyond the creek the lane steps up in four terraces from 43 m, so distance reads without shadows; no stage
 //   stands a target on a step's edge.
-const WORLD2=QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2);   // Willowbank Range, the art pass (stage 2). Off unless asked for: ?world=2, or "world": 2 in src/config.json
+const WORLD2=LAB||QUERY.get('world')==='2'||(!QUERY.has('world')&&CONFIG.world===2);   // Willowbank Range, the art pass (stage 2). Off unless asked for: ?world=2, or "world": 2 in src/config.json
 const LANE={half:8,from:-3,to:76,creek:38,steps:[[43,.7],[53,1.4],[63,2.1],[72,2.8]],base:0};
 const laneAt=(x,z)=>{const dx=x-YARD.x,dz=z-YARD.z;return[dx*YARD.ux+dz*YARD.uz,dx*YARD.rx+dz*YARD.rz];};   // [metres along the lane, metres to the archer's right]
 // the whole footprint of the new range: lane and shoulders, the creek's band, and the footbridge
@@ -153,9 +161,9 @@ const pathMask=new Uint8Array(W*W), mapBase=document.createElement('canvas');map
  }
  let q=0;for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*W+i,b=a+1,cc=a+W,d=cc+1;idx.set([a,cc,b,b,cc,d],q);q+=6;}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));geo.setIndex(new T.BufferAttribute(idx,1));geo.computeVertexNormals();
- {const land=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1}));land.receiveShadow=SHADOWS;scene.add(land);}
+ {const land=new T.Mesh(geo,new T.MeshStandardMaterial(LAB?{color:'#9a9da1',flatShading:true,roughness:1}:{vertexColors:true,flatShading:true,roughness:1}));land.receiveShadow=SHADOWS;scene.add(land);}
  mapBase.getContext('2d').putImageData(img,0,0);
- const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
+ const water=new T.Mesh(new T.PlaneGeometry(SIZE*2,SIZE*2),new T.MeshStandardMaterial({color:LAB?'#7f8589':GRADE?LOOK.lake:'#4f8f9e',transparent:true,opacity:GRADE?.9:.8,roughness:GRADE?.6:.3}));
  water.rotation.x=-Math.PI/2;scene.add(water);
 }
 const onPath=(x,z)=>pathMask[Math.round(clamp((z+HALF)/CELL,0,N))*W+Math.round(clamp((x+HALF)/CELL,0,N))]===1;
@@ -219,6 +227,14 @@ const DAY=[[0,'#5d8fc9','#f2c9a0','#ffc994',1.5,1.15],[.18,'#4d93d6','#b9d6dd','
  .map(k=>[k[0],new T.Color(k[1]),new T.Color(k[2]),new T.Color(k[3]),k[4],k[5]]);
 let dayT=.24;const DAY_SECONDS=840, sunDir=V();
 function updateSky(dt,eye){
+ if(LAB){   // flat grey sky, plain white light from behind and above, nothing moving
+  if(!sunDir.lengthSq()){
+   sunDir.set(-YARD.ux*.5,.8,-YARD.uz*.5).normalize();sky.material.uniforms.top.value.set('#aeb2b7');sky.material.uniforms.hor.value.set('#c9ccd0');scene.fog.color.set('#c9ccd0');
+   sun.color.set('#ffffff');sun.intensity=2;hemi.color.set('#ffffff');hemi.groundColor.set('#8c9094');hemi.intensity=1.5;sun.position.copy(sunDir).multiplyScalar(100);
+   sunDisc.visible=false;for(const c of clouds)c.visible=false;
+  }
+  sky.position.copy(eye);return;
+ }
  if(GRADE){
   if(!sunDir.lengthSq()){
    const a=LOOK.sunLeft*Math.PI/180,e=LOOK.sunUp*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);   // turned to the left of the lane: forward*cos - right*sin
@@ -286,6 +302,7 @@ const dummy=new T.Object3D(), tint=new T.Color();
 }
 const TILE=72, tufts=[], grass=new T.InstancedMesh(new T.ConeGeometry(.06,.34,3).translate(0,.17,0),material(GRADE?LOOK.tuft:'#71883f'),3600);   // graded: short and close to the ground's colour, so tall dark shapes are left to cover that matters
 grass.frustumCulled=false;scene.add(grass);
+if(LAB)for(const o of scene.children)if(o.isInstancedMesh)o.visible=false;   // the lab has no trees, rocks or grass
 for(let i=0;i<grass.count;i++)tufts.push([rng()*TILE,rng()*TILE,.6+rng()*1.1,rng()*6]);
 let grassX=1e9,grassZ=1e9;
 function updateGrass(px,pz){
@@ -464,7 +481,7 @@ const oldWorld=scene.children.slice(window.__oldFrom|0).filter(o=>o!==yardBits);
 function oldWorldShow(){const hide=WORLD2&&range.on;if(hide===oldHidden)return;oldHidden=hide;for(const o of oldWorld){if(hide){oldWas.set(o,o.visible);o.visible=false;}else if(oldWas.has(o))o.visible=oldWas.get(o);}}
 // ---- the new range's lane, creek, terraces, rail, stall, footbridge and blossom trees (see WORLD2 above)
 if(WORLD2){
- const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);scene.userData.range2=R;
+ const R=new T.Group();R.position.set(YARD.x,LANE.base,YARD.z);R.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(R);scene.userData.range2=R;R.visible=!LAB;
  const P=(along,right,y=0)=>V(-right,y,along);   // a place given as metres along the lane, to the right, and up
  const LAWN=GRADE?LOOK.lawn:'#99B44E',EDGE='#8DA748',FACE=GRADE?LOOK.lawnFace:'#829B47',WATER='#5897BE',SAND='#B8A275',ROCK='#9a968c',BLOSSOM='#F299B5';   // ChatGPT's colours, set after it saw the first build
  // the lane: a lighter strip of mown grass from the line to the far end
@@ -500,6 +517,41 @@ if(WORLD2){
 // the trainer's board beside the shooting line
 // with the new layout the board is a cream cloth banner with a plum border and plum lettering (cloth is for what is read)
 // ---- stage 3 on Willowbank: what the lighting pass adds to the range itself
+// ---- the mechanics lab's floor: a pale lane, a dark line every 5 m (a heavier one every 10 m), and a pair of posts
+// at 10, 20, 30 and 40 m that are 1, 2, 3 and 4 m tall, so distance can be read at a glance
+if(LAB){
+ const G=new T.Group(),P=(along,right,y=0)=>V(-right,y,along);G.position.set(YARD.x,LANE.base,YARD.z);G.rotation.y=Math.atan2(YARD.ux,YARD.uz);scene.add(G);
+ box(G,P(20,0,.01),V(16,.02,48),'#b4b7ba');box(G,P(0,0,.03),V(3,.02,.12),'#22262a');
+ for(let a=5;a<=40;a+=5){box(G,P(a,0,.025),V(16,.012,a%10?.04:.1),'#5b5f63');if(a%10===0)for(const s of[-1,1])box(G,P(a,s*8.3,a/20),V(.12,a/10,.12),'#5b5f63');}
+}
+function labStart(){if(!range.on)setMode('range');if(replay.on)endReplay();setStage(-2);}
+// how far the aim moved in the last moments before the arrow left: the worst angle, in degrees, between the direction
+// it was loosed along and where it pointed 60 to 200 ms earlier. Only a headset draw has it.
+function labShake(dir){let worst=null;for(const[t,d]of lab.aims){const age=elapsed-t;if(age<.06||age>.2)continue;const a=d.angleTo(dir)*180/Math.PI;if(worst===null||a>worst)worst=a;}return worst;}
+function labText(k){
+ const s=lab.shot,p=lab.pad&&elapsed-lab.pad.at<3?lab.pad:null;
+ if(k===0)return s?'Draw '+Math.round(s.power*100)+'%'+(s.draw?'  '+Math.round(s.draw*100)+' cm':'')+'      Speed '+s.speed.toFixed(1)+' m/s      Up '+s.elev.toFixed(1)+'°'+(s.shake!==null?'      Shake '+s.shake.toFixed(1)+'°':''):'Loose an arrow  ·  the board shows what it did';
+ return(s&&s.result?s.result:'Targets at 10, 20 and 30 m')+(p?'      '+p.hand+' '+p.button+': '+p.action:'');
+}
+// ---- Meta Quest face buttons, by name. In the browser a Touch controller reports: 0 trigger, 1 grip, 3 thumbstick
+// click, 4 the lower face button (A on the right, X on the left), 5 the upper one (B on the right, Y on the left).
+// The menu button on the left and the Meta button on the right are kept by the headset and never reach a web page.
+// Jobs go by what the hand is doing, not by left or right, so a left-handed archer gets the same layout mirrored:
+//   string hand   lower: start this stage again        upper: switch between two-handed and single-handed draw
+//   bow hand      lower: next special arrow            upper: open or close the menu
+const PAD_NAMES={left:['X','Y'],right:['A','B']},PAD_MAP={string:['again','draw'],bow:['arrow','menu']};
+function padStep(h,gp){
+ const side=h.source.handedness,role=h===bowHand?'bow':'string';
+ for(let k=0;k<2;k++){const down=!!gp.buttons[4+k]?.pressed,was=!!h['pad'+k];h['pad'+k]=down;if(down&&!was)padDo(PAD_MAP[role][k],side,(PAD_NAMES[side]||[])[k]||'button '+(4+k),h);}
+}
+function padDo(action,side,button,h){
+ let said='';
+ if(action==='again'){if(range.on&&!charging){if(replay.on)endReplay();if(STAGES[range.stage].watch)watchStart();else setStage(range.stage);said='Started again';}}
+ else if(action==='draw'){if(!charging){setDraw(state.draw==='one'?'two':'one');said=state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string';}}
+ else if(action==='arrow'){if(ARROWS&&range.on&&!charging){quiverStep(1);said='Arrow  ·  '+quiver.kind;}else said='No special arrows here';}
+ else if(action==='menu'){if(VRMENU){if(vrMenu.open)vrMenuClose();else vrMenuOpen();said=vrMenu.open?'Menu':'Menu closed';}else said='The headset menu is switched off';}
+ lab.pad={hand:side,button,action,at:elapsed};if(said)say(said,2.5);buzz(h,.3,25);
+}
 if(GRADE&&WORLD2){
  const R=scene.userData.range2,P=(along,right,y=0)=>V(-right,y,along),r=mulberry(77);
  // two rows of low hills between the village and the valley's rim, so the skyline is three overlapping ridges
@@ -1325,6 +1377,7 @@ function rangeTargets(){
  if(peal.mesh)rangeMeshes.push(peal.mesh);
 }
 function setStage(i){
+ if(i===-2)STAGES[-2]={name:'Mechanics lab',lab:true,arrows:9999,marks:[[10,-3,1.2],[20,0,1.2],[30,3,1.2]]};   // like Bell Watch, it lives outside the list of stages
  if(i===-1){STAGES[-1]=watchStage();state.range.best[-1]=state.range.watchBest||0;}
  const st=STAGES[i];Object.assign(range,{gap:'',gain:0,perfectHits:0,specialUsed:0,ribbon:'',stage:i,phase:'play',arrows:st.arrows,score:0,streak:0,best:0,hits:0,stars:0,newBest:false,t0:elapsed,endAt:0,pending:null,last:'',shot:null,lastShot:null,closest:null,replayed:false,skip:false,fired:0,guided:i===0&&!(state.range.stars[0]>0)});fps.low=0;
  quiver.kind='std';quiver.charges=ARROWS?ARROW_RULE.charges:0;tallyStart(st.name);
@@ -1476,6 +1529,7 @@ function rangeNear(q){
 function rangeEnded(q){
  if(!q.ranged||q.done)return;q.done=true;
  q.path.push(q.o.position.clone());rangeNear(q);
+ if(q.lab)q.lab.result='Miss      landed '+Math.round(q.origin.distanceTo(q.o.position))+' m out'+(q.near?'      passed '+q.near.off.toFixed(2)+' m from a target':'')+'      flight '+(elapsed-q.lab.t0).toFixed(2)+' s';
  if(q.near&&(!range.closest||q.near.off<range.closest.off))range.closest={path:q.path,miss:true,...q.near};
  if(q.final&&q.near&&q.near.off<=4)range.lastShot={path:q.path,miss:true,...q.near};   // a final arrow that only just missed is still shown
  if(!STAGES[range.stage].watch){if(range.streak>1)note(196,.25,'triangle',.08,0,130);range.streak=0;}spiritStartle(q.o.position);birdsHear(q);
@@ -1490,6 +1544,7 @@ function rangeHit(t,q){
  range.streak++;range.hits++;if(q.perfect)range.perfectHits++;range.best=Math.max(range.best,range.streak);
  const pts=Math.round((ring+dist)*Math.min(2,1+.1*(range.streak-1))*(q.perfect?1.25:1));range.score+=pts;
  q.path.push(at.clone());const shot={path:q.path,pts,ring:spirit?100:ring,spirit,target:t,base:t.base.position.clone(),off:r*t.scale};
+ if(q.lab)q.lab.result='Hit at '+dist+' m      '+Math.round(shot.off*100)+' cm off centre      flight '+(elapsed-q.lab.t0).toFixed(2)+' s';
  if(!range.closest||shot.off<range.closest.off)range.closest=shot;
  if(shot.ring===100&&(!range.shot||pts>range.shot.pts))range.shot=shot;   // the best bullseye, or the best waking, of the stage
  if(q.final)range.lastShot=shot;                                     // or the final arrow of the stage, wherever it hit
@@ -1525,7 +1580,7 @@ function rangeResults(){
 //   silent (iron, thorn-bound, a shade crow on the fork) until the first place's four stages each hold a star. Then
 //   the thorns break and the bell turns bronze; an arrow rings it, and if the player goes on without ringing it, it
 //   rings itself softly as the next stage begins. Once unbound it stays so, and can be rung between stages.
-const PEAL=(QUERY.has('peal')?QUERY.get('peal')==='1':!!CONFIG.peal)&&typeof PROPS!=='undefined'&&!!PROPS.belfry;
+const PEAL=!LAB&&(QUERY.has('peal')?QUERY.get('peal')==='1':!!CONFIG.peal)&&typeof PROPS!=='undefined'&&!!PROPS.belfry;
 const PEAL_STAGES=['First marks','Stepping back','The drop','First shade'],PEAL_TONE=523;
 // The plan puts the bell 22 m out and 12.5 m to the RIGHT. On today's range the scoreboard stands in that line of sight, so
 // until the first place is rebuilt to its plan (where the board moves) the bell stands the same distance to the LEFT.
@@ -1664,6 +1719,7 @@ function fpsStep(now){
  }
 }
 function rangeInfo(){
+ if(STAGES[range.stage].lab)return{title:'Mechanics lab',text:labText(0),mark:labText(1)+fpsText(),wind:'Still air'};
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(st.watch){const left=Math.max(0,Math.ceil((range.endAt||0)-elapsed)),clock=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
   return range.phase==='results'?{title:'Bell Watch  ·  '+range.score,text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.watchBest||0))+'.  Shades banished '+range.hits+', longest streak '+range.best+'.'+(range.clear?'  Bell clear at the end: +'+WATCH_BELL.bonus+'.':peal.root?'  The bell ended bound.':'')+'  Shoot AGAIN for another run.',mark:'Best '+(R.watchBest||0)+fpsText(),wind}
@@ -1885,6 +1941,7 @@ function loose(origin,dir,power,perfect=false){
  o.userData.body.rotation.set(0,0,0);o.userData.streak.visible=true;o.userData.streak.scale.z=.001;
  projectiles.push({o,origin:origin.clone(),velocity:dir.clone().multiplyScalar(24+power*38),life:0,stuck:false,power,roll:Math.random()*6,stuckAt:0,jolt:0,spent:false,flat:false});
  rangeLoosed(projectiles[projectiles.length-1],perfect);
+ if(LAB){lab.shot=projectiles[projectiles.length-1].lab={power,speed:24+power*38,elev:Math.asin(clamp(dir.y,-1,1))*180/Math.PI,draw:lab.drawNow,shake:labShake(dir),t0:elapsed,result:''};lab.aims.length=0;lab.drawNow=0;}
  state.shots++;twang=elapsed;twangPower=power;
  note(210,.1,'triangle',.09,0,85);note(98,.24,'sawtooth',.03*power,0,72);thump(900,.12,.12);thump(2600,.3,.05*power);
  buzz(bowHand,.4+.6*power,90);buzz(drawHand,.5,40);cancel();
@@ -2134,6 +2191,7 @@ function vrStatus(){
  if(!bowHand)return bare?'Close a fist on the bow\nPoint a finger to walk':'Grip near the bow\nwith either hand';
  if(!state.shots)return bare?'Pinch the string\npull back and let go':state.draw==='one'?'Hold a trigger to draw\nlet go to loose':'Free hand to the string\nhold trigger, pull, let go';
  if(charging)return'Draw '+Math.round(charge*10)*10+'%'+String.fromCharCode(10)+(charge>=.95?'full draw':'pull further for more power');
+ if(range.on&&STAGES[range.stage].lab)return labText(0).replaceAll('      ','\n')+'\n'+labText(1).replaceAll('      ','\n');
  if(range.on){const i=rangeInfo();return range.phase==='results'?'Score '+range.score+'  '+'★'.repeat(range.stars)+'☆'.repeat(3-range.stars)+(range.gap?'\n'+range.gap:range.gain?'\nnew best  +'+range.gain:'')+coins('\n+'+range.earned+' coins  ·  '+state.coins)+'\nShoot a sign':(STAGES[range.stage].watch?i.title.split('  ·  ')[1]:'Arrows '+range.arrows)+'   Streak '+range.streak+'\nScore '+range.score+quiverText()+'\n'+(SHOW_FPS?fps.now+' fps  low '+fps.low:i.wind);}
  if(state.lesson<5&&hyp(rig.position.x-YARD.x,rig.position.z-YARD.z)<80){const i=lessonInfo();return i.title.split('  ·  ')[1]+'\n'+(i.mark||'See the board');}
  if(state.lesson<5&&state.bells.size===0)return'Training yard\nfollow the gold needle';
@@ -2227,7 +2285,7 @@ function vrLocomotion(dt,frame){
   if(!h.pose)h.climb=null;
   if(bare){handGestures(h,dt,eye,climbing);continue;}
   const gp=h.source?.gamepad;if(!gp||climbing)continue;
-  const ax=gp.axes,sx=ax.length>=4?ax[2]:ax[0]||0,sy=ax.length>=4?ax[3]:ax[1]||0,click=!!gp.buttons[3]?.pressed;
+  const ax=gp.axes,sx=ax.length>=4?ax[2]:ax[0]||0,sy=ax.length>=4?ax[3]:ax[1]||0,click=!!gp.buttons[3]?.pressed;if(PADS)padStep(h,gp);
   if(h.source.handedness==='left'){
    if(click&&!h.ran)running=!running;h.ran=click;
    const mag=hyp(sx,sy);
@@ -2287,6 +2345,7 @@ function vrPose(){
   const hp=drawAt.lerp(drawHand.pinch.getWorldPosition(V()),1-Math.exp(-frameDt*28));charge=clamp((hp.distanceTo(bow.position)-.12)/.4,0,1);
   dir=aimVR();
   const lean=V(0,1,0).applyQuaternion(bow.quaternion);if(Math.abs(lean.dot(dir))<.95){bow.quaternion.setFromRotationMatrix(steady.lookAt(ZERO,dir,lean));bow.updateMatrixWorld();dir=aimVR();}
+  if(LAB){lab.drawNow=hp.distanceTo(bow.position);lab.aims.push([elapsed,dir.clone()]);while(lab.aims.length&&elapsed-lab.aims[0][0]>.3)lab.aims.shift();}
   nock=bow.worldToLocal(hp.clone());flex=.2*charge;
   const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(drawHand,.15+.3*charge,14);}
   // a perfect release is one made soon after reaching full draw; a strong pulse marks the moment
@@ -2401,6 +2460,7 @@ if(state.pos)place(state.pos[0],state.pos[1],state.pos[2]);else place(0,0,Math.a
 refresh();initXR();setString(V(restX(),REST,.14));
 const eyeNow=V(),feetNow=V();let last=null;
 function tick(dt,frame){
+ if(LAB&&!lab.started&&(playing||xrOn())){lab.started=true;labStart();}
  elapsed+=dt;frameDt=dt||.016;const vr=xrOn();
  if(vr)vrLocomotion(dt,frame);else if(playing)desktopMove(dt);
  feet(feetNow);const yaw=vr?headYaw():look.yaw;
@@ -2496,6 +2556,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={get elapsed(){return elapsed;},LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

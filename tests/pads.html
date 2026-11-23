@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><title>lab and pads</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The mechanics lab (?lab=1) and the Meta Quest face buttons ("pads"): the lab is a plain range outside the list of
+// stages with three targets and arrows that never run out; every shot is read out; A, B, X and Y each do their job once
+// per press, by which hand holds the bow; and with both switches off nothing of either exists.
+//   ?save=1 posts a picture of the lab to the local relay (port 8767) so it lands in assets/renders
+const errors=[],save=new URLSearchParams(location.search).get("save");
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const pad=()=>({buttons:Array.from({length:6},()=>({pressed:false})),axes:[0,0,0,0],hapticActuators:[]});
+async function run(){
+ const o={};
+ {const w=await game("?release=0&lab=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+n.toFixed(2),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  const fire=to=>{steps(1);const o=eye(),flat=V(to.x-o.x,0,to.z-o.z),d=flat.length(),h=to.y-o.y,s=62,g=7;const ang=Math.atan((s*s-Math.sqrt(s**4-g*(g*d*d+2*h*s*s)))/(g*d));v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(Math.ceil((d/55+.4)*60));};
+  v.begin(false);steps(5);
+  const rounds=v.rangeRounds.filter(x=>x.base.visible);
+  o.lab={on:v.LAB,pads:v.PADS,stage:r.stage,name:v.STAGES[r.stage].name,arrows:r.arrows,targets:rounds.map(x=>Math.round(x.along)),stagesCount:v.STAGES.length,bell:!!v.peal.root,scenery:v.scene.userData.range2.visible,title:v.rangeInfo().title,before:v.rangeInfo().text};
+  if(save){const blob=await (await fetch(v.shot())).blob();try{await fetch("http://127.0.0.1:8767/put/lab-range.jpg",{method:"POST",mode:"no-cors",body:blob});}catch(e){}}
+  // a hit and a miss are both read out
+  const mid=rounds.find(x=>Math.round(x.along)===20);fire(mid.root.getWorldPosition(V()));steps(20);
+  o.hit={speed:v.lab.shot.speed,power:v.lab.shot.power,up:R(v.lab.shot.elev),result:v.lab.shot.result,board:v.rangeInfo().text,mark:v.rangeInfo().mark,arrows:r.arrows};
+  steps(1);{const e=eye(),c=mid.root.getWorldPosition(V());v.loose(e,V(c.x-e.x,0,c.z-e.z).normalize().multiplyScalar(-1).add(V(0,.3,0)).normalize(),1);}steps(300);
+  o.miss={result:v.lab.shot.result,stillPlaying:r.phase==="play"};
+  // simulated controllers: the bow goes to the left hand, so the right is the string hand
+  v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad()};h.grip.matrixAutoUpdate=true;}
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);steps(3);
+  const press=(i,k,frames=2)=>{v.hands[i].source.gamepad.buttons[k].pressed=true;steps(frames);},lift=(i,k)=>{v.hands[i].source.gamepad.buttons[k].pressed=false;steps(2);};
+  o.hands={bowIsLeft:v.bowHand===v.hands[0]};
+  const fired0=r.fired;press(1,4);o.A={pad:{...v.lab.pad},firedBefore:fired0,firedAfter:r.fired,stage:r.stage};
+  const again0=v.lab.pad.at;steps(60);o.A.heldDoesNotRepeat=v.lab.pad.at===again0;lift(1,4);
+  const d0=v.state.draw;press(1,5);lift(1,5);o.B={pad:v.lab.pad.action,button:v.lab.pad.button,changed:v.state.draw!==d0};press(1,5);lift(1,5);o.B.back=v.state.draw===d0;
+  press(0,4);lift(0,4);o.X={pad:v.lab.pad.action,button:v.lab.pad.button,hand:v.lab.pad.hand};
+  press(0,5);lift(0,5);o.Y={pad:v.lab.pad.action,button:v.lab.pad.button,menuOpen:v.vrMenu.open};
+  // a real two-handed draw in the headset is measured: how far the string came back, and how steady the release was
+  v.setDraw("two");const at=z=>v.rig.worldToLocal(v.bow.localToWorld(V(0,v.REST,.14+z)));
+  v.hands[1].grip.position.copy(at(0));steps(1);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+  for(let k=1;k<=20;k++){v.hands[1].grip.position.copy(at(.45*k/20));steps(1);}steps(20);
+  v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);
+  o.draw={cm:Math.round(v.lab.shot.draw*100),shake:v.lab.shot.shake,speed:R(v.lab.shot.speed),plaque:v.vrStatus?undefined:undefined};
+  // the same draw with the hand jerked sideways just before letting go shows up as shake
+  v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+  for(let k=1;k<=20;k++){v.hands[1].grip.position.copy(at(.45*k/20));steps(1);}steps(20);
+  v.hands[1].grip.position.copy(at(.45).add(V(.06,0,0)));steps(5);v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);
+  o.jerk={shake:v.lab.shot.shake};}
+ {const w=await game("?release=0&pads=0"),v=w.vale;v.begin(false);for(let i=0;i<5;i++)v.tick(1/60);
+  v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad()};h.grip.matrixAutoUpdate=true;}
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);for(let i=0;i<3;i++)v.tick(1/60);
+  const d0=v.state.draw;v.hands[1].source.gamepad.buttons[5].pressed=true;for(let i=0;i<3;i++)v.tick(1/60);
+  o.off={lab:v.LAB,pads:v.PADS,stage:v.range.stage,pad:v.lab.pad,drawSame:v.state.draw===d0};}
+ o.checks={
+  labIsApart:o.lab.on&&o.lab.pads&&o.lab.stage===-2&&o.lab.name==="Mechanics lab"&&o.lab.arrows===9999&&o.lab.stagesCount===29&&o.lab.title==="Mechanics lab",
+  plain:o.lab.targets.join()==="10,20,30"&&o.lab.bell===false&&o.lab.scenery===false,
+  hitReadOut:o.hit.speed===62&&o.hit.power===1&&/^Hit at 20 m/.test(o.hit.result)&&/cm off centre/.test(o.hit.result)&&/Speed 62\.0 m\/s/.test(o.hit.board)&&/^Hit at 20 m/.test(o.hit.mark),
+  missReadOut:/^Miss/.test(o.miss.result)&&o.miss.stillPlaying,
+  A:o.hands.bowIsLeft&&o.A.pad.action==="again"&&o.A.pad.button==="A"&&o.A.pad.hand==="right"&&o.A.firedBefore>=2&&o.A.firedAfter===0&&o.A.stage===-2&&o.A.heldDoesNotRepeat,
+  B:o.B.pad==="draw"&&o.B.button==="B"&&o.B.changed&&o.B.back,
+  X:o.X.pad==="arrow"&&o.X.button==="X"&&o.X.hand==="left",
+  Y:o.Y.pad==="menu"&&o.Y.button==="Y"&&o.Y.menuOpen===false,
+  drawMeasured:o.draw.cm>=50&&o.draw.cm<=62&&o.draw.shake!==null&&o.draw.shake<.6&&o.draw.speed===62,
+  jerkShows:o.jerk.shake>2,
+  off:o.off.lab===false&&o.off.pads===false&&o.off.stage!==-2&&o.off.pad===null&&o.off.drawSame,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

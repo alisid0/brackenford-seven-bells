@@ -32,7 +32,7 @@ async function run(){
   press(1,3);lift(1,3);o.stickDraw={changed:v.state.draw!==d0,pad:v.lab.pad.action};press(1,3);lift(1,3);o.stickDraw.back=v.state.draw===d0;
   press(0,4);lift(0,4);o.X={pad:v.lab.pad.action,button:v.lab.pad.button,hand:v.lab.pad.hand};
   press(0,5);lift(0,5);o.Y={pad:v.lab.pad.action,button:v.lab.pad.button,menuOpen:v.vrMenu.open};
-  // on the range the bow hand's stick does nothing: flicking it cannot skip a stage; the string hand's stick turns
+  // on the range neither stick moves the world: the bow hand's cannot skip a stage, the string hand's does not turn
   {const st=r.stage,h=v.hands[0].source.gamepad;h.axes[2]=1;steps(10);h.axes[2]=0;steps(2);const y0=v.rig.rotation.y,g=v.hands[1].source.gamepad;g.axes[2]=1;steps(3);g.axes[2]=0;steps(3);o.sticks={stageSame:r.stage===st,turned:+(v.rig.rotation.y-y0).toFixed(3)};}
   // holding the bow hand's stick in for 0.6 s faces you down the lane and puts you back on the line
   {v.rig.rotation.y+=1.2;v.rig.position.x+=3;v.rig.position.z+=2;steps(2);v.hands[0].source.gamepad.buttons[3].pressed=true;steps(30);const early=Math.abs(v.headYaw()-Math.atan2(-v.YARD.ux,-v.YARD.uz));steps(15);v.hands[0].source.gamepad.buttons[3].pressed=false;steps(2);
@@ -52,7 +52,9 @@ async function run(){
   // in a real stage: a single press of A after shooting only warns; a second within 1.2 s starts over
   v.setStage(0);steps(10);{const t=v.rangeRounds.find(x=>x.base.visible),fire1=()=>{steps(1);const o2=eye(),c=t.root.getWorldPosition(V()),f=V(c.x-o2.x,0,c.z-o2.z),dd=f.length(),hh=c.y-o2.y,ss=62,gg=7,ang=Math.atan((ss*ss-Math.sqrt(ss**4-gg*(gg*dd*dd+2*hh*ss*ss)))/(gg*dd));v.loose(o2,f.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(40);};
    fire1();const f1=r.fired;press(1,4);lift(1,4);const warned=r.fired===f1;press(1,4);lift(1,4);o.again={warned,restarted:r.fired===0&&r.arrows===5};
-   for(let k=0;k<5;k++)fire1();for(let i=0;i<1500&&r.phase!=="results";i++)steps(1);
+   const yawBefore=v.rig.rotation.y,posBefore=v.rig.position.clone();let sawReplay=false;
+   for(let k=0;k<5;k++)fire1();for(let i=0;i<1500&&r.phase!=="results";i++){steps(1);if(r.phase==="replay")sawReplay=true;}
+   o.steady={sawReplay,yawSame:v.rig.rotation.y===yawBefore,moved:+v.rig.position.distanceTo(posBefore).toFixed(3)};
    press(1,5);lift(1,5);for(let i=0;i<300&&r.stage===0;i++)steps(1);o.next={phase:r.phase,stage:r.stage};}}
  {const w=await game("?release=0&pads=0"),v=w.vale;v.begin(false);for(let i=0;i<5;i++)v.tick(1/60);
   v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad()};h.grip.matrixAutoUpdate=true;}
@@ -67,10 +69,11 @@ async function run(){
   A:o.hands.bowIsLeft&&o.A.pad.action==="again"&&o.A.pad.button==="A"&&o.A.pad.hand==="right"&&o.A.firedBefore>=2&&o.A.firedAfter===0&&o.A.stage===-2&&o.A.heldDoesNotRepeat,
   B:o.B.pad==="next"&&o.B.button==="B"&&o.B.stageSame,
   stickDraw:o.stickDraw.changed&&o.stickDraw.back&&o.stickDraw.pad==="draw",
-  sticks:o.sticks.stageSame&&Math.abs(Math.abs(o.sticks.turned)-0.524)<.01,
+  sticks:o.sticks.stageSame&&o.sticks.turned===0,
   centre:o.centre.notYetAtHalf&&o.centre.yawOff<.02&&o.centre.fromLine<.05&&o.centre.pad==="centre",
   againTwice:o.again.warned&&o.again.restarted,
   nextOnResult:o.next.stage===1,
+  steadyInHeadset:o.steady.sawReplay===false&&o.steady.yawSame&&o.steady.moved===0,
   X:o.X.pad==="arrow"&&o.X.button==="X"&&o.X.hand==="left",
   Y:o.Y.pad==="menu"&&o.Y.button==="Y"&&o.Y.menuOpen===false,
   drawMeasured:o.draw.cm>=50&&o.draw.cm<=62&&o.draw.shake!==null&&o.draw.shake<.6&&o.draw.speed===62,

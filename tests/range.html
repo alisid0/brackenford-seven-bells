@@ -70,11 +70,10 @@ function run(){
  // simulated VR: no stick walking on the range, perfect release from the hands
  v.fake.on=true;for(const i of[0,1]){const h=v.hands[i];h.source={handedness:i?'right':'left',gamepad:{axes:[0,0,0,-1],buttons:[]}};h.grip.matrixAutoUpdate=true;}
  steps(3);const p1=v.rig.position.clone();steps(40);out.vrNoWalk=R(v.rig.position.distanceTo(p1));
- // replay in simulated VR: the player is set down by the mark, then put back at the line
- v.setStage(0);steps(2);for(let i=0;i<5;i++)shootAt(M[0]);{let n=0;while(!v.replay.moved&&n++<400)steps(1);}
- out.vrReplay={moved:v.replay.moved,headAtCam:R(v.camera.getWorldPosition(V()).distanceTo(v.replay.cam))};
- // skip with a trigger pull
- v.hands[1].raySpace.dispatchEvent({type:'selectstart'});steps(2);out.vrReplay.skipped=r.phase==='results';out.vrReplay.backAtLine=R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z));out.vrReplay.signs=v.rangeSigns.again.base.visible;
+ // in simulated VR the world never moves under the player (25 November): the stage ends straight on its result, with
+ // no close-up replay, and the player is still at the line facing the same way
+ v.setStage(0);steps(2);const yaw0=v.rig.rotation.y;let replayed=false;for(let i=0;i<5;i++)shootAt(M[0]);{let n=0;while(r.phase!=='results'&&n++<600){steps(1);if(r.phase==='replay')replayed=true;}}
+ out.vrReplay={noReplay:!replayed&&!v.replay.on,results:r.phase==='results',stillAtLine:R(Math.hypot(v.rig.position.x-Y.x,v.rig.position.z-Y.z))===0,sameWay:v.rig.rotation.y===yaw0,signs:v.rangeSigns.again.base.visible};
  out.errors=errors;return out;
 }
 let tries=0;const t=setInterval(()=>{

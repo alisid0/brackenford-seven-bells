@@ -576,7 +576,7 @@ function padSticks(h,sx,sy,click,dt,eye,off){
   }else running=running&&mag>.05;
  }else{
   if(click&&!h.ran&&!charging){setDraw(state.draw==='one'?'two':'one');say(state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string',3);buzz(h,.25,20);lab.pad={hand:h.source.handedness,button:'stick',action:'draw',at:elapsed};}h.ran=click;
-  if(Math.abs(sx)>.65&&!h.turned&&!charging){
+  if(Math.abs(sx)>.65&&!h.turned&&!charging&&!range.on){   // on the range the world stays put: turn your body, or hold the bow stick to face down the lane
    const a=-Math.sign(sx)*Math.PI/6,ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,s=Math.sin(a),c=Math.cos(a);
    rig.rotation.y+=a;rig.position.x=eye.x+ox*c+oz*s;rig.position.z=eye.z-ox*s+oz*c;h.turned=true;
   }else if(Math.abs(sx)<.3)h.turned=false;
@@ -1626,7 +1626,7 @@ function rangeResults(){
  // one replay at most. Up close: the best bullseye, or failing that the final arrow, hit or near miss.
  // On a long lane (a mark at 40 m or more): always the one arrow that came closest, hit or miss.
  range.shot=Math.max(...STAGES[i].marks.map(m=>m[0]))>=40?range.closest:range.shot||range.lastShot;
- save();if(range.shot)startReplay();else showResults();
+ save();if(range.shot&&!xrOn())startReplay();else showResults();   // in a headset the world never moves under the player, so the close-up replay is for the flat screen only
 }
 // ---- The Silent Peal: the Practice Bell. One switch: "peal" in src/config.json, or ?peal=1 / ?peal=0.
 //   A forked belfry stands 22 m out and 12.5 m to one side of the lane, outside it and behind no target. It is
@@ -1726,7 +1726,8 @@ function endReplay(){
  if(!R.struck&&R.arrow)R.arrow.visible=false;
  showResults();
 }
-// in a headset the view cannot be swapped, so the player is set down beside the mark behind a short fade
+// in a headset the view cannot be swapped, so the player was set down beside the mark behind a short fade; no longer
+// used in a headset (25 November): the world must not move under the player. Kept for the flat screen's camera path.
 function moveHead(to,look){
  const eye=head().getWorldPosition(V()),a=Math.atan2(-(look.x-to.x),-(look.z-to.z))-headYaw(),ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,sn=Math.sin(a),cs=Math.cos(a);
  rig.rotation.y+=a;rig.position.x=eye.x+ox*cs+oz*sn;rig.position.z=eye.z-ox*sn+oz*cs;rig.position.add(to.clone().sub(eye));
@@ -1810,7 +1811,7 @@ function setMode(m){
  state.mode=m;range.on=m==='range';
  for(const id in drills)drills[id].base.visible=!range.on;yardBits.visible=!((WORLD2||PEAL)&&range.on);if(WORLD2)for(const t of targets){if(t.beacon)t.beacon.visible=!range.on&&!t.hit;if(t.kind==='lantern')t.root.visible=!range.on&&!t.hit;if(t.kind==='straw')t.root.parent.visible=!range.on;}   // on the new range the bells' beams, the lanterns and the roaming straw rounds are hidden while shooting
  for(let k=projectiles.length-1;k>=0;k--)recycle(k);
- if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())rig.rotation.y=look.yaw;setStage(clamp(state.range.open,0,STAGES.length-1));}
+ if(range.on){place(YARD.x,YARD.z,Math.atan2(-YARD.ux,-YARD.uz));look.pitch=0;if(xrOn())recentre();setStage(clamp(state.range.open,0,STAGES.length-1));}
  else{if(replay.on)endReplay();ramOff();for(const sp of spirits){sp.base.visible=false;sp.live=false;}for(const g of[...grassClumps,...perches,...bushes])g.visible=false;for(const r of rangeRounds)r.base.visible=false;for(const id in rangeSigns)rangeSigns[id].base.visible=false;rangeMeshes=[];range.phase='idle';if(replay.arrow)replay.arrow.visible=false;}
  $('modeRange').classList.toggle('quiet',!range.on);$('modeRoam').classList.toggle('quiet',range.on);$('play').textContent=range.on?'Step up to the line':'Enter the vale';
  $('compass').style.visibility=$('map').style.visibility=range.on?'hidden':'';
@@ -2419,7 +2420,7 @@ function vrLocomotion(dt,frame){
    }else running=running&&mag>.05;
   }else{
    if(click&&!h.ran&&!charging){setDraw(state.draw==='one'?'two':'one');say(state.draw==='one'?'Single-handed draw  ·  hold a trigger':'Two-handed draw  ·  free hand to the string',3);}h.ran=click;
-   if(Math.abs(sx)>.65&&!h.turned){
+   if(Math.abs(sx)>.65&&!h.turned&&!range.on){
     const a=-Math.sign(sx)*Math.PI/6,ox=rig.position.x-eye.x,oz=rig.position.z-eye.z,s=Math.sin(a),c=Math.cos(a);
     rig.rotation.y+=a;rig.position.x=eye.x+ox*c+oz*s;rig.position.z=eye.z-ox*s+oz*c;h.turned=true;
    }else if(Math.abs(sx)<.3)h.turned=false;

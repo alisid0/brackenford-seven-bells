@@ -24,7 +24,7 @@ const URL_='https://ugqrwwqlbldbpfeobnlx.supabase.co',KEY='sb_publishable_0RT4pH
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null,f=(n,d=1)=>n==null?'–':(+n).toFixed(d),pct=(a,b)=>b?Math.round(100*a/b)+'%':'–';
 const BOWS={fun:'Fun bow',v2:'Version 2',v1:'Original bow'};
-function testName(q){const p=new URLSearchParams(q);return (p.get('watch2')==='1'?'Bell Watch (new)':p.get('lab')==='1'?'Lab':p.get('grey')==='1'?'Grey game':'Game')+(p.get('pads')==='1'&&p.get('lab')!=='1'?' + buttons':'');}
+function testName(q){const p=new URLSearchParams(q);return (p.get('arcade')?'Arcade '+p.get('arcade'):p.get('watch2')==='1'?'Bell Watch (new)':p.get('lab')==='1'?'Lab':p.get('grey')==='1'?'Grey game':'Game')+(p.get('pads')==='1'&&p.get('lab')!=='1'?' + buttons':'');}
 function device(ua){if(!ua)return'–';const m=ua.match(/Quest ?\w*/i);return m?m[0]:/OculusBrowser/.test(ua)?'Quest':/Mobile/.test(ua)?'Phone':'Desktop';}
 async function load(){
  $('status').textContent='Loading…';

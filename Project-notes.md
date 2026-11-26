@@ -520,3 +520,14 @@ Gemini reviewed the watch2 build (`design/bell-watch-review.md`, branch `gemini/
 - **Bot test:** the fair bot shoots every 2.8 s, shoots rams, and matches its draw to the distance; idle three-bands range widened to 22 to 36 s; the crow check now follows its own crow to the end (it failed once when a hare banded first).
 
 Results over six runs after the fixes: all 22 checks pass every time, no errors. Single runs move a lot: idle bands a minute 5.7 to 9.7, fair score 12.6k to 16.7k, quick-against-long 0.67 to 1.6. Rams are 3 a run for most bots: Gemini expected 4, but the ram rule's own spacing (34 to 38 s after the last one ends, none in the last 20 s) leaves room for only 3 when a ram is not shot quickly. Not verified: anything in a headset.
+
+## Claude vs Gemini: a second arcade mode (26 November 2026)
+
+At the developer's word, Claude and Gemini each designed and built a second arcade mode from the same brief (`design/duel-brief.md`). Each mode is one file in `src/modes/`, plugged into a new "arcade slot" in `src/game.js`. Nothing changes unless a mode file exists. A coin flip in `src/config.json` (`duel`) sets which mode is Arcade A and which is Arcade B, so the headset test is blind. The Quest test page has a card for each letter.
+
+- **Claude: Lantern Rise** (`design/duel-claude.md`): lanterns rise from the valley; strings of 3 to 5 pay a bonus; gold lanterns hush the sky; a festival finish.
+- **Gemini: Lantern Cascade** (`design/duel-gemini.md`): festival lanterns, linked twin pairs, skeet discs with an apex bonus, far wind chimes, a gold star that launches a Golden Volley, a bell that charges every 6 hits, and a finale volley.
+- **Shared scorecard** (`tests/arcade.html?mode=claude|gemini`): both pass all six checks (no errors, carefree, nothing behind or nearer than 8 m, at most 9 in view, skill shows). Fair-bot seconds with nothing to shoot: Claude 0 to 3.5, Gemini 0. Frame cost: both about 0.3 to 0.6 ms on a desktop. Scores are on different scales, so they don't compare across modes.
+- **Fairness notes:** Claude wrote the slot and the scorecard, said openly in the brief. Gemini committed 9 minutes after Claude's entry was on `release-prep`, so whether it saw it can't be ruled out; the two designs differ a lot. Gemini reported 0.00 ms a frame; Claude's own run measured 0.3 to 0.5 ms.
+- **Slot fixes requested by Gemini, for after judging:** call a mode's `end()` when leaving its stage mid-run (today its props stay visible until the next arcade run ends); let the fun bow's aim help (`graceAim`) see arcade targets.
+- **Not verified:** either mode in a headset. The winner is the developer's blind rating.

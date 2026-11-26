@@ -14,3 +14,5 @@ test-site/index.html
 Brackenford-Seven-Bells-new-hare.html
 # a copy of the known-good build pulled out of git for comparison runs
 tests/_known-good.html
+# the Quest test launcher: a copy of the built game; only the launcher and settings are kept here
+quest-test/game.html

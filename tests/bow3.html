@@ -43,6 +43,11 @@ async function run(){
   v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(30);
   // the jerk-free release is kept
   const settled=draw(.36,.4,true);o.jerk={raw:R(v.lab.shot.shake),sentOff:R(v.lab.shot.dir.angleTo(settled)*57.2958)};
+  // angle-sim fix 4: a full draw brought back to the bow in two frames and let go is a cancel, not a shot
+  steps(30);{const before=v.lab.shot;v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+   for(let k=1;k<=12;k++){v.hands[1].grip.position.copy(at((.36-v.KIT.nockZ)*k/12));steps(1);}steps(24);
+   v.hands[1].grip.position.copy(at(.03));steps(1);v.hands[1].grip.position.copy(at(0));steps(1);v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);
+   o.fastCancel={noShot:v.lab.shot===before,stopped:!v.charging};}
   // the help: none in the lab
   {const e=eye(),f=V(v.YARD.ux,.02,v.YARD.uz).normalize();o.grace={lab:R(v.graceAim(e,f,68).angleTo(f)*57.2958)};}
   w.document.querySelector('#cloth [data-do="settings"]')?.click();o.menuReach=[...w.document.querySelectorAll('#cloth [data-do^="reach-"]')].length;}
@@ -67,6 +72,7 @@ async function run(){
   haptics:o.haptics.notches===3&&o.haptics.full&&o.haptics.nock&&o.haptics.sweetLoose,
   pace:o.pace.tooSoonIgnored&&o.pace.heldInBuffer&&o.pace.caughtWhenReady&&o.pace.previewUp,
   jerkRemoved:o.jerk.raw>2.5&&o.jerk.sentOff<.6,
+  fastCancel:o.fastCancel.noShot&&o.fastCancel.stopped,
   graceOnShade:o.grace.nearAfter<o.grace.nearBefore&&o.grace.turnedBy<=.81&&o.grace.wideMoved===0,
   noGraceOnTargetsOrLab:o.grace.lab===0&&o.grace.ring===0,
   noDrawSetting:o.menuReach===0,

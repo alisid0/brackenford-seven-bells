@@ -2046,11 +2046,12 @@ function bowRelease(){
  const tc=bow2.earlyAt&&elapsed-bow2.earlyAt<=.08?bow2.earlyAt:elapsed,B=bow2.buf.filter(s=>s[0]<=tc+1e-6),win=B.filter(s=>s[0]>=tc-.12);
  let spike=null;for(let k=1;k<win.length;k++){const dt=win[k][0]-win[k-1][0];if(dt>0&&win[k][1].angleTo(win[k-1][1])*57.2958/dt>45){spike=win[k][0];break;}}
  const avg=(a,b)=>{const v=V();let n=0;for(const s of B)if(s[0]>=a&&s[0]<b){v.add(s[1]);n++;}return n?v.normalize():null;};
- let dir,end;
- if(spike!==null){end=spike;dir=avg(spike-.045,spike)||(B.filter(s=>s[0]<spike).pop()||[0,aimVR()])[1].clone();}
- else{end=tc;dir=avg(tc-.045,tc+1e-6)||aimVR();}
+ const mid=(a,b)=>{const v=V();let n=0;for(const s of B)if(s[0]>=a&&s[0]<b&&s[3]){v.add(s[3]);n++;}return n?v.multiplyScalar(1/n):null;};
+ let dir,end,origin;
+ if(spike!==null){end=spike;dir=avg(spike-.045,spike)||(B.filter(s=>s[0]<spike).pop()||[0,aimVR()])[1].clone();origin=mid(spike-.045,spike);}
+ else{end=tc;dir=avg(tc-.045,tc+1e-6)||aimVR();origin=mid(tc-.045,tc+1e-6);}
  let power=0;for(const s of B)if(s[0]>=end-.1&&s[0]<=end+1e-6)power=Math.max(power,s[2]);
- return{dir,power:power||charge,spike:spike!==null};
+ return{dir,power:power||charge,spike:spike!==null,origin:origin||preview.position.clone()};
 }
 let charging=false,charge=0,startTime=0,twang=-9,twangPower=0,zoom=0,hitFlash=0,drawStep=0;
 // After a release: kick is the slow recoil of the bow, snap the fast ringing of the string.
@@ -2397,7 +2398,8 @@ function endDraw(h){
  }
  if(h!==drawHand)return;
  if(charging&&h.pose&&bowHand?.pose){vrPose();
-  if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(preview.position,r.dir,r.power,!!fullAt&&r.power>=BOW.fullAt-.005&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
+  if(BOW2&&Math.min(charge,(h.pinch.getWorldPosition(V()).distanceTo(bow.position)-BOW.rest)/(bowFull()-BOW.rest))<BOW.minLoose){buzz(h,...HAP.cancel);cancel();drawHand=null;return;}   // angle-sim fix 4: the hand back at the bow (where it really is, not the smoothed draw) is a cancel, never a shot
+  if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(r.origin,r.dir,r.power,!!fullAt&&r.power>=BOW.fullAt-.005&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
   else loose(preview.position,aimVR(),charge,!!fullAt&&charge>=.95&&elapsed-fullAt<=.9);}else cancel();drawHand=null;
 }
 for(const h of hands){ // controllers; tracked hands are read in senseHand instead
@@ -2438,7 +2440,14 @@ function handGestures(h,dt,eye,climbing){
   }
  }
 }
-function aimVR(){return bow.localToWorld(V(restX(),REST,0)).sub(drawAt).normalize();}   // the arrow runs from the string hand past the side of the grip
+// the arrow runs from the string hand past the side of the grip. On the new bows (design/angle-sim.md fix 1) that point
+// is held above the grip by the world's up and beside it on the level, so tilting (canting) the bow never moves the shot;
+// held upright it is the same point as before.
+function aimVR(){
+ if(!BOW2)return bow.localToWorld(V(restX(),REST,0)).sub(drawAt).normalize();
+ const f=bow.position.clone().sub(drawAt);f.y=0;const side=f.lengthSq()>1e-6?V(-f.z,0,f.x).normalize():V(1,0,0).transformDirection(bow.matrixWorld);
+ return bow.position.clone().add(V(0,REST,0)).addScaledVector(side,restX()).sub(drawAt).normalize();
+}
 function headYaw(){const f=FWD.clone().applyQuaternion(head().getWorldQuaternion(new T.Quaternion()));return Math.atan2(-f.x,-f.z);}
 function vrLocomotion(dt,frame){
  const eye=head().getWorldPosition(V()),climbing=hands.some(h=>h.climb),off=localEyeOffset;
@@ -2515,11 +2524,12 @@ function vrPose(){
   const hp=drawAt.lerp(drawHand.pinch.getWorldPosition(V()),1-Math.exp(-frameDt*28)),reach=hp.distanceTo(bow.position);
   if(BOW2){bowFull();bow2.peak=Math.max(bow2.peak,reach);charge=clamp((reach-BOW.rest)/(bow2.full-BOW.rest),0,1);}else charge=clamp((reach-.12)/.4,0,1);
   dir=aimVR();
-  const lean=V(0,1,0).applyQuaternion(bow.quaternion);if(Math.abs(lean.dot(dir))<.95){bow.quaternion.setFromRotationMatrix(steady.lookAt(ZERO,dir,lean));bow.updateMatrixWorld();dir=aimVR();}
+  if(BOW2){const fw=V(0,0,-1).applyQuaternion(bow.quaternion);bow.quaternion.premultiply(fw.dot(dir)>-.999?new T.Quaternion().setFromUnitVectors(fw,dir):new T.Quaternion().setFromAxisAngle(V(0,1,0),Math.PI));bow.updateMatrixWorld();}   // angle-sim fix 2
+  else{const lean=V(0,1,0).applyQuaternion(bow.quaternion);if(Math.abs(lean.dot(dir))<.95){bow.quaternion.setFromRotationMatrix(steady.lookAt(ZERO,dir,lean));bow.updateMatrixWorld();dir=aimVR();}}
   if(LAB){lab.drawNow=hp.distanceTo(bow.position);pushSample(lab.aims,[elapsed,dir.clone()]);while(lab.aims.length&&elapsed-lab.aims[0][0]>.3)lab.aims.shift();}
   nock=bow.worldToLocal(hp.clone());flex=.2*charge;
   if(BOW2){
-   pushSample(bow2.buf,[elapsed,dir.clone(),charge]);while(bow2.buf.length&&elapsed-bow2.buf[0][0]>.22)bow2.buf.shift();
+   pushSample(bow2.buf,[elapsed,dir.clone(),charge,hp.clone().addScaledVector(dir,KIT.shaft)]);   // angle-sim fix 3: the start point toowhile(bow2.buf.length&&elapsed-bow2.buf[0][0]>.22)bow2.buf.shift();
    bowFeel(drawHand,charge>=BOW.fullAt);
   }else{
   const stepNow=Math.floor(charge*8);if(stepNow!==drawStep){drawStep=stepNow;buzz(drawHand,.15+.3*charge,14);}

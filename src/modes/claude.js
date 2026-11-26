@@ -67,8 +67,8 @@ function gone(p,kindled){
  if(p.str&&S.str[p.str]){const s=S.str[p.str];if(!kindled)s.broken=true;else s.left--;}
 }
 arcadeMode('claude',{
- name:'Lantern Rise',seconds:180,
- start(){build();reset();say('Lantern Rise  ·  kindle the lanterns before they drift away',4);},
+ name:'Lantern Rise',seconds:180,   // the name is never shown in play: the board shows the slot's blind letter
+ start(){build();reset();say(STAGES[range.stage].name+'  ·  kindle the lanterns before they drift away',4);},
  step(dt,left){
   const P=phase(),hushed=elapsed<S.hushUntil;
   for(const p of pool){
@@ -112,8 +112,8 @@ arcadeMode('claude',{
  bell(q){pealRing(true);return true;},   // the bell only rings softly here; it is not part of this mode
  info({phase,clock,best}){
   const m=glowOf(range.streak);
-  if(phase==='results')return{title:'Lantern Rise',stitch:range.newBest,text:'Score '+range.score+'      '+(range.newBest?'New best':'Best '+best)+'\nLanterns '+S.kindled+'  ·  Strings '+S.stringsWon+' of '+S.strings+'  ·  Gold '+S.golds+'\nHighest '+S.highest+' m',mark:'Shoot AGAIN for another run'};
-  return{title:'Lantern Rise  ·  '+(phase==='closing'?'0:00':clock),text:'Score '+range.score+'      Lanterns '+S.kindled+(m>1?'      Glow ×'+m:''),mark:(elapsed<S.hushUntil?'Hush      ':'')+'Best '+best};
+  if(phase==='results')return{title:STAGES[range.stage].name,stitch:range.newBest,text:'Score '+range.score+'      '+(range.newBest?'New best':'Best '+best)+'\nLanterns '+S.kindled+'  ·  Strings '+S.stringsWon+' of '+S.strings+'  ·  Gold '+S.golds+'\nHighest '+S.highest+' m',mark:'Shoot AGAIN for another run'};
+  return{title:STAGES[range.stage].name+'  ·  '+(phase==='closing'?'0:00':clock),text:'Score '+range.score+'      Lanterns '+S.kindled+(m>1?'      Glow ×'+m:''),mark:(elapsed<S.hushUntil?'Hush      ':'')+'Best '+best};
  },
  end(){for(const p of pool){p.on=false;p.fade=0;p.g.visible=false;arcadeDrop(p.hit);}for(const t of threads){t.l.visible=false;t.a=t.b=null;}},
 });

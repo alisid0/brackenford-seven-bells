@@ -1,0 +1,78 @@
+<!doctype html><meta charset="utf-8"><title>the fun bow</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The fun bow (?bow3=1, design/fun-bow.md) against Gemini's own numbers: a 0.72 m bow and a 46 cm arrow; a fixed 26 cm
+// draw that needs no fitting; the speed curve with a cancel below 8 percent; the flatter flight; three notches and the
+// lighter haptics; the next arrow ready 0.18 s after a shot, with a trigger pressed just before that held and caught; the
+// one-shot help on shades that never touches ring targets or the lab; the jerk-free release kept; and with it off,
+// nothing changed.
+const errors=[];
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const pad=log=>({buttons:Array.from({length:6},()=>({pressed:false})),axes:[0,0,0,0],hapticActuators:[{pulse:(s,ms)=>log.push([+s.toFixed(2),ms])}]});
+async function run(){
+ const o={};
+ {const w=await game("?release=0&lab=1&bow3=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  v.begin(false);steps(5);
+  // sizes, measured on the built models
+  {const b=new T.Box3();v.limbs.forEach(l=>l.updateMatrixWorld(true));v.bow.updateMatrixWorld(true);let lo=1e9,hi=-1e9;v.bow.traverse(m=>{if(m.isMesh){b.setFromObject(m);const p=v.bow.worldToLocal(b.min.clone()),q=v.bow.worldToLocal(b.max.clone());lo=Math.min(lo,p.y,q.y);hi=Math.max(hi,p.y,q.y);}});
+   const body=v.preview.userData.body;let z0=1e9,z1=-1e9;body.updateMatrix();body.traverse(m=>{if(m.isMesh){m.geometry.computeBoundingBox();m.updateMatrix();const bb=m.geometry.boundingBox.clone().applyMatrix4(m.matrix);z0=Math.min(z0,bb.min.z);z1=Math.max(z1,bb.max.z);}});const len=z1-z0;   // along the shaft, in the arrow's own frame
+   o.size={on:v.BOW3,bow2On:v.BOW2,bow:R(hi-lo),arrow:R(len),shaftR:v.KIT.shaftR};}
+  o.speed={s7:v.arrowSpeed(.07),s8:R(v.arrowSpeed(.08)),s50:R(v.arrowSpeed(.5)),s90:R(v.arrowSpeed(.9)),s100:R(v.arrowSpeed(1))};
+  // a level full-draw shot, 6 m to the side of the targets: its drop at 30 m
+  {const e=eye().add(V(v.YARD.rx*6,0,v.YARD.rz*6)),f=V(v.YARD.ux,0,v.YARD.uz);v.loose(e,f,1);const q=v.projectiles[v.projectiles.length-1];let drop=null;
+   for(let i=0;i<120&&drop===null;i++){v.tick(1/90);const along=(q.o.position.x-e.x)*v.YARD.ux+(q.o.position.z-e.z)*v.YARD.uz;if(along>=30)drop=e.y-q.o.position.y;}o.flight={drop30:R(drop)};}
+  steps(60);
+  // simulated controllers
+  const log0=[],log1=[];v.fake.on=true;[log0,log1].forEach((l,i)=>{const h=v.hands[i];h.source={handedness:i?"right":"left",gamepad:pad(l)};h.grip.matrixAutoUpdate=true;});
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);steps(3);
+  const at=z=>v.rig.worldToLocal(v.bow.localToWorld(V(0,v.REST,v.KIT.nockZ+z)));
+  const draw=(reach,hold,jerk)=>{v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+   for(let k=1;k<=12;k++){v.hands[1].grip.position.copy(at((reach-v.KIT.nockZ)*k/12));steps(1);}steps(Math.round(hold*60));
+   const settled=v.lab.aims.length?v.lab.aims[v.lab.aims.length-1][1].clone():null;
+   if(jerk){v.hands[1].grip.position.copy(at(reach-v.KIT.nockZ).add(V(.06,0,0)));steps(3);}
+   v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);return settled;};
+  o.draw={full:v.bowFull()};
+  log0.length=0;log1.length=0;draw(.36,.4,false);
+  o.draw.fullCharge=R(v.lab.shot.power);o.draw.fullSpeed=R(v.lab.shot.speed);
+  o.haptics={notches:log1.filter(p=>p[1]===12).length,full:log1.some(p=>p[0]===.68&&p[1]===24),nock:log1.some(p=>p[0]===.2&&p[1]===16),sweetLoose:log0.some(p=>p[0]===.82&&p[1]===65)};
+  steps(30);draw(.23,.3,false);o.draw.halfCharge=R(v.lab.shot.power);o.draw.halfSpeed=R(v.lab.shot.speed);
+  // pace: a fresh arrow is ready 0.18 s after a shot; a trigger pressed 0.1 s after is held and caught then; one pressed at once is ignored
+  steps(30);draw(.36,.2,false);const t0=v.elapsed;
+  v.hands[1].grip.position.copy(at(0));v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);const tooSoon=!v.charging;v.hands[1].raySpace.dispatchEvent({type:"selectend"});
+  while(v.elapsed-t0<.1)steps(1);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);const held=!!v.bow3wait&&!v.charging;
+  while(v.elapsed-t0<.2)steps(1);o.pace={tooSoonIgnored:tooSoon,heldInBuffer:held,caughtWhenReady:v.charging,previewUp:v.preview.visible};
+  v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(30);
+  // the jerk-free release is kept
+  const settled=draw(.36,.4,true);o.jerk={raw:R(v.lab.shot.shake),sentOff:R(v.lab.shot.dir.angleTo(settled)*57.2958)};
+  // the help: none in the lab
+  {const e=eye(),f=V(v.YARD.ux,.02,v.YARD.uz).normalize();o.grace={lab:R(v.graceAim(e,f,68).angleTo(f)*57.2958)};}
+  w.document.querySelector('#cloth [data-do="settings"]')?.click();o.menuReach=[...w.document.querySelectorAll('#cloth [data-do^="reach-"]')].length;}
+ {const w=await game("?release=0&bow3=1"),v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),R=n=>+(+n).toFixed(3),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  v.begin(false);steps(5);
+  // outside the lab: none on ring targets; on a live shade a near shot is turned onto it, a wide one left alone
+  v.setStage(v.STAGES.findIndex(s=>s.name==="First shade"));steps(90);
+  {const sp=v.spirits.find(s=>s.live&&s.base.visible),c=sp.hitMesh.getWorldPosition(V()),e=eye(),d=V(c.x-e.x,0,c.z-e.z),flat=d.length(),h=c.y-e.y,s=68,g=5.8,s2=s*s;
+   const up=Math.atan((s2-Math.sqrt(s2*s2-g*(g*flat*flat+2*h*s2)))/(g*flat)),ideal=d.normalize().multiplyScalar(Math.cos(up)).add(V(0,Math.sin(up),0)).normalize();
+   const side=V(-ideal.z,0,ideal.x).normalize(),off=(deg)=>ideal.clone().applyAxisAngle(V(0,1,0),deg*Math.PI/180);
+   const near=off(.6),wide=off(2.5),nearOut=v.graceAim(e,near,s),wideOut=v.graceAim(e,wide,s);
+   o.grace.flat=R(flat);o.grace.nearBefore=R(near.angleTo(ideal)*57.2958);o.grace.nearAfter=R(nearOut.angleTo(ideal)*57.2958);o.grace.wideMoved=R(wideOut.angleTo(wide)*57.2958);
+   o.grace.turnedBy=R(nearOut.angleTo(near)*57.2958);}
+  v.setStage(0);steps(30);{const t=v.rangeRounds.find(x=>x.base.visible),c=t.root.getWorldPosition(V()),e=eye(),f=V(c.x-e.x,c.y-e.y,c.z-e.z).normalize().applyAxisAngle(V(0,1,0),.01);o.grace.ring=R(v.graceAim(e,f,68).angleTo(f)*57.2958);}
+ }
+ {const w=await game("?release=0&lab=1&bow3=0"),v=w.vale;v.begin(false);for(let i=0;i<5;i++)v.tick(1/60);o.off={bow3:v.BOW3,riser:v.KIT.riser,shaft:v.KIT.shaft,s50:v.arrowSpeed(.5)};}
+ o.checks={
+  small:o.size.on&&o.size.bow2On&&Math.abs(o.size.bow-.72)<.06&&o.size.arrow>.46&&o.size.arrow<.51&&o.size.shaftR===.0045,
+  speedCurve:o.speed.s7===0&&Math.abs(o.speed.s8-35)<.3&&Math.abs(o.speed.s50-54.2)<.4&&o.speed.s90===68&&o.speed.s100===68,
+  flatterFlight:Math.abs(o.flight.drop30-.58)<.06,
+  shortFixedDraw:o.draw.full===.36&&o.draw.fullCharge>=.9&&o.draw.fullSpeed===68&&o.draw.halfCharge>.45&&o.draw.halfCharge<.6&&o.draw.halfSpeed>50&&o.draw.halfSpeed<58,
+  haptics:o.haptics.notches===3&&o.haptics.full&&o.haptics.nock&&o.haptics.sweetLoose,
+  pace:o.pace.tooSoonIgnored&&o.pace.heldInBuffer&&o.pace.caughtWhenReady&&o.pace.previewUp,
+  jerkRemoved:o.jerk.raw>2.5&&o.jerk.sentOff<.6,
+  graceOnShade:o.grace.nearAfter<o.grace.nearBefore&&o.grace.turnedBy<=.81&&o.grace.wideMoved===0,
+  noGraceOnTargetsOrLab:o.grace.lab===0&&o.grace.ring===0,
+  noDrawSetting:o.menuReach===0,
+  offUnchanged:o.off.bow3===false&&o.off.riser===.21&&o.off.shaft===.62&&o.off.s50===43,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

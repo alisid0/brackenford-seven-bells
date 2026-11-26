@@ -1,0 +1,403 @@
+<!doctype html><meta charset="utf-8"><title>VR bow angles and controls simulation</title>
+<style>body{font:13px/1.45 system-ui,sans-serif;margin:12px;background:#f7f6f2;color:#222}pre{white-space:pre-wrap;font:12px/1.35 ui-monospace,monospace;background:#fff;border:1px solid #ccc;padding:8px;max-height:360px;overflow:auto}table{border-collapse:collapse;margin:8px 0 18px;background:#fff;font-size:12px}th,td{border:1px solid #ccc;padding:4px 7px;text-align:right}th:first-child,td:first-child,td:last-child{text-align:left}h2,h3{margin:14px 0 4px}iframe{display:block;border:1px solid #999;margin-bottom:8px}</style>
+<iframe id="g" width="900" height="460"></iframe>
+<pre id="out">PENDING</pre>
+<div id="tables"></div>
+<script>
+// VR controls simulation across all three bows (v1, bow2, bow3) in ?lab=1 using simulated controllers
+// (fake.on, hands[i].source, grip.position, grip.quaternion). Drives real draws, releases, and arrow flights.
+// Does not modify game code. Reports per-bow draw %, launch speed, launch angles relative to the 20 m target
+// line, hit/miss outcome, shake/sent error, and nock catch distances.
+const errors=[];
+function game(query){
+ return new Promise(done=>{
+  const f=document.getElementById("g");
+  f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();
+  const wait=setInterval(()=>{
+   const w=f.contentWindow;
+   if(w&&w.vale&&w.location.search.includes(query.slice(1))){
+    clearInterval(wait);
+    w.addEventListener("error",e=>errors.push(query+": "+e.message));
+    done(w);
+   }
+  },250);
+ });
+}
+const mkPad=()=>({buttons:Array.from({length:6},()=>({pressed:false,value:0})),axes:[0,0,0,0],hapticActuators:[{pulse:()=>{}}]});
+const R=(n,d=2)=>n===null||n===undefined||Number.isNaN(n)?null:+(+n).toFixed(d);
+
+// Compute exact upward elevation (rad) for a bow's (v0, g, drag) to hit (flatDist, dy)
+function solveElev(v0,g,drag,dist,dy){
+ let lo=-.2,hi=.6;
+ const sim=rad=>{
+  const dt=1/240;let x=0,y=0,vx=v0*Math.cos(rad),vy=v0*Math.sin(rad),t=0;
+  while(x<dist&&t<5){
+   const px=x,py=y,pvx=vx,pvy=vy,sp=Math.hypot(vx,vy);
+   if(drag){vx-=drag*sp*vx*dt;vy-=drag*sp*vy*dt;}
+   vy-=g*dt;
+   x+=(pvx+vx)*.5*dt;y+=(pvy+vy)*.5*dt;t+=dt;
+   if(x>=dist)return py+(y-py)*((dist-px)/(x-px));
+  }
+  return -99;
+ };
+ for(let i=0;i<28;i++){const m=(lo+hi)/2;if(sim(m)<dy)lo=m;else hi=m;}
+ return (lo+hi)/2;
+}
+
+async function runBow(label,query){
+ const w=await game(query),v=w.vale,T=v.T,V=(x=0,y=0,z=0)=>new T.Vector3(x,y,z);
+ const steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);};
+ v.begin(false);steps(5);
+
+ // Enable simulated VR controllers and align rig yaw with range lane (matching initXR)
+ v.rig.rotation.y=v.look.yaw;v.camera.rotation.set(0,0,0);v.rig.updateMatrixWorld(true);
+ v.fake.on=true;
+ const setHanded=lefty=>{
+  v.setHand(lefty?"left":"right");
+  // Disconnect and reconnect hands cleanly so bowHand picks the requested side
+  for(const i of[0,1]){
+   const h=v.hands[i];
+   h.source={handedness:i?"right":"left",gamepad:mkPad()};
+   h.grip.matrixAutoUpdate=true;
+   h.grip.quaternion.identity();
+  }
+  // Place bow hand ahead, string hand aside; if bow is currently in wrong hand, grip-swap it
+  const bi=lefty?1:0,si=lefty?0:1;
+  v.hands[bi].grip.position.set(lefty?.15:-.15,1.45,-.55);
+  v.hands[si].grip.position.set(lefty?-.20:.20,1.35,-.15);
+  steps(2);
+  if(v.bowHand!==v.hands[bi]){
+   // Move target bow hand onto bow and squeeze to pass it across
+   const bp=v.rig.worldToLocal(v.bow.position.clone());
+   v.hands[bi].grip.position.copy(bp);steps(1);
+   v.hands[bi].raySpace.dispatchEvent({type:"squeezestart"});steps(1);
+   v.hands[bi].raySpace.dispatchEvent({type:"squeezeend"});steps(1);
+   v.hands[bi].grip.position.set(lefty?.15:-.15,1.45,-.55);steps(2);
+  }
+  return{bowH:v.hands[bi],strH:v.hands[si],side:lefty?-1:1};
+ };
+
+ const target20=v.rangeRounds.find(x=>Math.round(x.along)===20);
+ const tPos=()=>target20.root.getWorldPosition(V());
+ const fullReach=v.BOW2?v.bowFull():v.BOW.full;
+ const restReach=v.BOW.rest;
+ const vMax=v.arrowSpeed(1);
+
+ // Helper: compute bow-hand local quaternion for (pitchDeg, yawDeg, rollDeg) around rig-local axes (order YXZ)
+ // Note: roll > 0 tilts top of bow to the left (-x); roll < 0 tilts top of bow to the right (+x)
+ const qOf=(pitchDeg,yawDeg,rollDeg)=>new T.Quaternion().setFromEuler(new T.Euler(pitchDeg*Math.PI/180,yawDeg*Math.PI/180,rollDeg*Math.PI/180,"YXZ"));
+
+ // Compute target-line angles (upDeg, sideDeg) of a world direction `dir` relative to the straight line from `origin` to `tPos()`
+ function relAngles(origin,dir){
+  const toT=tPos().sub(origin);
+  const fwdFlat=V(toT.x,0,toT.z).normalize();
+  const right=V(-fwdFlat.z,0,fwdFlat.x).normalize();
+  const toTDir=toT.clone().normalize();
+  const baseUp=Math.asin(Math.max(-1,Math.min(1,toTDir.y)))*180/Math.PI;
+  const dirUp=Math.asin(Math.max(-1,Math.min(1,dir.y)))*180/Math.PI;
+  const sideDeg=Math.atan2(dir.dot(right),dir.dot(fwdFlat))*180/Math.PI;
+  return{upDeg:R(dirUp-baseUp,2),elevDeg:R(dirUp,2),sideDeg:R(sideDeg,2)};
+ }
+
+ // Compute the baseline world launch direction to hit the 20 m bullseye from a given bow-hand local pos (with 0-cant rest)
+ function baselineAim(bowLocalPos,side){
+  const restWorld=v.rig.localToWorld(bowLocalPos.clone().add(V(-side*v.KIT.restX,v.REST,0)));
+  const toT=tPos().sub(restWorld),flat=Math.hypot(toT.x,toT.z),dy=toT.y;
+  const elev=solveElev(vMax,v.BOW.g,v.BOW.drag,flat,dy);
+  const f=V(toT.x,0,toT.z).normalize();
+  return{restWorld,aimDir:f.multiplyScalar(Math.cos(elev)).add(V(0,Math.sin(elev),0)).normalize()};
+ }
+
+ // Shoot one full simulated VR shot and wait for landing
+ function shoot(opt){
+  const{bowH,strH,side}=opt.hands;
+  const bowPos=opt.bowPos||V(side>0?-.15:.15,1.45,-.55);
+  const bowQuat=qOf(opt.pitch||0,opt.yaw||0,opt.roll||0);
+  const{restWorld,aimDir}=baselineAim(bowPos,side);
+
+  // Set bow hand & clear any previous cooldown (0.20 s clears bow3's 0.18 s ready time)
+  bowH.grip.position.copy(bowPos);bowH.grip.quaternion.copy(bowQuat);
+  strH.grip.position.set(side>0?.25:-.25,1.25,-.1);
+  steps(12);
+
+  // Position string hand on the actual nock in world space so selectstart catches cleanly (unless testing custom start)
+  v.bow.updateMatrixWorld(true);
+  const nockW=v.bow.localToWorld(V(-side*v.KIT.restX,v.REST,v.KIT.nockZ));
+  const nockL=v.rig.worldToLocal(nockW.clone());
+  strH.grip.position.copy(nockL);
+  steps(1);
+  // Press trigger (with analog value = 1.0 so bow2/bow3 early-latch arms properly)
+  strH.source.gamepad.buttons[0].pressed=true;strH.source.gamepad.buttons[0].value=1;
+  strH.raySpace.dispatchEvent({type:"selectstart"});
+  steps(1);
+  if(!v.charging){
+   strH.source.gamepad.buttons[0].pressed=false;strH.source.gamepad.buttons[0].value=0;
+   strH.raySpace.dispatchEvent({type:"selectend"});steps(1);
+   return{caught:false,loosed:false,result:"catch failed"};
+  }
+
+  // Destination for string hand (in world space, converted to rig-local):
+  // Default: draw straight back along -aimDir from restWorld by `drawDist` (so distance from bow grip ≈ drawDist)
+  const pct=opt.pct===undefined?100:opt.pct;
+  const wantReach=restReach+(fullReach-restReach)*(pct/100);
+  let targetStrW;
+  if(opt.strWorld){
+   targetStrW=opt.strWorld;
+  }else if(opt.strOffset){
+   // Custom draw vector from bow grip world position, scaled to wantReach
+   const bowW=v.rig.localToWorld(bowPos.clone());
+   targetStrW=bowW.clone().add(opt.strOffset.clone().normalize().multiplyScalar(wantReach));
+  }else{
+   // Straight back from the 0-cant rest along -aimDir, adjusted so distance from bow grip equals wantReach
+   const bowW=v.rig.localToWorld(bowPos.clone());
+   targetStrW=restWorld.clone().addScaledVector(aimDir,-wantReach);
+   // Refine distance to bowW so reach is exact
+   const d0=targetStrW.distanceTo(bowW);
+   if(Math.abs(d0-wantReach)>.001)targetStrW.addScaledVector(aimDir,d0-wantReach);
+  }
+  const targetStrL=v.rig.worldToLocal(targetStrW.clone());
+
+  // Pull smoothly over 14 frames (0.23 s) then settle for 16 frames (0.27 s, fills 0.22 s aim buffer)
+  const startL=nockL.clone();
+  for(let k=1;k<=14;k++){
+   strH.grip.position.lerpVectors(startL,targetStrL,k/14);
+   steps(1);
+  }
+  steps(16);
+
+  // Record settled aim & geometric rest-to-string line BEFORE any release jerk or tracking jump
+  const settledDir=v.lab.aims.length?v.lab.aims[v.lab.aims.length-1][1].clone():null;
+  const geomRestW=v.bow.localToWorld(V(-side*v.KIT.restX,v.REST,0));
+  const geomStrW=strH.pinch.getWorldPosition(V());
+  const geomLine=geomRestW.clone().sub(geomStrW).normalize();
+
+  // Optional 1-frame tracking jump (before release) OR release jerk in last 3 frames
+  if(opt.jumpStr){
+   const saved=strH.grip.position.clone();
+   strH.grip.position.add(opt.jumpStr);steps(1);
+   strH.grip.position.copy(saved);
+   if(opt.jumpHoldAfter)steps(opt.jumpHoldAfter);
+  }
+  if(opt.jumpBow){
+   const saved=bowH.grip.position.clone();
+   bowH.grip.position.add(opt.jumpBow);steps(1);
+   bowH.grip.position.copy(saved);
+   if(opt.jumpHoldAfter)steps(opt.jumpHoldAfter);
+  }
+  if(opt.jerkStr){
+   strH.grip.position.add(opt.jerkStr);steps(3);
+  }
+  if(opt.jerkBow){
+   bowH.grip.position.add(opt.jerkBow);steps(3);
+  }
+
+  const beforeShots=v.state.shots;
+  strH.source.gamepad.buttons[0].pressed=false;strH.source.gamepad.buttons[0].value=0;
+  strH.raySpace.dispatchEvent({type:"selectend"});
+  steps(1);
+
+  if(v.state.shots===beforeShots){
+   steps(5);
+   return{caught:true,loosed:false,drawPct:R(v.charge*100,1),result:"cancelled (< min draw)"};
+  }
+
+  const shot=v.lab.shot;
+  const launchOrigin=v.projectiles.length?v.projectiles[v.projectiles.length-1].origin.clone():restWorld;
+  const launchDir=shot.dir?shot.dir.clone():V(0,0,-1);
+  // Wait for arrow to hit or land (up to 12 s for high-arc hip shots; flat shots finish in ~0.3–1 s)
+  const maxFrames=shot.elev>15?720:240;
+  for(let i=0;i<maxFrames&&!shot.result;i++)steps(1);
+
+  const ang=relAngles(launchOrigin,launchDir);
+  const vsRest=R(launchDir.angleTo(geomLine)*180/Math.PI,2);
+  const sentOff=settledDir?R(launchDir.angleTo(settledDir)*180/Math.PI,2):null;
+  return{
+   caught:true,loosed:true,
+   drawPct:R(shot.power*100,1),
+   drawCm:R(shot.draw*100,1),
+   speed:R(shot.speed,1),
+   upDeg:ang.upDeg,
+   elevDeg:ang.elevDeg,
+   sideDeg:ang.sideDeg,
+   vsRestDeg:vsRest,
+   rawShake:R(shot.shake,2),
+   sentOff:sentOff,
+   labSent:R(shot.sent,2),
+   result:shot.result||"in flight"
+  };
+ }
+
+ // Helper for Case 7: find max catch distance from true nock AND from upright-nock at each cant
+ function probeCatch(handsObj,rollDeg){
+  const{bowH,strH,side}=handsObj;
+  const bowPos=V(side>0?-.15:.15,1.45,-.55);
+  bowH.grip.position.copy(bowPos);
+  // Upright nock world pos (roll = 0)
+  bowH.grip.quaternion.copy(qOf(0,0,0));steps(2);v.bow.updateMatrixWorld(true);
+  const uprightNockW=v.bow.localToWorld(V(-side*v.KIT.restX,v.REST,v.KIT.nockZ));
+  // Now apply roll
+  bowH.grip.quaternion.copy(qOf(0,0,rollDeg));steps(2);v.bow.updateMatrixWorld(true);
+  const rotNockW=v.bow.localToWorld(V(-side*v.KIT.restX,v.REST,v.KIT.nockZ));
+  const shiftCm=R(rotNockW.distanceTo(uprightNockW)*100,1);
+
+  // Ensure cooldown is clear once before probing catch distances
+  steps(14);
+  const testAt=worldPt=>{
+   strH.grip.position.copy(v.rig.worldToLocal(worldPt.clone()));steps(1);
+   strH.raySpace.dispatchEvent({type:"selectstart"});
+   const ok=v.charging;
+   if(ok){
+    // Cancel cleanly without firing an arrow: hold at bow grip >0.22 s so bow2.buf flushes past any spike window
+    strH.grip.position.copy(bowPos);steps(15);
+    strH.raySpace.dispatchEvent({type:"selectend"});steps(1);
+   }else{
+    // Release trigger on a miss too (clears bow3wait if ever armed)
+    strH.raySpace.dispatchEvent({type:"selectend"});
+   }
+   return ok;
+  };
+  // Binary search max catch distance straight back (+z in rig space) from rotated nock, and from upright nock
+  const backW=v.rig.localToWorld(V(0,0,1)).sub(v.rig.localToWorld(V(0,0,0))).normalize();
+  const findMax=(originW,dirW)=>{
+   let lo=0,hi=.50;
+   for(let i=0;i<10;i++){const m=(lo+hi)/2;if(testAt(originW.clone().addScaledVector(dirW,m)))lo=m;else hi=m;}
+   return R(lo*100,1);
+  };
+  const fromRotNockCm=findMax(rotNockW,backW);
+  const fromUprightBackCm=findMax(uprightNockW,backW);
+  // Also perpendicular (rightward +x in rig space) from upright nock
+  const rightW=v.rig.localToWorld(V(1,0,0)).sub(v.rig.localToWorld(V(0,0,0))).normalize();
+  const fromUprightRightCm=findMax(uprightNockW,rightW);
+  const fromUprightLeftCm=findMax(uprightNockW,rightW.clone().negate());
+  return{rollDeg,nockShiftCm:shiftCm,fromRotNockCm,fromUprightBackCm,fromUprightRightCm,fromUprightLeftCm};
+ }
+
+ const res={bow:label,fullDrawCm:R(fullReach*100,1),restDrawCm:R(restReach*100,1),vMax:R(vMax,1),g:v.BOW.g,drag:v.BOW.drag,catchCm:R(v.BOW.catch*100,1)};
+
+ // Setup right-handed archer (bow in left hand)
+ const rh=setHanded(false);
+
+ // CASE 1: Cant (roll of bow hand): 0, ±15, ±30, ±45, ±60, ±90 (flat)
+ res.cant=[];
+ for(const deg of[0,15,-15,30,-30,45,-45,60,-60,90,-90]){
+  res.cant.push({input:deg+"°",...shoot({hands:rh,roll:deg})});
+ }
+
+ // CASE 2: Bow-hand pitch and yaw off the target line (string hand drawing straight back)
+ res.bowAngles=[];
+ for(const[name,pitch,yaw]of[
+  ["level 0/0",0,0],["pitch +20° (up)",20,0],["pitch -20° (down)",-20,0],["pitch +45°",45,0],["pitch -45°",-45,0],
+  ["pitch +75° (near align limit)",75,0],["pitch +85° (past align limit)",85,0],
+  ["yaw +20° (left)",0,20],["yaw -20° (right)",0,-20],["yaw +45°",0,45],["yaw -45°",0,-45],
+  ["pitch +30° / yaw +30°",30,30],["pitch +30° / yaw -30°",30,-30]
+ ]){
+  res.bowAngles.push({input:name,...shoot({hands:rh,pitch,yaw})});
+ }
+
+ // CASE 3: Where string hand draws from (straight, low hip, high above eye, across body, behind bow-hand side)
+ res.stringPos=[];
+ {
+  const bowPos=V(-.15,1.45,-.55);
+  const bowW=v.rig.localToWorld(bowPos.clone());
+  const fwdW=V(v.YARD.ux,0,v.YARD.uz).normalize();
+  const rightW=V(v.YARD.rx,0,v.YARD.rz).normalize();
+  const upW=V(0,1,0);
+  const cases3=[
+   ["straight back",      null],
+   ["low (hip, -30 cm y)",fwdW.clone().multiplyScalar(-1).addScaledVector(upW,-.75)],
+   ["high (above eye, +25 cm y)",fwdW.clone().multiplyScalar(-1).addScaledVector(upW,.60)],
+   ["across body (+25 cm right)",fwdW.clone().multiplyScalar(-1).addScaledVector(rightW,.65)],
+   ["bow-hand side (-25 cm left)",fwdW.clone().multiplyScalar(-1).addScaledVector(rightW,-.65)]
+  ];
+  for(const[name,vec]of cases3){
+   res.stringPos.push({input:name,...shoot({hands:rh,bowPos,strOffset:vec})});
+  }
+ }
+
+ // CASE 4: Draw distance near and past full (90, 100, 110, 130%)
+ res.drawPct=[];
+ for(const pct of[90,100,110,130]){
+  res.drawPct.push({input:pct+"%",...shoot({hands:rh,pct})});
+ }
+
+ // CASE 5: Release — clean vs 3 cm and 6 cm sideways jerk of string hand OR bow hand
+ res.release=[];
+ res.release.push({input:"clean",...shoot({hands:rh})});
+ res.release.push({input:"string jerk +3 cm",...shoot({hands:rh,jerkStr:V(.03,0,0)})});
+ res.release.push({input:"string jerk +6 cm",...shoot({hands:rh,jerkStr:V(.06,0,0)})});
+ res.release.push({input:"bow jerk +3 cm",...shoot({hands:rh,jerkBow:V(.03,0,0)})});
+ res.release.push({input:"bow jerk +6 cm",...shoot({hands:rh,jerkBow:V(.06,0,0)})});
+
+ // CASE 7: String catch distance at each cant (right-handed)
+ res.stringCatch=[];
+ for(const deg of[0,15,-15,30,-30,45,-45,60,-60,90,-90]){
+  res.stringCatch.push(probeCatch(rh,deg));
+ }
+
+ // CASE 8: 1-frame tracking hiccups (10 cm jump on string hand or bow hand, releasing immediately vs 5 frames later)
+ res.hiccups=[];
+ res.hiccups.push({input:"string jump 10 cm (release on next frame)",...shoot({hands:rh,jumpStr:V(.10,0,0),jumpHoldAfter:0})});
+ res.hiccups.push({input:"string jump 10 cm (recover 5 frames)",...shoot({hands:rh,jumpStr:V(.10,0,0),jumpHoldAfter:5})});
+ res.hiccups.push({input:"bow jump 10 cm (release on next frame)",...shoot({hands:rh,jumpBow:V(.10,0,0),jumpHoldAfter:0})});
+ res.hiccups.push({input:"bow jump 10 cm (recover 5 frames)",...shoot({hands:rh,jumpBow:V(.10,0,0),jumpHoldAfter:5})});
+
+ // CASE 6: Left-handed archer (bow in right hand) — repeat key cant & string-position cases to confirm mirroring
+ const lh=setHanded(true);
+ res.leftHand=[];
+ for(const deg of[0,45,-45,90,-90]){
+  res.leftHand.push({input:"LH cant "+deg+"°",...shoot({hands:lh,roll:deg})});
+ }
+ {
+  const bowPos=V(.15,1.45,-.55);
+  const fwdW=V(v.YARD.ux,0,v.YARD.uz).normalize();
+  const rightW=V(v.YARD.rx,0,v.YARD.rz).normalize();
+  const upW=V(0,1,0);
+  res.leftHand.push({input:"LH low (hip)",...shoot({hands:lh,bowPos,strOffset:fwdW.clone().multiplyScalar(-1).addScaledVector(upW,-.75)})});
+  res.leftHand.push({input:"LH across body (-right)",...shoot({hands:lh,bowPos,strOffset:fwdW.clone().multiplyScalar(-1).addScaledVector(rightW,-.65)})});
+ }
+
+ return res;
+}
+
+function renderTables(all){
+ const host=document.getElementById("tables");
+ for(const b of all){
+  const h=document.createElement("h2");h.textContent=`${b.bow} (full ${b.fullDrawCm} cm, vMax ${b.vMax} m/s, g ${b.g}, drag ${b.drag})`;host.append(h);
+  const addTbl=(title,rows,cols)=>{
+   const h3=document.createElement("h3");h3.textContent=title;host.append(h3);
+   const t=document.createElement("table"),hr=document.createElement("tr");
+   cols.forEach(c=>{const th=document.createElement("th");th.textContent=c;hr.append(th);});t.append(hr);
+   for(const r of rows){const tr=document.createElement("tr");cols.forEach(c=>{const td=document.createElement("td");td.textContent=r[c]===undefined||r[c]===null?"":r[c];tr.append(td);});t.append(tr);}
+   host.append(t);
+  };
+  const shotCols=["input","drawPct","speed","upDeg","sideDeg","vsRestDeg","rawShake","sentOff","result"];
+  addTbl("1. Cant",b.cant,shotCols);
+  addTbl("2. Bow pitch/yaw",b.bowAngles,shotCols);
+  addTbl("3. String position",b.stringPos,shotCols);
+  addTbl("4. Draw %",b.drawPct,shotCols);
+  addTbl("5. Release jerks",b.release,shotCols);
+  addTbl("6. Left-handed",b.leftHand,shotCols);
+  addTbl("7. String catch",b.stringCatch,["rollDeg","nockShiftCm","fromRotNockCm","fromUprightBackCm","fromUprightRightCm","fromUprightLeftCm"]);
+  addTbl("8. Tracking hiccups",b.hiccups,shotCols);
+ }
+}
+
+async function run(){
+ const bows=[
+  await runBow("v1","?release=0&lab=1&bow2=0&bow3=0"),
+  await runBow("bow2","?release=0&lab=1&bow2=1&bow3=0"),
+  await runBow("bow3","?release=0&lab=1&bow3=1")
+ ];
+ renderTables(bows);
+ const checks={
+  ranAllThree:bows.length===3,
+  baselinesHit:bows.every(b=>/^Hit at (19|20) m/.test(b.cant[0].result)&&Math.abs(b.cant[0].sideDeg)<.1),
+  leftHandWorks:bows.every(b=>/^Hit at (19|20) m/.test(b.leftHand[0].result)&&Math.abs(b.leftHand[0].sideDeg)<.1),
+  catchMatchesRadius:bows.every(b=>b.stringCatch.every(r=>Math.abs(r.fromRotNockCm-b.catchCm)<=.5)),
+  noErrors:errors.length===0
+ };
+ return{allOk:Object.values(checks).every(Boolean),checks,errors,bows};
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o))
+ .catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

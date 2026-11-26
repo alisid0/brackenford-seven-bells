@@ -601,7 +601,8 @@ function recentre(){
 function padDo(action,side,button,h){
  let said='';
  if(action==='again'){if(range.on&&!charging){
-  const st=STAGES[range.stage],mid=range.phase==='play'&&!st.lab&&(range.fired>0||st.watch);
+  const st=STAGES[range.stage],mid=(range.phase==='play'||range.phase==='closing')&&!st.lab&&(range.fired>0||st.watch);
+  if(w2On()&&range.phase==='results'&&elapsed-(range.resultsAt||0)<WATCH_SCORE.againGuard)return;
   if(mid&&!(lab.againAt&&elapsed-lab.againAt<=1.2)){lab.againAt=elapsed;said='Press again to start over';}   // a stray thumb never throws away a run
   else{lab.againAt=0;if(replay.on)endReplay();if(st.watch)watchStart();else setStage(range.stage);said='Started again';}}}
  else if(action==='next'){if(range.on&&range.phase==='results'&&rangeSigns.next.base.visible){range.pending='next';said='Next stage';}else said=range.on&&range.phase==='results'?'No next stage yet':'Next stage opens on the result';}
@@ -637,10 +638,10 @@ const board=(()=>{
   x.fillStyle=BOARD.cloth;x.fillRect(0,0,1024,640);x.strokeStyle=BOARD.edge;x.lineWidth=10;x.strokeRect(14,14,996,612);
   x.textAlign='center';x.textBaseline='middle';x.fillStyle=BOARD.edge;x.font='40px Georgia';x.fillText(range.on?'THE RANGE':'TRAINING YARD',512,70);
   x.fillStyle=BOARD.text;x.font='64px Georgia';x.fillText(info.title,512,160,960);
-  x.font='52px Georgia';let y=265;
+  const paras=info.text.includes(String.fromCharCode(10)),step=paras?58:68;x.font=paras?'44px Georgia':'52px Georgia';let y=paras?250:265;   // the end cloth: smaller lines, all clear of the bottom line
   for(const para of info.text.split('\n')){const words=para.split(' ');let line='';
-   for(const w of words){if(x.measureText(line+' '+w).width>900&&line){x.fillText(line,512,y);y+=68;line=w;}else line=line?line+' '+w:w;}
-   x.fillText(line,512,y);y+=68;}
+   for(const w of words){if(x.measureText(line+' '+w).width>900&&line){x.fillText(line,512,y);y+=step;line=w;}else line=line?line+' '+w:w;}
+   x.fillText(line,512,y);y+=step;}
   if(info.stitch){x.save();x.strokeStyle='#F0C75A';x.lineWidth=6;x.setLineDash([18,12]);x.strokeRect(40,110,944,470);x.restore();}
   if(info.mark){x.fillStyle=BOARD.mark;x.font='52px Georgia';x.fillText(info.mark,512,560,960);}
   tex.needsUpdate=true;
@@ -786,8 +787,9 @@ function watchStep(dt){
  w2.ramWait=false;
  if(ram&&watchGoing()&&ram.state==='off'&&left>RAM_RULE.least){   // one ram at a time, and none so late that it could not arrive
   if(!ram.due)ram.due=elapsed+watchRand(...RAM_RULE.again);
-  if(WATCH2)w2.ramWait=elapsed>=ram.due&&w2Count().all>=w2Phase().max;   // watch2: a ram that is due takes the next free place
-  if(elapsed>=ram.due&&!(WATCH2&&w2.ramWait)){ram.due=0;ramSet();}
+  if(WATCH2){const full=elapsed>=ram.due&&w2Count().all>=w2Phase().max;   // watch2: a ram that is due comes on time; on a full field the oldest shade not after the bell steps off for it
+   if(full){if(!w2.ramFull){w2.ramFull=elapsed;w2Retire();}w2.ramWait=elapsed-w2.ramFull<2;}else w2.ramWait=false;}
+  if(elapsed>=ram.due&&!(WATCH2&&w2.ramWait)){ram.due=0;w2.ramFull=0;ramSet();}
  }
  if(WATCH2)return;
  for(const sp of spirits){
@@ -808,17 +810,17 @@ function watchStep(dt){
 const WATCH2=WATCH&&(QUERY.has('watch2')?QUERY.get('watch2')==='1':!!CONFIG.watch2);
 const WATCH_PHASES=[   // until (s into the run), most shades in view, of them hares and crows, refill delay, share for the bell, most for the bell at once, speed
  {until:10,max:3,hares:2,crows:1,again:[2.6,3.4],hareBell:.5,crowBell:0,maxBell:1,speed:.75,name:'calm'},
- {until:35,max:5,hares:3,crows:2,again:[2,2.8],hareBell:.45,crowBell:0,maxBell:2,speed:.85,name:'build'},
+ {until:35,max:5,hares:3,crows:2,again:[2,2.8],hareBell:.55,crowBell:0,maxBell:2,speed:.85,name:'build'},
  {until:60,max:6,hares:4,crows:2,again:[1.6,2.4],hareBell:.5,crowBell:.2,maxBell:2,speed:.95,name:'build'},
  {until:170,max:7,hares:4,crows:3,again:[1.2,2],hareBell:.55,crowBell:.3,maxBell:2,speed:1,name:'crest'},
  {until:1e9,max:0,hares:0,crows:0,again:[99,99],hareBell:0,crowBell:0,maxBell:0,speed:1,name:'release'}];
 const WATCH_HARE={runSpeed:3.8,laneRunSpeed:4.8,laneCreepSpeed:1.1,creepSpeed:1.4,dashSpeed:4.6,dashAt:4.5,coilSec:.45,tellRun:1.4,tellRunCalm:1.8,tellCreep:1.2,curveBow:3.5,straightenAt:5.5,rearSec:1,rearLive:.85,runnerMix:.6,opener:2.5};
 const WATCH_CROW={perchTell:1,perchWait:[12,16],bankSec:1.2,bankSpeed:2.8,bankRoll:.96,glideSpeed:4.2,forkY:2.8,landSec:.95,landLive:.8,scatterAir:11,bankFrom:[11,16]};   // bankFrom: a crossing crow banks when 11 to 16 m from the fork, so its glide down is a long one
-const WATCH_STAY=[12,18];   // Claude's addition: a shade that is not after the bell drifts off after this long, so the field keeps changing even when nobody shoots
+const WATCH_STAY=[10,15];   // a shade that is not after the bell drifts off after this long, so the field keeps changing even when nobody shoots (Gemini's review: 10 to 15 s)
 const WATCH_SCORE={ribbons:[[5,1.1],[10,1.25],[20,1.4]],snapMaxSec:.65,snapMinDist:10,snapBonus:35,longMinSec:.9,longMinDist:24,longBase:55,longPerM:4,ringChimeCool:.8,ringScatterCool:4,bellBreather:2.5,overlap:3,stagger:1.2,endGrace:2.5,againGuard:.8,lastShots:10};
 const RIBBON_NAMES={5:'Cream ribbon',10:'Red ribbon',20:'Gold ribbon'};
 const w2={};
-function w2Reset(){Object.assign(w2,{opened:false,dueH:0,dueC:0,last:-9,bellAt:-9,breather:0,scatterAt:-9,chimeAt:-9,snaps:0,longs:0,bands:0,peakShades:0,peakBell:0,lastShots:false,gain:0,ramWait:false});}
+function w2Reset(){Object.assign(w2,{opened:false,dueH:0,dueC:0,last:-9,bellAt:-9,breather:0,scatterAt:-9,chimeAt:-9,snaps:0,longs:0,bands:0,peakShades:0,peakBell:0,lastShots:false,gain:0,ramWait:false,ramFull:0});}
 w2Reset();
 const w2On=()=>WATCH2&&range.on&&!!STAGES[range.stage]&&!!STAGES[range.stage].watch;
 const w2Phase=()=>{const t=elapsed-range.t0;return WATCH_PHASES.find(p=>t<p.until);};
@@ -867,6 +869,13 @@ function w2Step(left){
  if(C.h<P.hares){if(!w2.dueH)w2.dueH=elapsed+watchRand(...P.again);if(elapsed>=w2.dueH){w2.dueH=0;w2Spawn(false,false);return;}}else w2.dueH=0;
  if(C.c<P.crows){if(!w2.dueC)w2.dueC=elapsed+watchRand(...P.again);if(elapsed>=w2.dueC){w2.dueC=0;w2Spawn(true,false);}}else w2.dueC=0;
 }
+// make room for a ram that is due: the oldest shade that is not after the bell (and not the perched crow) leaves
+function w2Retire(){
+ const old=spirits.filter(sp=>w2Busy(sp)&&sp.cfg&&!sp.cfg.toBell&&sp.cfg.t!=='perch'&&!sp.w2c&&((!sp.bird&&sp.state==='idle')||(sp.bird&&sp.state==='gap'))).sort((a,b)=>(a.w2leave||1e9)-(b.w2leave||1e9))[0];
+ if(!old)return;
+ if(!old.bird){old.state='startled';old.t=0;old.live=false;}else{old.base.visible=false;old.state='off';old.live=false;}
+ rangeTargets();
+}
 // a shade has reached the bell: one thorn band (three at most), and it is gone
 function w2Bind(sp){
  const b=peal.root;
@@ -879,14 +888,14 @@ function w2HareStep(sp,dt){
  if(sp.state!=='idle')return;
  const W=sp.w2,H=WATCH_HARE,P=w2Phase(),k=P.speed*sp.pace,b=sp.base.position,foot=watchFoot(),[fx,fz]=yardAt(...foot),d=hyp(fx-b.x,fz-b.z);
  W.t+=dt;sp.lookUntil=0;
- const hop=(gait)=>{const h=Math.max(0,Math.sin(sp.phase))*(gait>=1?.16:.05);sp.root.position.y=lerp(sp.root.position.y,h,Math.min(1,dt*12));};
- const move=(tx,tz,spd,gait)=>{const dx=tx-b.x,dz=tz-b.z,dd=hyp(dx,dz)||1,go=Math.min(dd,spd*dt);b.x+=dx/dd*go;b.z+=dz/dd*go;b.y=groundAt(b.x,b.z);spiritFace(sp,tx,tz);sp.gaitTo=gait;sp.phase+=dt*(gait>=1?13:6.5)*Math.max(.5,spd/4);w2Lane(b,sp);hop(gait);};
+ const hop=(gait)=>{const h=sp.bound?0:Math.max(0,Math.sin(sp.phase))*(gait>=1?.16:.05);sp.root.position.y=lerp(sp.root.position.y,h,Math.min(1,dt*12));};
+ const move=(tx,tz,spd,gait)=>{const dx=tx-b.x,dz=tz-b.z,dd=hyp(dx,dz)||1,go=Math.min(dd,spd*dt);b.x+=dx/dd*go;b.z+=dz/dd*go;b.y=groundAt(b.x,b.z);if(sp.bound)sp.cyc+=go/((gait>=1?HARE_MOVES.run:HARE_MOVES.lope).stride*HARE_SCALE*SPIRIT_SIZE);spiritFace(sp,tx,tz);sp.gaitTo=gait;sp.phase+=dt*(gait>=1?13:6.5)*Math.max(.5,spd/4);w2Lane(b,sp);hop(gait);};
  const flare=o=>{sp.flare.opacity=o*sp.ember.opacity;for(const f of sp.flares)f.scale.setScalar(1+o*1.3);};
  if(W.s==='tell'){
   spiritFace(sp,fx,fz);sp.gaitTo=0;const tell=W.kind==='run'?(P.name==='calm'?H.tellRunCalm:H.tellRun):H.tellCreep,u=Math.min(1,W.t/.35);
-  if(W.kind==='run'){W.rear=.45*u;W.ear=.55*u;sp.root.position.y=.18*u;flare(.85*u);}
+  if(W.kind==='run'){W.rear=.45*u;W.ear=.55*u;if(!sp.bound)sp.root.position.y=.18*u;flare(.85*u);}
   else{sp.sunk=1;W.ear=-.65*u;flare(.7*u);}
-  if(W.t===dt&&W.kind==='run')note(95,.12,'sine',.04,.2);
+  if(!W.thumped&&W.kind==='run'){W.thumped=true;note(95,.12,'sine',.04,.2);}
   if(W.t>=tell){W.t=0;if(W.kind==='run'){W.s='run';const a0=sp.along,r0=sp.right,da=foot[0]-a0,dr=foot[1]-r0,L=hyp(da,dr)||1;let pa=-dr/L,pr=da/L;if(pa<0){pa=-pa;pr=-pr;}
    W.p0=[a0,r0];W.p2=foot;W.p1=[clamp((a0+foot[0])/2+pa*H.curveBow,13,30),(r0+foot[1])/2+pr*H.curveBow];}else W.s='stalk';}
   return;
@@ -902,11 +911,11 @@ function w2HareStep(sp,dt){
  W.rear=lerp(W.rear,0,Math.min(1,dt*6));
  if(W.s==='run'){
   W.ear=lerp(W.ear,.2,Math.min(1,dt*4));flare(.5);
-  if(d<=H.straightenAt||W.u>=1)move(fx,fz,H.runSpeed*k,1);
+  if(d<=H.straightenAt-1||W.u>=1)move(fx,fz,H.runSpeed*k,1);
   else{   // along the curve, at the same pace
    const[p0,p1,p2]=[W.p0,W.p1,W.p2],u=W.u,da=2*(1-u)*(p1[0]-p0[0])+2*u*(p2[0]-p1[0]),dr=2*(1-u)*(p1[1]-p0[1])+2*u*(p2[1]-p1[1]);
    W.u=Math.min(1,u+H.runSpeed*k*dt/(hyp(da,dr)||1));const v=W.u,a=(1-v)*(1-v)*p0[0]+2*(1-v)*v*p1[0]+v*v*p2[0],r=(1-v)*(1-v)*p0[1]+2*(1-v)*v*p1[1]+v*v*p2[1],[x,z]=yardAt(a,r);
-   move(x,z,H.runSpeed*k*1.5,1);
+   const m=clamp((H.straightenAt-d),0,1);move(lerp(x,fx,m),lerp(z,fz,m),H.runSpeed*k*1.5,1);
   }
  }else if(W.s==='stalk'){sp.sunk=1;W.ear=-.65;flare(.7);move(fx,fz,H.creepSpeed*k,.45);if(d<=H.dashAt){W.s='coil';W.t=0;}}
  else if(W.s==='coil'){sp.sunk=1;sp.gaitTo=0;W.ear=.5;flare(1);hop(0);if(W.t>=H.coilSec){W.s='dash';W.t=0;note(420,.15,'sawtooth',.04,0,260);}}
@@ -922,6 +931,7 @@ function w2CrowStep(sp,dt,play){
   const u=Math.min(1,W.t/C.bankSec),y0=Math.atan2(W.v0.x,W.v0.z),y1=Math.atan2(fork.x-b.x,fork.z-b.z),yaw=y0+Math.atan2(Math.sin(y1-y0),Math.cos(y1-y0))*u,spd=lerp(W.v0.length(),C.bankSpeed,u);
   b.x+=Math.sin(yaw)*spd*dt;b.z+=Math.cos(yaw)*spd*dt;sp.base.rotation.y=yaw;sp.beat-=dt*11;
   const ax=YARD.x-b.x,az=YARD.z-b.z,side=Math.sign(Math.sin(yaw)*az-Math.cos(yaw)*ax)||1;sp.root.rotation.z=-side*C.bankRoll*Math.sin(Math.PI*Math.min(1,u*1.15));
+  sp.flare.opacity=.85*sp.ember.opacity;
   if(u>=1){W.s='glide';W.t=0;sp.root.rotation.z=0;}
  }else if(W.s==='glide'){
   const d=fork.clone().sub(b),dist=d.length(),go=C.glideSpeed*k*dt;sp.root.rotation.x=.1;sp.root.rotation.z=0;
@@ -1081,7 +1091,7 @@ function standingPose(sp,dt){
  // ears: sway, lie back in fear, prick when it looks, and one twitches now and then
  EARS2.forEach((chain,side)=>chain.forEach((name,i)=>{
   const k=(i+1)/3,lag=t*2.3-i*.6+side*1.3;
-  add(name,Math.sin(lag)*.04+(i<2?sp.fear*.22-sp.look*.06:0),0,(side?-1:1)*(Math.sin(lag*.7)*.03)+(sp.twitch>0&&side===sp.twitchSide?Math.sin(sp.twitch*40)*.1*k:0));
+  add(name,Math.sin(lag)*.04+(i<2?sp.fear*.22-sp.look*.06:0)+(sp.w2?sp.w2.ear*k:0),0,(side?-1:1)*(Math.sin(lag*.7)*.03)+(sp.twitch>0&&side===sp.twitchSide?Math.sin(sp.twitch*40)*.1*k:0));
  }));
  if(sp.twitch>0)sp.twitch-=dt;else if(Math.random()<dt*.25){sp.twitch=.25;sp.twitchSide=Math.random()<.5?0:1;}
 }
@@ -1447,7 +1457,7 @@ for(let k=0;k<5;k++){
 }
 // one pass across the lane for a crossing shade: a fresh side, height and speed every time
 function birdPass(sp){
- const side=Math.random()<.5?-1:1,along=sp.cfg.lane+(Math.random()-.5)*3,[x,z]=yardAt(along,-side*12),h=3.2+Math.random()*3.6,speed=6.5+Math.random()*3;
+ const side=Math.random()<.5?-1:1,along=sp.cfg.lane+(Math.random()-.5)*3,[x,z]=yardAt(along,-side*12),W2=w2On(),h=W2?(sp.cfg.toBell?4.2+Math.random()*1.6:3.2+Math.random()*3):3.2+Math.random()*3.6,speed=W2?(6+Math.random()*2)*w2Phase().speed:6.5+Math.random()*3;
  sp.base.position.set(x,groundAt(x,z)+h,z);sp.vel.set(YARD.rx*side*speed,0,YARD.rz*side*speed);sp.passFor=24/speed;sp.height=sp.base.position.y;
  sp.base.rotation.y=Math.atan2(sp.vel.x,sp.vel.z);sp.state='idle';sp.t=0;sp.air=1;sp.live=true;sp.root.visible=true;spiritShow(sp,1);rangeTargets();
 }
@@ -1505,7 +1515,7 @@ function birdStep(sp,dt,play){
  // perched: it turns to look at the archer, eyes flaring, as the hares do
  if(play&&w2On()&&sp.mode==='perch'){   // watch2: now and then the perched crow goes for the bell
   if(!sp.w2wait)sp.w2wait=elapsed+watchRand(...WATCH_CROW.perchWait);
-  if(elapsed>=sp.w2wait){sp.w2wait=0;const P=w2Phase(),C=w2Count();if(watchGoing()&&P.crowBell>0&&C.bell<P.maxBell&&elapsed>=w2.breather&&Math.random()<P.crowBell){sp.cfg={...sp.cfg,toBell:true};w2.bellAt=elapsed;sp.w2c={s:'tell',t:0};return;}}
+  if(elapsed>=sp.w2wait){sp.w2wait=0;const P=w2Phase(),C=w2Count();if(watchGoing()&&P.crowBell>0&&C.bell<P.maxBell&&elapsed>=w2.breather&&Math.random()<P.crowBell){sp.cfg={...sp.cfg,toBell:true};if(C.bell>=1&&elapsed-w2.bellAt<WATCH_SCORE.overlap)w2.breather=elapsed+WATCH_SCORE.bellBreather;w2.bellAt=elapsed;sp.w2c={s:'tell',t:0};return;}}
  }
  if(elapsed>sp.nextLook){sp.lookUntil=elapsed+1.5;sp.nextLook=elapsed+3+Math.random()*3;}
  sp.look+=((sp.lookUntil>elapsed?1:0)-sp.look)*Math.min(1,dt*7);
@@ -1947,7 +1957,7 @@ function rangeInfo(){
  const i=range.stage,st=STAGES[i],R=state.range,w=Math.round(range.wind),wind=w?'Wind '+Math.abs(w)+(w>0?'  →':'  ←'):'Still air';
  if(st.watch){const left=Math.max(0,Math.ceil((range.endAt||0)-elapsed)),clock=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
   if(WATCH2&&range.phase==='results'){const rb=w2Ribbon(range.best);return{title:'Bell Watch'+(rb?'  ·  '+rb:''),stitch:range.newBest,
-   text:'Score '+range.score+'      '+(range.newBest?(w2.gain?'New best  +'+w2.gain:'New best'):'Best '+(R.watchBest||0))+'\nShades banished '+range.hits+'  ·  Snaps '+w2.snaps+'  ·  Long '+w2.longs+'\nBell rung '+(range.rings|0)+'×  ·  '+(range.clear?'Bell clear (+'+WATCH_BELL.bonus+')':peal.root?'Bell ended bound':'No bell'),mark:'Shoot AGAIN for another run'+fpsText(),wind};}
+   text:'Score '+range.score+'      '+(range.newBest?(w2.gain?'New best  +'+w2.gain:'New best'):'Best '+(R.watchBest||0))+'\nBanished '+range.hits+'  ·  Snaps '+w2.snaps+'  ·  Long '+w2.longs+'\nBell rung '+(range.rings|0)+'×  ·  '+(range.clear?'Bell clear (+'+WATCH_BELL.bonus+')':peal.root?'Bell ended bound':'No bell'),mark:'Shoot AGAIN for another run'+fpsText(),wind};}
   if(WATCH2)return{title:'Bell Watch  ·  '+(range.phase==='closing'?'0:00':clock),text:'Score '+range.score+'      Hits '+range.streak+(w2Ribbon(range.streak)?'      '+w2Ribbon(range.streak)+' ×'+w2Mult(range.streak):'')+quiverText(),mark:(w2.lastShots?'Last shots      ':'')+'Best '+(R.watchBest||0)+fpsText(),wind};
   return range.phase==='results'?{title:'Bell Watch  ·  '+range.score,text:'Score '+range.score+(range.newBest?'  ·  new best'+(range.gain?'  +'+range.gain:''):'  ·  best '+(R.watchBest||0))+'.  Shades banished '+range.hits+', longest streak '+range.best+'.'+(range.clear?'  Bell clear at the end: +'+WATCH_BELL.bonus+'.':peal.root?'  The bell ended bound.':'')+'  Shoot AGAIN for another run.',mark:'Best '+(R.watchBest||0)+fpsText(),wind}
    :{title:'Bell Watch  ·  '+clock,text:'Score '+range.score+'      Streak '+range.streak+'      Banished '+range.hits+quiverText(),mark:'Best '+(R.watchBest||0)+'      arrows never run out'+fpsText(),wind};}
@@ -1976,7 +1986,7 @@ function rangeStep(dt){
  }
  spiritStep(dt);ramStep(dt);
  guide.set(guideText());
- if(range.phase==='play'&&range.endAt&&elapsed>=range.endAt){if(w2On()&&projectiles.some(p=>p.ranged&&!p.done)){range.phase='closing';range.closeAt=elapsed+WATCH_SCORE.endGrace;}else rangeResults();}
+ if(range.phase==='play'&&range.endAt&&elapsed>=range.endAt){if(w2On()&&projectiles.some(p=>p.ranged&&!p.done)){range.phase='closing';range.closeAt=elapsed+WATCH_SCORE.endGrace;if(charging)cancel();}else rangeResults();}
  if(range.phase==='closing'&&(elapsed>=range.closeAt||!projectiles.some(p=>p.ranged&&!p.done)))rangeResults();
  const info=rangeInfo(),key=info.title+info.text+info.mark;
  if(key!==range.last){range.last=key;board.set(key,info);$('status').textContent=info.title+'\n'+info.text.replace(/      /g,'  ·  ')+'\n'+info.mark.replace(/      /g,'  ·  ');}
@@ -2330,7 +2340,7 @@ if(LOG){
  plogRate(false);setTimeout(plogFlush,1000);setInterval(plogFlush,5000);   // sent on its own clock, so rows go even before the game starts
 }
 function loose(origin,dir,power,perfect=false){
- if(power<BOW.minLoose||(range.on&&(range.phase==='replay'||(range.phase==='play'&&range.arrows<=0)))){if(power<BOW.minLoose)plogCancel(power);if(BOW2&&power<BOW.minLoose)buzz(drawHand||quickHand,...HAP.cancel);cancel();return;}
+  if(power<BOW.minLoose||(range.on&&(range.phase==='replay'||range.phase==='closing'||(range.phase==='play'&&range.arrows<=0)))){if(power<BOW.minLoose)plogCancel(power);if(BOW2&&power<BOW.minLoose)buzz(drawHand||quickHand,...HAP.cancel);cancel();return;}
  if(projectiles.length>48)recycle(0);
  if(BOW3)dir=graceAim(origin,dir,arrowSpeed(power));
  const o=pool.pop()||arrow();scene.add(o);o.visible=true;o.position.copy(origin);o.quaternion.setFromUnitVectors(FWD,dir);
@@ -2618,7 +2628,7 @@ function grabClimb(h){
 // Single-handed: hold any trigger and the bow draws by itself; let go and the arrow flies straight out of the bow.
 // Tracked hands have no trigger, so they always take the string.
 function startDraw(h){
- if(vrMenu.open)return;
+ if(vrMenu.open||(range.on&&range.phase==='closing'))return;
  if(BOW3&&elapsed-twang<BOW.ready){if(BOW.ready-(elapsed-twang)<=BOW.buffer)bow3wait={h,at:elapsed};return;}   // no arrows while the cloth menu is up
  if(replay.on){range.skip=true;return;}
  if(!h.pose||!bowHand||!bowHand.pose||charging||hands.some(x=>x.climb))return;

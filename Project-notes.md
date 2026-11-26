@@ -508,3 +508,15 @@ Claude's additions, to be audited by Gemini:
 | Quick against careful | | 14,746 against 15,587 | Ratio 0.95 (Gemini's range 0.90–1.10) |
 
 Three or four rams appear per run, not always four: a ram that is due waits for a free place on a full field.
+
+## Bell Watch, Gemini's review of the second cut (26 November 2026)
+
+Gemini reviewed the watch2 build (`design/bell-watch-review.md`, branch `gemini/bell-watch-review`). Claude made these changes, still behind `watch2` (off by default):
+
+- **Must-fix bugs, all fixed:** the standing hare running for the bell now bounds instead of sliding (its stride follows the ground it covers) and no longer floats 18 cm during its tell; its ears now move during the tell and the creep; the A button on a controller now waits the same 0.8 s as the AGAIN sign, and asks twice during the closing seconds; the end cloth uses smaller lines (44 px) so its three lines never run into the bottom line.
+- **Should-fix, done:** crossing crows fly 6 to 8 m/s scaled by the phase, and bell crows fly 4.2 to 5.8 m high so they clearly glide down; a crow's eyes flare during its bank; the perched crow respects the breather; at 0:00 a draw in hand is let down and no new arrow can be drawn; the tell sound uses a flag, not a float comparison; a runner's curve blends into its straight over a metre.
+- **Pacing, done:** turnover 10 to 15 s (was 12 to 18); bell share in early build 0.55 (was 0.45); a ram that is due now comes on time, and on a full field the oldest shade not after the bell steps off for it (at most 2 s wait).
+- **Not taken:** Gemini's sitter changes (worth 150 instead of 100, and 30% instead of 45% of lane hares). In bot runs they pushed quick shooters 18 to 63% ahead of careful long shooters; without them the two stay close. The fair score came into range from Gemini's bot changes alone.
+- **Bot test:** the fair bot shoots every 2.8 s, shoots rams, and matches its draw to the distance; idle three-bands range widened to 22 to 36 s; the crow check now follows its own crow to the end (it failed once when a hare banded first).
+
+Results over six runs after the fixes: all 22 checks pass every time, no errors. Single runs move a lot: idle bands a minute 5.7 to 9.7, fair score 12.6k to 16.7k, quick-against-long 0.67 to 1.6. Rams are 3 a run for most bots: Gemini expected 4, but the ram rule's own spacing (34 to 38 s after the last one ends, none in the last 20 s) leaves room for only 3 when a ram is not shot quickly. Not verified: anything in a headset.

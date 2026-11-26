@@ -14,7 +14,7 @@ function game(query){return new Promise(done=>{const f=document.getElementById("
 const pause=()=>new Promise(r=>setTimeout(r,0));
 const PROFILES={
  idle:{every:0},
- fair:{every:3,hit:.7,ring:2,perfect:.5,mix:true},
+ fair:{every:2.8,hit:.7,ring:2,perfect:.5,mix:true,rams:true},
  good:{every:2,hit:.85,ring:1,perfect:.6,mix:true,rams:true},
  snap:{every:2.4,hit:.65,ring:2,perfect:.25,draw:.45,maxD:22},
  long:{every:3.6,hit:.82,ring:2,perfect:.75,draw:1.1,minD:24}};
@@ -50,7 +50,7 @@ async function bot(name){
    if(P.maxD){const near=list.filter(x=>x.d<P.maxD);if(near.length||v.elapsed-nextShot<1.5)list=near;}if(P.minD){const far=list.filter(x=>x.d>=P.minD);if(far.length||v.elapsed-nextShot<1.5)list=far;}
    if(!list.length)continue;
    list.sort((a,b)=>((P.rams&&b.s.ram)-(P.rams&&a.s.ram))||((b.s.cfg&&b.s.cfg.toBell?1:0)-(a.s.cfg&&a.s.cfg.toBell?1:0))||a.d-b.d);
-   const pick=list[0],draw=P.draw||(P.mix?[.5,.5,.5,.75,.75,.75,.75,1.1,1.1,1.1][Math.floor(Math.random()*10)]:.75);
+   const pick=list[0],draw=P.draw||(P.mix?(pick.d>=24?(Math.random()<.65?1.1:.75):(Math.random()<.5?.5:.75)):.75);
    m.shots++;r.fired++;if(Math.random()<P.hit)pend.push({target:pick.s,at:v.elapsed+pick.d/55+.05,perfect:Math.random()<P.perfect,draw});
    nextShot=v.elapsed+P.every;
   }
@@ -81,8 +81,8 @@ async function details(){
  // a crow for the bell: bank, glide, land, band
  {const sp=v.spirits.find(s=>s.bird&&s.mode==="cross"&&s.base.visible)||v.spirits.find(s=>s.bird&&!s.base.visible);sp.base.visible=false;sp.state="off";
   const cfg={t:"cross",lane:20,toBell:true};sp.cfg=cfg;sp.set(sp,cfg);
-  const states=[];const b0=v.w2.bands;let bankRoll=0;for(let i=0;i<60*20;i++){steps(1);if(sp.w2c){if(states[states.length-1]!==sp.w2c.s)states.push(sp.w2c.s);if(sp.w2c.s==="bank")bankRoll=Math.max(bankRoll,Math.abs(sp.root.rotation.z));}if(v.w2.bands>b0)break;if(sp.state==="gap"&&!states.length){sp.t=sp.gapFor;}}
-  o.crow={states:states.join(">"),banded:v.w2.bands>b0,bankRoll:+bankRoll.toFixed(2),value:sp.value};}
+  const states=[];const b0=v.w2.bands;let bankRoll=0;for(let i=0;i<60*20;i++){steps(1);if(sp.w2c){if(states[states.length-1]!==sp.w2c.s)states.push(sp.w2c.s);if(sp.w2c.s==="bank")bankRoll=Math.max(bankRoll,Math.abs(sp.root.rotation.z));}if(states.includes("land")&&!sp.w2c)break;if(sp.state==="gap"&&!states.length){sp.t=sp.gapFor;}}
+  o.crow={states:states.join(">"),banded:v.w2.bands>b0&&states.includes("land")&&!sp.w2c,bankRoll:+bankRoll.toFixed(2),value:sp.value};}
  // ribbons: 5, 10 and 20 hits give x1.1, x1.25, x1.4
  o.mult=[1,4,5,9,10,19,20,40].map(k=>v.w2Mult(k));
  // snap and long shots, from a real loose with the draw timed
@@ -130,7 +130,7 @@ async function run(){
   off:o.off.WATCH2===false&&o.off.shades>=5,
   noErrors:errors.length===0};
  // Gemini's ranges, reported rather than failed on: the numbers are tuned against these
- o.ranges={idleFirstBand:inR(I.firstBand,8.5,12),idleThreeBands:inR(I.threeBands,20,32),idleBandsPerMin:inR(I.bandsPerMin,5.5,8),fairBandsPerMin:inR(F.bandsPerMin,2,3.5),fairIdle:F.idle<=3,fairScore:inR(F.score,14000,18500)};
+ o.ranges={idleFirstBand:inR(I.firstBand,8.5,12),idleThreeBands:inR(I.threeBands,22,36),idleBandsPerMin:inR(I.bandsPerMin,5.5,8),fairBandsPerMin:inR(F.bandsPerMin,2,3.5),fairIdle:F.idle<=3,fairScore:inR(F.score,14000,18500)};
  if(G)Object.assign(o.ranges,{goodBandsPerMin:inR(G.bandsPerMin,0,1.2),goodScore:inR(G.score,26000,33000),parity:B.snap&&B.long?+(B.snap.score/B.long.score).toFixed(2):null});
  o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
 }

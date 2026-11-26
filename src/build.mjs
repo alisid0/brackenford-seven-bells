@@ -13,6 +13,7 @@ if (!three.includes('window.THREE=')) throw new Error('three.js block not found'
 const assets = join(here, '..', 'assets'), models = {};
 if (existsSync(assets)) for (const f of readdirSync(assets)) if (f.endsWith('.json')) { const m = JSON.parse(readFileSync(join(assets, f), 'utf8')); if ((m.body && m.head) || m.bones) models[f.slice(0, -5)] = m; }
 const config = JSON.parse(readFileSync(join(here, 'config.json'), 'utf8'));
+try { config.build = (await import('child_process')).execSync('git rev-parse --short HEAD', { cwd: here }).toString().trim() + ' ' + new Date().toISOString().slice(0, 10); } catch { config.build = new Date().toISOString().slice(0, 10); }
 // --new-hare makes a separate trial build, Brackenford-Seven-Bells-new-hare.html, that also carries the standing hare
 // from assets/staging and its timed movement (src/moves.js). Without it the normal build has neither.
 const newHare = process.argv.includes('--new-hare');

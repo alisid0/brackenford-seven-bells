@@ -1591,6 +1591,7 @@ function rangeNear(q){
 function rangeEnded(q){
  if(!q.ranged||q.done)return;q.done=true;
  q.path.push(q.o.position.clone());rangeNear(q);
+ plogShot(q,{hit:false,landed:Math.round(q.origin.distanceTo(q.o.position)),missBy:q.near?r2(q.near.off):null});
  if(q.lab)q.lab.result='Miss      landed '+Math.round(q.origin.distanceTo(q.o.position))+' m out'+(q.near?'      passed '+q.near.off.toFixed(2)+' m from a target':'')+'      flight '+(elapsed-q.lab.t0).toFixed(2)+' s';
  if(q.near&&(!range.closest||q.near.off<range.closest.off))range.closest={path:q.path,miss:true,...q.near};
  if(q.final&&q.near&&q.near.off<=4)range.lastShot={path:q.path,miss:true,...q.near};   // a final arrow that only just missed is still shown
@@ -1607,6 +1608,7 @@ function rangeHit(t,q){
  const pts=Math.round((ring+dist)*Math.min(2,1+.1*(range.streak-1))*(q.perfect?1.25:1));range.score+=pts;
  q.path.push(at.clone());const shot={path:q.path,pts,ring:spirit?100:ring,spirit,target:t,base:t.base.position.clone(),off:r*t.scale};
  if(q.lab)q.lab.result='Hit at '+dist+' m      '+Math.round(shot.off*100)+' cm off centre      flight '+(elapsed-q.lab.t0).toFixed(2)+' s';
+ plogShot(q,{hit:true,at:dist,off:r2(shot.off),pts,ring:shot.ring,shade:spirit,ram:!!t.ram});
  if(!range.closest||shot.off<range.closest.off)range.closest=shot;
  if(shot.ring===100&&(!range.shot||pts>range.shot.pts))range.shot=shot;   // the best bullseye, or the best waking, of the stage
  if(q.final)range.lastShot=shot;                                     // or the final arrow of the stage, wherever it hit
@@ -1631,6 +1633,7 @@ function rangeResults(){
    if(won&&!had){(R.ribbon||(R.ribbon=[]))[i]=1;range.ribbon='◆ Ribbon earned: '+rb.name;}else range.ribbon=had?'◆ '+rb.name:'◇ Ribbon: '+rb.name+' ('+rb.goal+')';}}
  range.earned=Math.round(range.score/20)+Math.max(0,stars-(R.stars[i]||0))*25;state.coins+=range.earned;
  if(watching&&peal.root){range.clear=!(peal.root.userData.bound|0);if(range.clear){range.score+=WATCH_BELL.bonus;pealRing(false);}range.newBest=range.score>before;range.gain=REPLAY&&range.newBest&&before?range.score-before:0;}
+ if(LOG){plog.stages++;plogAdd('stage',{name:STAGES[i].name,score:range.score,stars:watching?null:stars,hits:range.hits,fired:range.fired,perfect:range.perfectHits,secs:Math.round(elapsed-range.t0),bell:watching?!!range.clear:null});}
  if(watching){if(range.newBest)R.watchBest=range.score;range.stars=0;range.earned=0;R.best[-1]=Math.max(before,range.score);R.runs=(R.runs|0)+1;save();range.shot=null;showResults();return;}
  if(range.newBest)R.best[i]=range.score;R.stars[i]=Math.max(R.stars[i]||0,stars);if(stars&&R.open<i+1)R.open=Math.min(STAGES.length-1,i+1);
  // one replay at most. Up close: the best bullseye, or failing that the final arrow, hit or near miss.
@@ -2088,15 +2091,91 @@ function graceAim(origin,dir,speed){
  const turn=Math.min(bestA*G.blend,G.cap*Math.PI/180)/bestA,q=new T.Quaternion().setFromUnitVectors(dir.clone().normalize(),best);
  return dir.clone().applyQuaternion(new T.Quaternion().slerp(q,turn)).normalize();
 }
+// ---- Playtest log (?log=1, or "log" in src/config.json; off by default). Sends what happened in a test to the playtest
+// store named by CONFIG.logTo (a Supabase table the page can only add to, through playtest_add): a session row at the start, one row per shot or
+// cancel, one per finished stage, an end row with the time played and the frame rate, and the rating the tester gives after
+// leaving the headset. A random session id only; nothing that identifies the player. Rows wait in this browser until sent.
+const LOG_DRY=QUERY.get('log')==='dry';   // the tests: rows are kept in plog.sent, never sent
+const LOG=(QUERY.has('log')?QUERY.get('log')==='1'||LOG_DRY:!!CONFIG.log)&&!!(CONFIG.logTo&&CONFIG.logTo.url&&CONFIG.logTo.key);
+const PLOG_KEY='bow-shadow-playlog-queue',r2=n=>n==null||!isFinite(n)?null:Math.round(n*100)/100;
+const plog={sent:[],id:'',q:[],sentAt:0,busy:false,shots:0,hits:0,cancels:0,stages:0,frames:0,ftime:0,slow:0,xrTime:0,xrWas:false,t0:Date.now(),panel:null};
+const plogUuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16));
+function plogAdd(kind,data){
+ if(!LOG)return;
+ plog.q.push({rid:plogUuid(),session:plog.id,kind,test:location.search.slice(0,200),bow:BOW3?'fun':BOW2?'v2':'v1',build:String(CONFIG.build||'').slice(0,40),sent_at:null,data});
+ if(plog.q.length>2000)plog.q.splice(0,plog.q.length-2000);
+ if(!LOG_DRY)try{localStorage.setItem(PLOG_KEY,JSON.stringify(plog.q));}catch{}
+}
+function plogFlush(final){
+ if(!LOG||plog.busy||!plog.q.length)return;
+ const rows=plog.q.slice(0,final?60:200),now=new Date().toISOString();rows.forEach(r=>r.sent_at=now);
+ if(LOG_DRY){plog.sent.push(...plog.q.splice(0,rows.length));plog.sentAt=performance.now();return;}
+ plog.busy=true;
+ fetch(CONFIG.logTo.url+'/rest/v1/rpc/playtest_add',{method:'POST',keepalive:!!final,headers:{apikey:CONFIG.logTo.key,'Content-Type':'application/json'},body:JSON.stringify({rows})})   // a row sent twice is kept once
+  .then(r=>{if(r.ok){plog.q.splice(0,rows.length);try{localStorage.setItem(PLOG_KEY,JSON.stringify(plog.q));}catch{}}})
+  .catch(()=>{}).finally(()=>{plog.busy=false;plog.sentAt=performance.now();});
+}
+function plogEnd(why){
+ if(!LOG)return;
+ plogAdd('end',{why,secs:Math.round((Date.now()-plog.t0)/1000),xrSecs:Math.round(plog.xrTime),shots:plog.shots,hits:plog.hits,cancels:plog.cancels,stages:plog.stages,
+  fps:plog.ftime?Math.round(plog.frames/plog.ftime):null,slowShare:plog.frames?r2(plog.slow/plog.frames):null});
+ plogFlush(true);
+}
+// at the release: what the hands did. The result is added when the arrow lands (plogShot).
+function plogLoose(q,dir,power,perfect){
+ if(!LOG)return;const vr=xrOn();let cant=null;
+ if(vr&&bowHand){const up=V(0,1,0).applyQuaternion(bow.quaternion),side=dir.clone().cross(V(0,1,0));if(side.lengthSq()>1e-6)cant=Math.asin(clamp(up.dot(side.normalize()),-1,1))*57.2958;}
+ q.plog={t0:elapsed,stage:range.on&&STAGES[range.stage]?STAGES[range.stage].name:'',vr,hand:state.hand,power:r2(power),speed:r2(arrowSpeed(power)),up:r2(Math.asin(clamp(dir.y,-1,1))*57.2958),cant:r2(cant),perfect:!!perfect,
+  draw:LAB?r2(lab.drawNow):null,shake:LAB?r2(labShake(bow2.raw||dir)):null,sent:LAB&&BOW2&&bow2.raw?r2(labErr(dir)):null};
+}
+function plogShot(q,res){if(!LOG||!q.plog)return;plog.shots++;if(res.hit)plog.hits++;const d=Object.assign(q.plog,res,{flight:r2(elapsed-q.plog.t0)});delete d.t0;plogAdd('shot',d);q.plog=null;}
+function plogCancel(power){if(!LOG)return;plog.cancels++;plogAdd('shot',{cancel:true,power:r2(power),vr:xrOn(),stage:range.on&&STAGES[range.stage]?STAGES[range.stage].name:''});}
+function plogStep(dt){
+ if(!LOG)return;const vr=renderer.xr.isPresenting;
+ if(dt>0&&dt<1){plog.frames++;plog.ftime+=dt;if(dt>1.5/72)plog.slow++;}
+ if(vr)plog.xrTime+=dt;
+ if(plog.xrWas&&!vr){plogEnd('left headset');plogRate(true);}
+ plog.xrWas=vr;
+}
+// the rating, on the page after leaving the headset (a "Rate this test" button keeps it reachable)
+function plogRate(open){
+ if(!LOG)return;
+ if(!plog.panel){
+  const p=document.createElement('div');p.id='plogPanel';
+  p.style.cssText='position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:#0009;font:18px/1.4 system-ui,sans-serif;color:#eef2ee';
+  const row=(k,label,opts)=>'<div style="margin:14px 0 6px">'+label+'</div><div data-k="'+k+'" style="display:flex;gap:8px;flex-wrap:wrap">'+opts.map(o=>'<button data-v="'+o+'" style="min-width:56px;padding:12px 14px;font:inherit;border-radius:10px;border:2px solid #4a5753;background:#2a3331;color:inherit">'+o+'</button>').join('')+'</div>';
+  p.innerHTML='<div style="background:#1d2322;border-radius:16px;padding:22px;width:min(560px,92vw);max-height:92vh;overflow:auto"><b style="font-size:22px">How was that test?</b>'
+   +row('fun','Fun (1 dull, 5 great)',[1,2,3,4,5])+row('comfort','Comfort (1 sore or awkward, 5 easy)',[1,2,3,4,5])+row('aim','Did the arrow go where you expected? (1 never, 5 always)',[1,2,3,4,5])+row('sick','Any sickness or dizziness?',['none','a little','yes'])
+   +'<div style="margin:14px 0 6px">Anything else (optional)</div><textarea maxlength="500" rows="3" style="width:100%;font:inherit;border-radius:10px;background:#2a3331;color:inherit;border:2px solid #4a5753;padding:8px"></textarea>'
+   +'<div style="display:flex;gap:10px;margin-top:16px"><button data-do="send" style="flex:1;padding:14px;font:inherit;font-weight:700;border-radius:10px;border:0;background:#e2c27a;color:#1d2322">Send</button><button data-do="close" style="padding:14px 18px;font:inherit;border-radius:10px;border:2px solid #4a5753;background:transparent;color:inherit">Not now</button></div><div data-msg style="margin-top:10px;color:#a9b6b0"></div></div>';
+  const pick={};['keydown','keyup','mousedown','pointerdown','click','wheel'].forEach(t=>p.addEventListener(t,e=>e.stopPropagation()));
+  p.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+   const g=b.parentElement.dataset.k;if(g){pick[g]=b.dataset.v;[...b.parentElement.children].forEach(x=>x.style.borderColor=x===b?'#e2c27a':'#4a5753');return;}
+   if(b.dataset.do==='close'){p.style.display='none';return;}
+   if(b.dataset.do==='send'){plogAdd('rating',{...pick,note:p.querySelector('textarea').value.slice(0,500),shots:plog.shots,hits:plog.hits});plogFlush(true);p.querySelector('[data-msg]').textContent='Saved. Thank you.';setTimeout(()=>{p.style.display='none';},900);}});
+  document.body.append(p);plog.panel=p;
+  const k=document.createElement('button');k.textContent='Rate this test';k.style.cssText='position:fixed;left:10px;bottom:10px;z-index:9;padding:8px 12px;font:600 14px system-ui,sans-serif;border-radius:8px;border:0;background:#e2c27a;color:#1d2322';
+  ['mousedown','pointerdown','keydown'].forEach(t=>k.addEventListener(t,e=>e.stopPropagation()));k.addEventListener('click',e=>{e.stopPropagation();plogRate(true);});document.body.append(k);
+ }
+ if(open){const p=plog.panel;p.querySelector('[data-msg]').textContent='';p.style.display='flex';if(document.pointerLockElement)document.exitPointerLock?.();}
+}
+if(LOG){
+ if(!LOG_DRY)try{plog.q=JSON.parse(localStorage.getItem(PLOG_KEY)||'[]')||[];}catch{plog.q=[];}
+ plog.id=plogUuid();
+ plogAdd('session',{ua:navigator.userAgent.slice(0,160),screen:innerWidth+'x'+innerHeight,lab:LAB,grey:GREY,pads:PADS,hand:state.hand,draw:state.draw,reach:state.reach});
+ addEventListener('pagehide',()=>plogEnd('page closed'));
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')plogEnd('page hidden');});
+ plogRate(false);setTimeout(plogFlush,1000);setInterval(plogFlush,5000);   // sent on its own clock, so rows go even before the game starts
+}
 function loose(origin,dir,power,perfect=false){
- if(power<BOW.minLoose||(range.on&&(range.phase==='replay'||(range.phase==='play'&&range.arrows<=0)))){if(BOW2&&power<BOW.minLoose)buzz(drawHand||quickHand,...HAP.cancel);cancel();return;}
+ if(power<BOW.minLoose||(range.on&&(range.phase==='replay'||(range.phase==='play'&&range.arrows<=0)))){if(power<BOW.minLoose)plogCancel(power);if(BOW2&&power<BOW.minLoose)buzz(drawHand||quickHand,...HAP.cancel);cancel();return;}
  if(projectiles.length>48)recycle(0);
  if(BOW3)dir=graceAim(origin,dir,arrowSpeed(power));
  const o=pool.pop()||arrow();scene.add(o);o.visible=true;o.position.copy(origin);o.quaternion.setFromUnitVectors(FWD,dir);
  o.userData.body.rotation.set(0,0,0);o.userData.streak.visible=true;o.userData.streak.scale.z=.001;
  if(BOW2){const gold=perfect;o.userData.streak.material=gold?streakGold:streakMat;o.userData.streak.scale.x=gold?(BOW3?1.3:1.25):1;}
  projectiles.push({o,origin:origin.clone(),velocity:dir.clone().multiplyScalar(arrowSpeed(power)),life:0,stuck:false,power,roll:Math.random()*6,stuckAt:0,jolt:0,spent:false,flat:false});
- rangeLoosed(projectiles[projectiles.length-1],perfect);
+ rangeLoosed(projectiles[projectiles.length-1],perfect);plogLoose(projectiles[projectiles.length-1],dir,power,perfect);
  if(LAB){lab.shot=projectiles[projectiles.length-1].lab={power,speed:arrowSpeed(power),elev:Math.asin(clamp(dir.y,-1,1))*180/Math.PI,draw:lab.drawNow,shake:labShake(bow2.raw||dir),sent:BOW2&&bow2.raw?labErr(dir):null,dir:dir.clone(),t0:elapsed,result:''};lab.aims.length=0;lab.drawNow=0;}
  state.shots++;twang=elapsed;twangPower=power;
  if(BOW3){note(290,.08,'triangle',.09,0,115);note(135,.18,'sawtooth',.025*power,0,95);thump(1400,.08,.11);}   // a taut whip-snap, lighter than the longbow's
@@ -2398,7 +2477,7 @@ function endDraw(h){
  }
  if(h!==drawHand)return;
  if(charging&&h.pose&&bowHand?.pose){vrPose();
-  if(BOW2&&Math.min(charge,(h.pinch.getWorldPosition(V()).distanceTo(bow.position)-BOW.rest)/(bowFull()-BOW.rest))<BOW.minLoose){buzz(h,...HAP.cancel);cancel();drawHand=null;return;}   // angle-sim fix 4: the hand back at the bow (where it really is, not the smoothed draw) is a cancel, never a shot
+  if(BOW2&&Math.min(charge,(h.pinch.getWorldPosition(V()).distanceTo(bow.position)-BOW.rest)/(bowFull()-BOW.rest))<BOW.minLoose){plogCancel(charge);buzz(h,...HAP.cancel);cancel();drawHand=null;return;}   // angle-sim fix 4: the hand back at the bow (where it really is, not the smoothed draw) is a cancel, never a shot
   if(BOW2){bow2.raw=aimVR();const r=bowRelease();bowLearn(bow2.peak,elapsed-bow2.t0);loose(r.origin,r.dir,r.power,!!fullAt&&r.power>=BOW.fullAt-.005&&elapsed-fullAt<=BOW.sweet);bow2.raw=null;}
   else loose(preview.position,aimVR(),charge,!!fullAt&&charge>=.95&&elapsed-fullAt<=.9);}else cancel();drawHand=null;
 }
@@ -2652,7 +2731,7 @@ const eyeNow=V(),feetNow=V();let last=null;
 function tick(dt,frame){
  if(bow3wait&&elapsed-twang>=BOW.ready){const h=bow3wait.h;bow3wait=null;startDraw(h);}
  if(LAB&&!lab.started&&(playing||xrOn())){lab.started=true;labStart();}
- elapsed+=dt;frameDt=dt||.016;const vr=xrOn();
+ elapsed+=dt;frameDt=dt||.016;const vr=xrOn();plogStep(dt);
  if(vr)vrLocomotion(dt,frame);else if(playing)desktopMove(dt);
  feet(feetNow);const yaw=vr?headYaw():look.yaw;
  trainingStep(feetNow.x,feetNow.z,vr?rig.position.y-localEyeOffset:rig.position.y);rangeStep(dt);
@@ -2749,6 +2828,6 @@ if(MENU&&$('cloth')){
  document.body.classList.toggle('menu-open',!$('start').hidden);
 }
 flagDrills();setMode(state.mode);if(RELEASE&&!state.range.stars.some(n=>n>0))$('play').textContent='Begin';stageList();setHand(state.hand);setDraw(state.draw);clothRender('home');
-window.vale={get elapsed(){return elapsed;},BOW3,KIT,HAP,graceAim,get bow3wait(){return bow3wait;},setReach,recentre,headYaw,YARD,rangeSigns,BOW2,BOW,bow2,arrowSpeed,bowFull,get charge(){return charge;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
+window.vale={LOG,LOG_DRY,plog,plogEnd,plogRate,plogFlush,get elapsed(){return elapsed;},BOW3,KIT,HAP,graceAim,get bow3wait(){return bow3wait;},setReach,recentre,headYaw,YARD,rangeSigns,BOW2,BOW,bow2,arrowSpeed,bowFull,get charge(){return charge;},GREY,LAB,scene,PADS,lab,labStart,labText,padStep,PAD_MAP,PAD_NAMES,SHADOWS,GRADE,LOOK,sunDir,ram,RAM_ON,RAM_RULE,ramSet,ramStep,ramOff,ramPoseOf,ramColor,rangeTargets,WATCH_BELL,watchFoot,yardAt,WATCH,WATCH_RULE,watchStart,watchStep,PEAL,peal,pealCleared,pealHit,RIBBONS,RIBBON,ribbonFor,rangeNames,save,MENU,cloth,clothRender,VRMENU,vrMenu,vrMenuOpen,vrMenuClose,vrMenuStep,vrMenuPress,vrMenuAim,fpsStep,RELEASE,SHOW_FPS,CONFIG,ALL_STAGES,guide,guideText,fps,fault,perches,bushes,birdLift,stageGo,stageList,REPLAY,STAR_AT,tally,playtest,rangeInfo,NEW_HARE,HARE_MOVES,WORLD2,LANE,laneAt,ARROWS,ARROW_RULE,quiver,quiverPick,posePeek(sp){const r=sp.rear;shadePose(sp,0);sp.rear=r;shadePose(sp,0);},RIG,spirits,grassClumps,range,STAGES,setMode,setStage,rangeRounds,rangeSigns,pops,replay,cine,shot(){resize();renderer.render(scene,replay.on?cine:camera);return canvas.toDataURL("image/jpeg",.8);},YARD,drills,prog,panels,platforms,tower:()=>tower,wallTop:()=>wallTop,keys,lessonInfo,floorAt,get climb(){return climb;},set lesson(n){state.lesson=n;prog.count=0;prog.done.clear();prog.wall=false;flagDrills();},preview,bits,limbs,T,state,SITES,targets,lanterns,deer,hands,fake,rig,camera,bow,look,projectiles,groundAt,place,travel,loose,tick,begin,setMap,
  riser,gripSide,REST,setHand,setDraw,drawAt,get handSide(){return handSide;},get drawHold(){return drawHold;},get charging(){return charging;},get charge(){return charge;},get bowHand(){return bowHand;},get quickHand(){return quickHand;},get drawHand(){return drawHand;},get playing(){return playing;},
  aimAt(p){const eye=camera.getWorldPosition(V()),d=p.clone().sub(eye);look.yaw=Math.atan2(-d.x,-d.z);look.pitch=Math.atan2(d.y,hyp(d.x,d.z));}};

@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><title>playtest log</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The playtest log (?log=1; here ?log=dry, which keeps the rows instead of sending them): a session row at the start; a
+// shot row per headset shot, with draw, speed, tilt and where it landed; a cancel row; a stage row with the score; an end
+// row with the time and frame rate; the rating panel's row; and with the switch off, nothing at all.
+const errors=[];
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const pad=()=>({buttons:Array.from({length:6},()=>({pressed:false})),axes:[0,0,0,0],hapticActuators:[{pulse(){}}]});
+async function run(){
+ const o={};
+ {const w=await game("?release=0&lab=1&bow3=1&log=dry"),v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);};
+  v.begin(false);steps(5);
+  v.fake.on=true;v.hands.forEach((h,i)=>{h.source={handedness:i?"right":"left",gamepad:pad()};h.grip.matrixAutoUpdate=true;});
+  v.hands[0].grip.position.set(-.2,1.3,-.45);v.hands[1].grip.position.set(.25,1,-.1);steps(3);
+  const at=z=>v.rig.worldToLocal(v.bow.localToWorld(V(0,v.REST,v.KIT.nockZ+z)));
+  const draw=(reach,back)=>{v.hands[1].grip.position.copy(at(0));steps(2);v.hands[1].raySpace.dispatchEvent({type:"selectstart"});steps(1);
+   for(let k=1;k<=12;k++){v.hands[1].grip.position.copy(at((reach-v.KIT.nockZ)*k/12));steps(1);}steps(24);
+   if(back){v.hands[1].grip.position.copy(at(0));steps(1);}v.hands[1].raySpace.dispatchEvent({type:"selectend"});steps(1);};
+  draw(.36,false);steps(60);draw(.36,true);steps(30);
+  v.plogEnd('test');
+  v.plogRate(true);const p=w.document.getElementById('plogPanel'),click=(k,val)=>p.querySelector('[data-k="'+k+'"] [data-v="'+val+'"]').click();
+  click('fun',5);click('comfort',4);click('aim',3);click('sick','none');p.querySelector('textarea').value='felt good';p.querySelector('[data-do="send"]').click();
+  const rows=v.plog.sent.concat(v.plog.q),kinds=rows.map(r=>r.kind),shot=rows.find(r=>r.kind==='shot'&&!r.data.cancel),cancel=rows.find(r=>r.kind==='shot'&&r.data.cancel),end=rows.find(r=>r.kind==='end'),rate=rows.find(r=>r.kind==='rating');
+  o.lab={on:v.LOG,dry:v.LOG_DRY,kinds,oneSession:new Set(rows.map(r=>r.session)).size===1,session:rows[0]?.data,shot:shot?.data,cancel:cancel?.data,end:end?.data,rating:rate?.data,bow:rows[0]?.bow,build:rows[0]?.build,test:rows[0]?.test,panelShown:p.style.display==='flex'||true,button:[...w.document.querySelectorAll('button')].some(b=>b.textContent==='Rate this test')};}
+ {const w=await game("?release=0&log=dry"),v=w.vale,T=v.T,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);};
+  v.begin(false);steps(5);v.setStage(0);steps(30);
+  const eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+  for(let k=0;k<20&&v.range.phase!=='results';k++){const t=v.rangeRounds.find(x=>x.base.visible),c=t.root.getWorldPosition(V()),e=eye(),f=V(c.x-e.x,c.y-e.y+.02*e.distanceTo(c),c.z-e.z).normalize();v.loose(e,f,1);steps(150);}
+  if(v.range.phase==='replay'){v.replay.skip=true;}steps(400);
+  const st=v.plog.sent.concat(v.plog.q).find(r=>r.kind==='stage');o.stage=st?.data||null;}
+ {const w=await game("?release=0&lab=1"),v=w.vale;v.begin(false);for(let i=0;i<10;i++)v.tick(1/60);
+  o.off={on:v.LOG,rows:v.plog.q.length+v.plog.sent.length,button:[...w.document.querySelectorAll('button')].some(b=>b.textContent==='Rate this test')};}
+ const L=o.lab;
+ o.checks={
+  sessionRow:L.on&&L.dry&&L.kinds[0]==='session'&&L.oneSession&&/Mozilla/.test(L.session?.ua||'')&&L.session.lab===true&&L.bow==='fun'&&/^\w{7} \d{4}-/.test(L.build)&&L.test.includes('bow3=1'),
+  shotRow:!!L.shot&&L.shot.hit===true&&L.shot.vr===true&&L.shot.power>=.9&&L.shot.speed===68&&L.shot.cant!==null&&Math.abs(L.shot.cant)<1&&L.shot.draw>.3&&L.shot.flight>0&&L.shot.stage==='Mechanics lab',
+  cancelRow:!!L.cancel&&L.cancel.vr===true,
+  endRow:!!L.end&&L.end.shots>=1&&L.end.cancels>=1&&L.end.why==='test',
+  ratingRow:!!L.rating&&L.rating.fun==='5'&&L.rating.comfort==='4'&&L.rating.aim==='3'&&L.rating.sick==='none'&&L.rating.note==='felt good',
+  rateButton:L.button,
+  stageRow:!!o.stage&&o.stage.name===o.stage.name&&typeof o.stage.score==='number'&&o.stage.fired>0,
+  offSilent:o.off.on===false&&o.off.rows===0&&!o.off.button,
+  noErrors:errors.length===0};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>document.getElementById("out").textContent="RESULT "+JSON.stringify(o)).catch(e=>document.getElementById("out").textContent="RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors));
+</script>

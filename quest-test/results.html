@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Playtest results</title>
+<style>
+:root{--bg:#1d2322;--card:#2a3331;--ink:#eef2ee;--dim:#a9b6b0;--gold:#e2c27a;--line:#3a4643;--good:#8fc79a;--bad:#e09a8a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif;padding:24px 16px}
+main{max-width:1100px;margin:0 auto}h1{margin:0 0 4px;font-size:26px}p.lead{color:var(--dim);margin:0 0 18px}a{color:var(--gold)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}select,button{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:22px}
+.tile{background:var(--card);border-radius:12px;padding:14px 16px}.tile h3{margin:0 0 8px;font-size:17px}.tile dl{display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin:0;font-size:15px}.tile dt{color:var(--dim)}.tile dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
+h2{font-size:15px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 10px}
+.wrap{overflow-x:auto;border-radius:12px;background:var(--card)}table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--dim);font-weight:600}tr.s{cursor:pointer}tr.s:hover{background:#ffffff08}
+td.note{white-space:normal;min-width:180px;color:var(--dim)}.detail td{background:#0002;white-space:normal}.empty{color:var(--dim);padding:20px}
+</style></head><body><main>
+<h1>Playtest results</h1>
+<p class="lead">Every test opened from the <a href="./">Quest test page</a> records itself here. Newest first. Tap a row to see its shots.</p>
+<div class="bar"><label>Show the last <select id="days"><option>1</option><option>3</option><option selected>7</option><option>14</option><option>30</option><option>90</option></select> days</label><button id="again">Refresh</button><span id="status" style="color:var(--dim)"></span></div>
+<h2>By bow</h2><div class="tiles" id="tiles"></div>
+<h2>Sessions</h2><div class="wrap"><table><thead><tr><th>When</th><th>Test</th><th>Bow</th><th>Headset</th><th>Minutes</th><th>Shots</th><th>Hit</th><th>Cancels</th><th>FPS</th><th>Fun</th><th>Comfort</th><th>Aim</th><th>Sick</th><th>Note</th></tr></thead><tbody id="rows"></tbody></table></div>
+</main>
+<script>
+const URL_='https://ugqrwwqlbldbpfeobnlx.supabase.co',KEY='sb_publishable_0RT4pHpRQpFnHeOhfxEkvQ_amtC16BM';
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null,f=(n,d=1)=>n==null?'–':(+n).toFixed(d),pct=(a,b)=>b?Math.round(100*a/b)+'%':'–';
+const BOWS={fun:'Fun bow',v2:'Version 2',v1:'Original bow'};
+function testName(q){const p=new URLSearchParams(q);return (p.get('lab')==='1'?'Lab':p.get('grey')==='1'?'Grey game':'Game')+(p.get('pads')==='1'&&p.get('lab')!=='1'?' + buttons':'');}
+function device(ua){if(!ua)return'–';const m=ua.match(/Quest ?\w*/i);return m?m[0]:/OculusBrowser/.test(ua)?'Quest':/Mobile/.test(ua)?'Phone':'Desktop';}
+async function load(){
+ $('status').textContent='Loading…';
+ try{
+  const r=await fetch(URL_+'/rest/v1/rpc/playtest_recent',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({days:+$('days').value})});
+  if(!r.ok)throw new Error(r.status);const rows=await r.json();draw(rows);$('status').textContent=rows.length+' rows · '+new Date().toLocaleTimeString();
+ }catch(e){$('status').textContent='Could not load the results ('+e.message+')';}
+}
+function draw(rows){
+ const S=new Map();for(const r of rows){if(!S.has(r.session))S.set(r.session,{id:r.session,rows:[]});S.get(r.session).rows.push(r);}
+ const sessions=[...S.values()].map(s=>{s.rows.sort((a,b)=>a.id-b.id);const k=t=>s.rows.filter(r=>r.kind===t);
+  const start=k('session')[0]||s.rows[0],end=k('end').pop(),rate=k('rating').pop(),shots=k('shot').filter(r=>!r.data.cancel),cancels=k('shot').filter(r=>r.data.cancel);
+  return{...s,at:new Date(start.at),test:start.test,bow:start.bow,ua:start.data.ua,end:end?.data,rate:rate?.data,shots,cancels,stages:k('stage')};})
+  .filter(s=>s.shots.length||s.rate||s.stages.length||(s.end&&s.end.secs>20)).sort((a,b)=>b.at-a.at);
+ // per bow
+ $('tiles').innerHTML=['fun','v2','v1'].map(b=>{const ss=sessions.filter(s=>s.bow===b);if(!ss.length)return'';const sh=ss.flatMap(s=>s.shots.map(r=>r.data)),vr=sh.filter(d=>d.vr),hits=sh.filter(d=>d.hit),rt=ss.map(s=>s.rate).filter(Boolean);
+  return'<div class="tile"><h3>'+BOWS[b]+'</h3><dl><dt>Sessions</dt><dd>'+ss.length+'</dd><dt>Shots (headset)</dt><dd>'+sh.length+' ('+vr.length+')</dd><dt>Hit rate</dt><dd>'+pct(hits.length,sh.length)+'</dd>'
+  +'<dt>Average off centre</dt><dd>'+(hits.length?f(avg(hits.map(d=>d.off))*100,0)+' cm':'–')+'</dd><dt>Average miss by</dt><dd>'+f(avg(sh.filter(d=>!d.hit&&d.missBy!=null).map(d=>d.missBy)),2)+' m</dd>'
+  +'<dt>Average draw</dt><dd>'+pct(avg(sh.map(d=>d.power))*100,100)+'</dd><dt>Average tilt</dt><dd>'+f(avg(vr.filter(d=>d.cant!=null).map(d=>Math.abs(d.cant))),0)+'°</dd><dt>Perfect releases</dt><dd>'+pct(sh.filter(d=>d.perfect).length,sh.length)+'</dd>'
+  +'<dt>Cancels</dt><dd>'+ss.reduce((n,s)=>n+s.cancels.length,0)+'</dd><dt>Fun / comfort / aim</dt><dd>'+[ 'fun','comfort','aim'].map(k=>f(avg(rt.map(x=>+x[k]).filter(Boolean)))).join(' / ')+'</dd></dl></div>';}).join('')||'<div class="empty">No tests in this period yet.</div>';
+ // sessions
+ $('rows').innerHTML=sessions.map((s,i)=>{const h=s.shots.filter(r=>r.data.hit).length,R=s.rate||{};
+  return'<tr class="s" data-i="'+i+'"><td>'+s.at.toLocaleString([], {dateStyle:'short',timeStyle:'short'})+'</td><td>'+esc(testName(s.test))+'</td><td>'+esc(BOWS[s.bow]||s.bow)+'</td><td>'+esc(device(s.ua))+'</td><td>'+(s.end?f(s.end.secs/60):'–')+'</td><td>'+s.shots.length+'</td><td>'+pct(h,s.shots.length)+'</td><td>'+s.cancels.length+'</td><td>'+(s.end?.fps??'–')+'</td><td>'+esc(R.fun||'–')+'</td><td>'+esc(R.comfort||'–')+'</td><td>'+esc(R.aim||'–')+'</td><td>'+esc(R.sick||'–')+'</td><td class="note">'+esc(R.note||'')+'</td></tr>';}).join('')||'<tr><td colspan="14" class="empty">No tests in this period yet. Open a test from the Quest test page and play; it appears here within a few seconds.</td></tr>';
+ $('rows').onclick=e=>{const tr=e.target.closest('tr.s');if(!tr)return;const nx=tr.nextElementSibling;if(nx&&nx.classList.contains('detail')){nx.remove();return;}
+  const s=sessions[+tr.dataset.i],line=d=>d.cancel?'cancel at '+pct(d.power,1):(d.hit?'hit at '+d.at+' m, '+Math.round(d.off*100)+' cm off':'miss, landed '+d.landed+' m'+(d.missBy!=null?', '+f(d.missBy,2)+' m wide':''))+' · draw '+pct(d.power,1)+' · '+d.speed+' m/s · up '+f(d.up)+'°'+(d.cant!=null?' · tilt '+f(d.cant,0)+'°':'')+(d.perfect?' · perfect':'')+(d.stage?' · '+esc(d.stage):'');
+  const st=s.stages.map(r=>esc(r.data.name)+': '+r.data.score+(r.data.stars!=null?' '+'★'.repeat(r.data.stars):''));
+  const d=document.createElement('tr');d.className='detail';d.innerHTML='<td colspan="14">'+(st.length?'<b>Stages</b> '+st.join(' · ')+'<br>':'')+'<b>Shots</b><br>'+([...s.shots,...s.cancels].sort((a,b)=>a.id-b.id).map(r=>line(r.data)).join('<br>')||'none')+'</td>';tr.after(d);};
+}
+$('days').onchange=load;$('again').onclick=load;load();setInterval(load,60000);
+</script></body></html>

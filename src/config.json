@@ -10,6 +10,7 @@
   "peal": true,
   "watch": true,
   "watch2": false,
+  "duel": {"A": "claude", "B": "gemini"},
   "ram": true,
   "grade": false,
   "pads": false,

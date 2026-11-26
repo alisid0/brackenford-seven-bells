@@ -20,7 +20,9 @@ const newHare = process.argv.includes('--new-hare');
 // the shade ram: Tripo's model, turned by tools/turn-ram.mjs and left hind leg repaired by tools/patch-ram.mjs. The "ram" switch decides whether the game uses it.
 { const patched = join(assets, 'staging', 'shade-ram-rig-turned-patched.json'), ram = existsSync(patched) ? patched : join(assets, 'staging', 'shade-ram-rig-turned.json'); if (existsSync(ram)) models['shade-ram'] = JSON.parse(readFileSync(ram, 'utf8')); }
 if (newHare) { models['shade-hare-standing'] = JSON.parse(readFileSync(join(assets, 'staging', 'shade-hare-standing-rig-patched.json'), 'utf8')); config.newHare = true; }
-const game = 'const MODELS=' + JSON.stringify(models) + ';\nconst BUILD_CONFIG=' + JSON.stringify(config) + ';\n' + readFileSync(join(here, 'props.js'), 'utf8') + '\n' + (newHare ? readFileSync(join(here, 'moves.js'), 'utf8') + '\n' : '') + readFileSync(join(here, 'game.js'), 'utf8');   // props.js: code-built props (the stall), used only by the new range layout
+// arcade modes: each file in src/modes/ is added after game.js, in name order; each registers itself with arcadeMode()
+const modes = () => { const d = join(here, 'modes'); if (!existsSync(d)) return ''; const fs_ = readdirSync(d).filter(f => f.endsWith('.js')).sort(); return fs_.map(f => '\n// ---- src/modes/' + f + '\n' + readFileSync(join(d, f), 'utf8')).join('') + '\narcadeReady();\n'; };
+const game = 'const MODELS=' + JSON.stringify(models) + ';\nconst BUILD_CONFIG=' + JSON.stringify(config) + ';\n' + readFileSync(join(here, 'props.js'), 'utf8') + '\n' + (newHare ? readFileSync(join(here, 'moves.js'), 'utf8') + '\n' : '') + readFileSync(join(here, 'game.js'), 'utf8') + modes();   // props.js: code-built props (the stall), used only by the new range layout
 if (game.includes('</script')) throw new Error('game code must not contain a closing script tag');
 const shell = readFileSync(join(here, 'shell.html'), 'utf8');
 const out = shell.replace('/*__THREE__*/', () => three).replace('/*__GAME__*/', () => game);

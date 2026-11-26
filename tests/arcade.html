@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><title>arcade scorecard</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// The Claude vs Gemini scorecard (design/duel-brief.md). The same for both modes; written before either existed.
+// ?mode=claude or ?mode=gemini. Three bots play a whole run each: one that never shoots, a fair one and a good one.
+// A bot picks something shootable, decides hit or miss by its hit rate and, on a hit, the arrow lands after its flight
+// time on that thing (if it is still there), through the game's own hit(). So this judges the mode's rules and limits,
+// not the aiming. Measured: errors, carefree (score never drops, world never moves), nothing behind the line or nearer
+// than 8 m, at most 9 shootable things in view, seconds with nothing to shoot, skill shows, time per frame.
+const MODE=new URLSearchParams(location.search).get("mode")||"claude";
+const errors=[];const out=t=>document.getElementById("out").textContent=t;
+const wipe=()=>{for(const k of Object.keys(localStorage))if(k.startsWith("brackenford"))localStorage.removeItem(k);};
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes("arcade=")){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));const ce=w.console.error.bind(w.console);w.console.error=(...a)=>{errors.push(a.map(String).join(" "));ce(...a);};done(w);}},300);});}
+const pause=()=>new Promise(r=>setTimeout(r,0));
+const BOTS={idle:{every:0},fair:{every:2.8,hit:.7,perfect:.5},good:{every:2,hit:.85,perfect:.6}};
+async function bot(name){
+ wipe();const P=BOTS[name],w=await game("?arcade="+MODE),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z);
+ v.begin(false);v.tick(1/60);if(!v.arcadeStart(MODE))return{error:"mode "+MODE+" not registered"};
+ const t0=v.elapsed,eye=()=>v.rig.position.clone().add(V(0,1.5,0)),rig0=v.rig.position.clone(),Y=v.YARD;
+ const m={idle:0,maxGap:0,gap:0,peak:0,behind:0,near:0,scoreDrops:0,rigMoved:false,shots:0,hits:0,landed:0,tickMs:0,tickMax:0,ticks:0};
+ let prev=0,next=t0+1,pend=[];
+ const skip=t=>!t||t.kind==="sign"||t.kind==="peal";
+ const live=()=>{const seen=new Map();for(const mesh of v.rangeMeshes){const t=mesh.userData.target;if(skip(t))continue;if(t.kind==="spirit"&&!t.live)continue;let o=mesh,vis=true;while(o){if(o.visible===false){vis=false;break;}o=o.parent;}if(!vis)continue;if(!seen.has(t))seen.set(t,mesh);}return[...seen].map(([t,mesh])=>({t,mesh}));};
+ const along=p=>(p.x-Y.x)*Y.ux+(p.z-Y.z)*Y.uz;
+ const flagged=new Set();
+ for(let i=0;i<11400&&r.phase!=="results";i++){
+  const a=performance.now();v.tick(1/60);const ms=performance.now()-a;m.tickMs+=ms;m.ticks++;if(i>60)m.tickMax=Math.max(m.tickMax,ms);
+  const t=v.elapsed-t0;
+  if(r.phase==="play"||r.phase==="closing"){
+   const L=live();m.peak=Math.max(m.peak,L.length);
+   for(const x of L){const p=x.mesh.getWorldPosition(V());const al=along(p);if(!flagged.has(x.t)&&(al<0||al<8)){flagged.add(x.t);if(al<0)m.behind++;else m.near++;}}
+   if(t>1&&t<170){if(!L.length){m.gap+=1/60;m.idle+=1/60;m.maxGap=Math.max(m.maxGap,m.gap);}else m.gap=0;}
+   if(r.score<prev)m.scoreDrops++;prev=r.score;if(v.rig.position.distanceTo(rig0)>1e-6)m.rigMoved=true;
+  }
+  for(const p of pend.slice())if(v.elapsed>=p.at){pend.splice(pend.indexOf(p),1);
+   const still=live().find(x=>x.t===p.t);if(!still)continue;const at=still.mesh.getWorldPosition(V()),o=eye();
+   try{v.hit(p.t,{ranged:true,done:false,perfect:p.perfect,kind:"std",path:[o.clone()],o:{position:at},origin:o,drawSec:.8});m.landed++;}catch(e){errors.push("hit: "+e.message);}}
+  if(P.every&&r.phase==="play"&&v.elapsed>=next){
+   const L=live().map(x=>({...x,d:x.mesh.getWorldPosition(V()).distanceTo(eye())}));
+   if(L.length){const pick=name==="good"?L.sort((a,b)=>a.d-b.d)[0]:L[Math.floor(Math.random()*L.length)];
+    m.shots++;r.fired++;if(Math.random()<P.hit)pend.push({t:pick.t,at:v.elapsed+pick.d/55+.05,perfect:Math.random()<P.perfect});}
+   next=v.elapsed+P.every;}
+  if(i%600===0){out("RUNNING "+MODE+" "+name+" t="+Math.round(t));await pause();}
+ }
+ for(let i=0;i<300&&r.phase!=="results";i++)v.tick(1/60);
+ const info=v.rangeInfo();
+ return{score:r.score,hits:r.hits,shots:m.shots,landed:m.landed,peak:m.peak,behind:m.behind,near:m.near,idle:+m.idle.toFixed(1),maxGap:+m.maxGap.toFixed(1),scoreDrops:m.scoreDrops,rigMoved:m.rigMoved,phase:r.phase,
+  msPerTick:+(m.tickMs/m.ticks).toFixed(2),msMax:+m.tickMax.toFixed(1),board:info.title+" | "+info.text};
+}
+(async()=>{
+ const o={mode:MODE,bots:{}};
+ for(const n of["idle","fair","good"])o.bots[n]=await bot(n);
+ const B=o.bots,all=Object.values(B);
+ o.checks={
+  ran:all.every(b=>!b.error&&b.phase==="results"),
+  noErrors:errors.length===0,
+  carefree:all.every(b=>b.scoreDrops===0&&!b.rigMoved),
+  nothingBehind:all.every(b=>b.behind===0&&b.near===0),
+  nineAtMost:all.every(b=>b.peak<=9),
+  skillShows:B.good.score>B.fair.score&&B.fair.score>B.idle.score,
+ };
+ o.scores={idleSecs:B.fair.idle,maxGap:B.fair.maxGap,goodOverFair:B.fair.score?+(B.good.score/B.fair.score).toFixed(2):null,msPerTick:Math.max(...all.map(b=>b.msPerTick))};
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors.slice(0,10);
+ out("RESULT "+JSON.stringify(o));
+})().catch(e=>out("RESULT THREW "+e+" "+(e.stack||"").slice(0,400)+JSON.stringify(errors)));
+</script>

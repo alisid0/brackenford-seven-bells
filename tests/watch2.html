@@ -1,0 +1,138 @@
+<!doctype html><meta charset="utf-8"><title>bell watch, second cut</title><iframe id="g" width="1000" height="640"></iframe><pre id="out">PENDING</pre>
+<script>
+// Bell Watch with Gemini's rules (?watch2=1, design/bell-watch-rules.md), judged without a headset as its section 9 asks.
+// Bots play whole three-minute runs: one that never shoots, a fair one, a very good one, and a snap shooter against a
+// careful long shooter. A bot decides hit or miss by its hit rate and, on a hit, the arrow lands after its flight time
+// on whatever it was aimed at (if that is still there), scored by the game's own rangeHit. So this tests the pacing and
+// scoring rules, not the aiming (the aiming has its own tests). Then single checks: the tells, the rear, crows at the
+// bell, ribbons, snap and long shots from a real loose, the end grace, the AGAIN guard and the end cloth.
+// Add ?quick=1 to run only the idle and fair bots.
+const errors=[],KEY="brackenford-trials-v1",QUICK=location.search.includes("quick=1");
+const wipe=()=>{for(const k of["brackenford-seven-bells-v1",KEY,"brackenford-seven-bells-v1-tally",KEY+"-tally"])localStorage.removeItem(k);};
+const out=t=>document.getElementById("out").textContent=t;
+function game(query){return new Promise(done=>{const f=document.getElementById("g");f.src="../Brackenford-Seven-Bells.html"+query+"&r="+Math.random();const wait=setInterval(()=>{const w=f.contentWindow;if(w&&w.vale&&w.location.search.includes(query.slice(1,8))){clearInterval(wait);w.addEventListener("error",e=>errors.push(e.message));done(w);}},300);});}
+const pause=()=>new Promise(r=>setTimeout(r,0));
+const PROFILES={
+ idle:{every:0},
+ fair:{every:3,hit:.7,ring:2,perfect:.5,mix:true},
+ good:{every:2,hit:.85,ring:1,perfect:.6,mix:true,rams:true},
+ snap:{every:2.4,hit:.65,ring:2,perfect:.25,draw:.45,maxD:22},
+ long:{every:3.6,hit:.82,ring:2,perfect:.75,draw:1.1,minD:24}};
+async function bot(name){
+ wipe();const P=PROFILES[name],w=await game("?watch=1&watch2=1"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z);
+ v.begin(false);v.tick(1/60);v.watchStart();
+ const t0=v.elapsed,eye=()=>v.rig.position.clone().add(V(0,1.5,0)),bell=v.peal.root;
+ const m={firstBand:null,threeBands:null,bands:0,peak:0,peakCalm:0,peakBell:0,peakBellCalm:0,idle:0,maxGap:0,gap:0,hareMin:99,crowMin:99,rams:0,lateSpawns:0,scoreDrops:0,shots:0,hits:0,rings:0,rigMoved:false,laneSpawnsNear:0};
+ const starts=new Map(),seen=new Set(),rig0=v.rig.position.clone();let prevBands=0,prevScore=0,nextShot=t0+1,pend=[],ramWas=false,waitSince=0;
+ const shootable=()=>[...v.spirits.filter(s=>s.live&&s.base.visible&&s.root.visible!==false),...(v.ram&&v.ram.live&&v.ram.base.visible?[v.ram]:[])];
+ const pos=s=>(s.hitMesh||s.root).getWorldPosition(V());
+ for(let i=0;i<11400&&r.phase!=="results";i++){
+  v.tick(1/60);const t=v.elapsed-t0,C=v.w2Count();
+  if(r.phase==="play"||r.phase==="closing"){
+   m.peak=Math.max(m.peak,C.all);m.peakBell=Math.max(m.peakBell,C.bell);if(t<10){m.peakCalm=Math.max(m.peakCalm,C.all);m.peakBellCalm=Math.max(m.peakBellCalm,C.bell);}
+   if(t<170&&t>1){const n=shootable().length;if(n===0){m.gap+=1/60;m.idle+=1/60;m.maxGap=Math.max(m.maxGap,m.gap);}else m.gap=0;}
+   for(const s of v.spirits){if(s.base.visible&&s.state!=="off"&&!seen.has(s.cfg)){seen.add(s.cfg);if(t>170.5)m.lateSpawns++;}
+    if(s.cfg&&s.cfg.toBell&&s.base.visible&&s.state!=="off"&&!starts.has(s))starts.set(s,{t:v.elapsed,bird:!!s.bird,bank:null});
+    const st=starts.get(s);if(st&&s.bird&&s.w2c&&s.w2c.s==="bank"&&st.bank===null)st.bank=v.elapsed;}
+   if(v.w2.bands>prevBands){for(const[s,st]of starts)if(!s.base.visible){const win=v.elapsed-(st.bird&&st.bank?st.bank:st.t);if(st.bird)m.crowMin=Math.min(m.crowMin,win);else m.hareMin=Math.min(m.hareMin,win);starts.delete(s);}
+    if(m.firstBand===null)m.firstBand=t;prevBands=v.w2.bands;}
+   for(const[s,st]of starts)if(!s.base.visible||s.state==="off"||s.state==="waking")starts.delete(s);
+   if(m.threeBands===null&&bell&&(bell.userData.bound|0)>=3)m.threeBands=t;
+   const ramOn=!!(v.ram&&v.ram.base.visible&&v.ram.state!=="off");if(ramOn&&!ramWas)m.rams++;ramWas=ramOn;
+   if(r.score<prevScore)m.scoreDrops++;prevScore=r.score;if(v.rig.position.distanceTo(rig0)>1e-6)m.rigMoved=true;
+  }
+  // arrows in flight
+  for(const p of pend.slice())if(v.elapsed>=p.at){pend.splice(pend.indexOf(p),1);if(p.target.live&&p.target.base.visible){const at=pos(p.target),o=eye();v.rangeHit(p.target,{ranged:true,done:false,perfect:p.perfect,kind:"std",path:[o.clone()],o:{position:at},origin:o,drawSec:p.draw});m.hits++;}}
+  // the bot
+  if(P.every&&r.phase==="play"&&v.elapsed>=nextShot){
+   if(bell&&(bell.userData.bound|0)>=P.ring){v.pealHit({});m.rings++;m.shots++;r.fired++;nextShot=v.elapsed+P.every;continue;}
+   let list=shootable().map(s=>({s,d:pos(s).distanceTo(eye())}));
+   if(P.maxD){const near=list.filter(x=>x.d<P.maxD);if(near.length||v.elapsed-nextShot<1.5)list=near;}if(P.minD){const far=list.filter(x=>x.d>=P.minD);if(far.length||v.elapsed-nextShot<1.5)list=far;}
+   if(!list.length)continue;
+   list.sort((a,b)=>((P.rams&&b.s.ram)-(P.rams&&a.s.ram))||((b.s.cfg&&b.s.cfg.toBell?1:0)-(a.s.cfg&&a.s.cfg.toBell?1:0))||a.d-b.d);
+   const pick=list[0],draw=P.draw||(P.mix?[.5,.5,.5,.75,.75,.75,.75,1.1,1.1,1.1][Math.floor(Math.random()*10)]:.75);
+   m.shots++;r.fired++;if(Math.random()<P.hit)pend.push({target:pick.s,at:v.elapsed+pick.d/55+.05,perfect:Math.random()<P.perfect,draw});
+   nextShot=v.elapsed+P.every;
+  }
+  if(i%600===0){out("RUNNING "+name+" t="+Math.round(t));await pause();}
+ }
+ for(let i=0;i<200&&r.phase!=="results";i++)v.tick(1/60);
+ const mins=3;
+ return{...m,bandsPerMin:+(v.w2.bands/mins).toFixed(2),shotsPerMin:+(m.shots/mins).toFixed(1),hitsPerMin:+(m.hits/mins).toFixed(1),idle:+m.idle.toFixed(2),maxGap:+m.maxGap.toFixed(2),hareMin:+m.hareMin.toFixed(2),crowMin:+m.crowMin.toFixed(2),
+  score:r.score,ribbonTop:r.best,snaps:v.w2.snaps,longs:v.w2.longs,phase:r.phase,board:v.rangeInfo().text,firstBand:m.firstBand&&+m.firstBand.toFixed(1),threeBands:m.threeBands&&+m.threeBands.toFixed(1)};
+}
+async function details(){
+ const o={};wipe();const w=await game("?watch=1&watch2=1&ram=0"),v=w.vale,T=v.T,r=v.range,V=(x,y,z)=>new T.Vector3(x,y,z),steps=n=>{for(let i=0;i<n;i++)v.tick(1/60);},eye=()=>v.rig.position.clone().add(V(0,1.5,0));
+ v.begin(false);v.tick(1/60);v.watchStart();steps(2);
+ o.start={sw:v.WATCH2,shades:v.w2Count().all,hares:v.spirits.filter(s=>!s.bird&&s.cfg&&s.base.visible).length};
+ // the opening hare at 2.5 s: a runner for the bell that shows its tell first
+ steps(160);const op=v.spirits.find(s=>s.w2);o.opener={found:!!op,kind:op&&op.w2.kind,toBell:!!(op&&op.cfg.toBell)};
+ let sawTell=false,rearMax=0,earMax=0,sawRun=false;for(let i=0;i<200&&op&&op.w2;i++){steps(1);if(op.w2.s==="tell"){sawTell=true;rearMax=Math.max(rearMax,op.w2.rear);earMax=Math.max(earMax,op.w2.ear);}if(op.w2.s==="run"){sawRun=true;break;}}
+ o.tell={sawTell,rearMax:+rearMax.toFixed(2),earMax:+earMax.toFixed(2),sawRun};
+ // it reaches the foot and rears for a second, and can be shot during the rear
+ if(op&&op.w2){const[fx,fz]=v.yardAt(...v.watchFoot());op.base.position.set(fx+.5,op.base.position.y,fz);steps(2);const s1=op.w2&&op.w2.s,live1=op.live;steps(30);const live2=op.live,stillRear=op.w2&&op.w2.s,bound0=v.peal.root.userData.bound|0;
+  const at=op.hitMesh.getWorldPosition(V()),e=eye();v.rangeHit(op,{ranged:true,done:false,perfect:false,kind:"std",path:[e.clone()],o:{position:at},origin:e,drawSec:null});steps(60);
+  o.rear={state:s1,liveAtStart:live1,liveAt05:live2,stillRear,saved:(v.peal.root.userData.bound|0)===bound0,banished:op.state==="off"||op.state==="waking"};}
+ // a creeper: tell, stalk, coil, dash, rear, band
+ {const sp=v.spirits.find(s=>!s.bird&&!s.base.visible&&s.state==="off")||v.spirits.find(s=>!s.bird&&!s.w2);sp.base.visible=false;sp.state="off";
+  const cfg={t:"creep",at:[20,0],toBell:true,w2:"creep"};sp.cfg=cfg;sp.set(sp,cfg);sp.w2={s:"tell",t:0,kind:"creep",rear:0,ear:0,u:0};sp.pace=1;v.rangeTargets();
+  const states=[];const b0=v.w2.bands;for(let i=0;i<60*25&&sp.w2;i++){steps(1);if(sp.w2&&states[states.length-1]!==sp.w2.s)states.push(sp.w2.s);}
+  o.creeper={states:states.join(">"),banded:v.w2.bands>b0};}
+ // a crow for the bell: bank, glide, land, band
+ {const sp=v.spirits.find(s=>s.bird&&s.mode==="cross"&&s.base.visible)||v.spirits.find(s=>s.bird&&!s.base.visible);sp.base.visible=false;sp.state="off";
+  const cfg={t:"cross",lane:20,toBell:true};sp.cfg=cfg;sp.set(sp,cfg);
+  const states=[];const b0=v.w2.bands;let bankRoll=0;for(let i=0;i<60*20;i++){steps(1);if(sp.w2c){if(states[states.length-1]!==sp.w2c.s)states.push(sp.w2c.s);if(sp.w2c.s==="bank")bankRoll=Math.max(bankRoll,Math.abs(sp.root.rotation.z));}if(v.w2.bands>b0)break;if(sp.state==="gap"&&!states.length){sp.t=sp.gapFor;}}
+  o.crow={states:states.join(">"),banded:v.w2.bands>b0,bankRoll:+bankRoll.toFixed(2),value:sp.value};}
+ // ribbons: 5, 10 and 20 hits give x1.1, x1.25, x1.4
+ o.mult=[1,4,5,9,10,19,20,40].map(k=>v.w2Mult(k));
+ // snap and long shots, from a real loose with the draw timed
+ {const hitWith=(drawSec,along)=>{const sp=v.spirits.find(s=>!s.bird&&s.base.visible&&s.live)||v.spirits.find(s=>!s.bird);const cfg={t:"sit",at:[along,0]};sp.cfg=cfg;sp.set(sp,cfg);sp.w2=null;steps(40);
+   const before=r.score,s0=r.streak,tgt=sp.hitMesh.getWorldPosition(V()),o=eye(),flat=V(tgt.x-o.x,0,tgt.z-o.z),d=flat.length(),h=tgt.y-o.y,sp_=v.arrowSpeed(1),g=v.BOW2?9.81:7;
+   const ang=Math.atan((sp_*sp_-Math.sqrt(sp_**4-g*(g*d*d+2*h*sp_*sp_)))/(g*d));v.drawT0=v.elapsed-drawSec;v.loose(o,flat.normalize().multiplyScalar(Math.cos(ang)).add(V(0,Math.sin(ang),0)),1);steps(90);
+   return{pts:r.score-before,dist:Math.round(d),streak:r.streak,mult:v.w2Mult(r.streak),hit:r.streak>s0};};
+  const sn0=v.w2.snaps,lg0=v.w2.longs;const snap=hitWith(.4,14),std=hitWith(.75,14),long=hitWith(1.2,28);
+  o.style={snap,std,long,snaps:v.w2.snaps-sn0,longs:v.w2.longs-lg0};}
+ // the end: an arrow in flight at 0:00 finishes; AGAIN is ignored for 0.8 s; the end cloth
+ {r.endAt=v.elapsed+.2;const e=eye();v.drawT0=0;v.loose(e,V(0,.5,-1).normalize(),1);steps(16);o.closing={phase:r.phase};
+  for(let i=0;i<200&&r.phase!=="results";i++)steps(1);o.closing.after=r.phase;r.pending="again";steps(2);o.guard={phase:r.phase};steps(50);r.pending="again";steps(2);o.guard.after=r.phase;}
+ // the end cloth text (taken from a fresh end)
+ {r.endAt=v.elapsed+.1;steps(30);for(let i=0;i<200&&r.phase!=="results";i++)steps(1);const info=v.rangeInfo();o.cloth={title:info.title,text:info.text,mark:info.mark,stitch:info.stitch};}
+ return o;
+}
+async function run(){
+ const o={bots:{}};
+ for(const n of QUICK?["idle","fair"]:["idle","fair","good","snap","long"])o.bots[n]=await bot(n);
+ out("RUNNING details");o.details=await details();
+ {wipe();const w=await game("?watch=1&watch2=0"),v=w.vale;v.begin(false);v.tick(1/60);v.watchStart();for(let i=0;i<10;i++)v.tick(1/60);o.off={WATCH2:v.WATCH2,shades:v.spirits.filter(s=>s.cfg&&s.base.visible).length};}
+ wipe();
+ const B=o.bots,D=o.details,I=B.idle,F=B.fair,G=B.good;
+ const inR=(x,a,b)=>x!=null&&x>=a&&x<=b;
+ o.checks={
+  sevenAtMost:Object.values(B).every(b=>b.peak<=7&&b.peakCalm<=3),
+  bellAtMost:Object.values(B).every(b=>b.peakBell<=2&&b.peakBellCalm<=1),
+  nothingLate:Object.values(B).every(b=>b.lateSpawns===0),
+  carefree:Object.values(B).every(b=>b.scoreDrops===0&&!b.rigMoved),
+  ramsPerRun:Object.values(B).every(b=>b.rams>=3&&b.rams<=5),
+  hareWindow:Object.values(B).every(b=>b.hareMin===99||b.hareMin>=4.5),
+  crowWindow:Object.values(B).every(b=>b.crowMin===99||b.crowMin>=3.5),
+  idleFirstBand:I.firstBand>=7,idleThreeBands:I.threeBands==null||I.threeBands>=18,
+  fairNeverEmpty:F.maxGap<=2.5,
+  opener:D.opener.found&&D.opener.kind==="run"&&D.opener.toBell,
+  tell:D.tell.sawTell&&D.tell.rearMax>.4&&D.tell.earMax>.5&&D.tell.sawRun,
+  rear:!!D.rear&&D.rear.state==="rear"&&D.rear.liveAtStart&&D.rear.liveAt05&&D.rear.saved&&D.rear.banished,
+  creeper:D.creeper.states==="tell>stalk>coil>dash>rear"&&D.creeper.banded,
+  crow:D.crow.states==="bank>glide>land"&&D.crow.banded&&D.crow.bankRoll>.8&&D.crow.value===300,
+  ribbons:JSON.stringify(D.mult)===JSON.stringify([1,1,1.1,1.1,1.25,1.25,1.4,1.4]),
+  snapLong:D.style.snap.hit&&D.style.std.hit&&D.style.long.hit&&D.style.snaps===1&&D.style.longs===1,
+  endGrace:D.closing.phase==="closing"&&D.closing.after==="results",
+  againGuard:D.guard.phase==="results"&&D.guard.after==="play",
+  cloth:/Snaps/.test(D.cloth.text)&&/Bell rung/.test(D.cloth.text)&&/AGAIN/.test(D.cloth.mark),
+  off:o.off.WATCH2===false&&o.off.shades>=5,
+  noErrors:errors.length===0};
+ // Gemini's ranges, reported rather than failed on: the numbers are tuned against these
+ o.ranges={idleFirstBand:inR(I.firstBand,8.5,12),idleThreeBands:inR(I.threeBands,20,32),idleBandsPerMin:inR(I.bandsPerMin,5.5,8),fairBandsPerMin:inR(F.bandsPerMin,2,3.5),fairIdle:F.idle<=3,fairScore:inR(F.score,14000,18500)};
+ if(G)Object.assign(o.ranges,{goodBandsPerMin:inR(G.bandsPerMin,0,1.2),goodScore:inR(G.score,26000,33000),parity:B.snap&&B.long?+(B.snap.score/B.long.score).toFixed(2):null});
+ o.allOk=Object.values(o.checks).every(Boolean);o.errors=errors;return o;
+}
+run().then(o=>out("RESULT "+JSON.stringify(o))).catch(e=>out("RESULT THREW "+e+" "+(e.stack||"").slice(0,500)+JSON.stringify(errors)));
+</script>

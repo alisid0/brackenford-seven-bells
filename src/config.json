@@ -9,6 +9,7 @@
   "ribbons": true,
   "peal": true,
   "watch": true,
+  "watch2": false,
   "ram": true,
   "grade": false,
   "pads": false,

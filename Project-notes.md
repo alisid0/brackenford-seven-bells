@@ -457,3 +457,54 @@ The developer left before testing and asked the three models to keep working in 
   Reading: the results page `quest-test/results.html` reads through `playtest_recent` (the last 1 to 90 days) and shows totals by bow and each session with its shots. Claude can also read the table directly.
 
   Testing: `tests/playlog.html` covers it with `?log=dry`, which keeps the rows instead of sending them. A real send from the game to the store and on to the results page was checked, and the check rows deleted. The build stamp (commit and date) is now part of every build.
+
+## Bell Watch, second cut: Gemini's rules built behind a switch (26 November 2026)
+
+The headset playtest has to wait, so the main game came next. Gemini wrote the rules and numbers (`design/bell-watch-rules.md`, answering `design/bell-watch-ticket.md`). Claude checked them against the code, merged them and built them behind a new switch: `watch2` in `src/config.json` (off), or `?watch2=1`. Bell Watch itself must be on. With the switch off, Bell Watch plays exactly as before.
+
+What is built:
+- **The shape of a run.**
+  - Calm (0–10 s): 3 shades. A sitter and the perched crow, then a hare that makes an obvious run for the bell at 2.5 s.
+  - Build: 5 shades (10–35 s), then 6 (35–60 s).
+  - Crest (60–170 s): 7 shades.
+  - Last shots (final 10 s): a "Last shots" notice and nothing new appears.
+  - Each phase has its own refill delay, share of shades going for the bell, and speed.
+  - At most 1 shade goes for the bell at a time in the calm, 2 after. A 2.5 s breather follows two that set out within 3 s of each other.
+  - New shades appear at least 1.2 s apart. A ram that is due takes the next free place, so no more than the phase's number are ever in view.
+- **Hares for the bell show it first.**
+  - A runner rises and turns its ears to the bell (1.4 s; 1.8 s in the calm). It then takes a wide curve that straightens 5.5 m from the belfry, at 3.8 m/s.
+  - A creeper crouches (1.2 s), stalks at 1.4 m/s, coils 4.5 m out (0.45 s) and dashes at 4.6 m/s.
+  - At the foot it rears for 1 second and can still be shot for the first 0.85 s.
+  - Other hares run at 4.8 m/s instead of 6.5.
+- **Crows at the bell.** None go for it before 35 s; then 20% of new crows, and 30% from 60 s. A crossing crow banks with its wings full on (1.2 s), glides to the belfry's fork and lands with its wings spread (0.95 s; it can still be shot for the first 0.8 s), then binds. The perched crow may also go after 12–16 s, with a 1-second open-wing warning. Crows going for the bell are worth 300. Ringing the bell also scatters them within 11 m of the fork.
+- **The bell.** The chime can't sound again within 0.8 s. Ringing a clear bell scatters shades no more than once every 4 s; ringing a bound bell always clears it and scatters them.
+- **Ribbons.** At 5, 10 and 20 hits in a run: ×1.1, ×1.25 and ×1.4, with one, two and three rising notes. They replace the old bonus, which climbed to ×2. A miss never takes one away.
+- **Quick and careful shots.**
+  - Snap: drawn and loosed within 0.65 s, at 10 m or more, earns +35.
+  - Long: held 0.9 s or more, at 24 m or more, earns +55, plus 4 for each metre beyond 24.
+  - Both show on the hit's "+points" label.
+- **The end.**
+  - At 0:00, arrows already in flight finish (2.5 s at most).
+  - The scoreboard then becomes the end cloth: the ribbon earned, Score with Best (or "New best +N", inside a gold stitched border), shades banished, snap and long shots, bell rings, and whether the bell ended clear.
+  - AGAIN does nothing for the first 0.8 s.
+  - A new best also plays a bright bell note.
+
+Claude's additions, to be audited by Gemini:
+- **Turnover.** A shade that isn't going for the bell drifts off after 12–18 s. Without this, a player who stops shooting ends up with a field of seven sitters that never change, and the bell and the ram never get a turn.
+- **Where crows bank.** A crossing crow banks when it is 11–16 m from the fork, so its glide down is a long one. Gemini's rule ("within 6 m of the bell side") gave glides too short to meet its own shortest window.
+
+**Not built yet:**
+- The separate quiet Menu button on the end cloth.
+- The paw-thump, rustle and other soft sounds Gemini listed for each tell. The main ones are in.
+- A headset check of any of it.
+
+**Tests: `tests/watch2.html`.** Bots play whole three-minute runs: one that never shoots, a fair one, a very good one, and a quick shooter against a careful one. On a hit, the arrow lands after its flight time and is scored by the game's own code, so the bots test the pacing and the scoring, not the aiming. All 22 checks pass. Results from the last run:
+
+| Bot | Bands a minute (Gemini's range) | Score (Gemini's range) | Notes |
+|---|---|---|---|
+| Never shoots | 6.7 (5.5–8) | 0 | First band at 10.6 s (8.5–12). Three bands at 37.6 s (20–32): slower than Gemini's range, partly because the ram puts on all three at once |
+| Fair: a shot every 3 s, 70% hit | 2.0 (2–3.5) | 11,303 to 17,073 across runs (14,000–18,500) | The field was never empty |
+| Very good: a shot every 2 s, 85% hit | 0 (0–1.2) | 25,546 to 31,461 (26,000–33,000) | |
+| Quick against careful | | 14,746 against 15,587 | Ratio 0.95 (Gemini's range 0.90–1.10) |
+
+Three or four rams appear per run, not always four: a ram that is due waits for a free place on a full field.
